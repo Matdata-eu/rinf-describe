@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.3.0",
+    "date": "2026-10-30",
+    "new": [
+      "Every infrastructure element has a page now, not only sections of line and tracks: operational points, tunnels, platforms, sidings, signals and the rest get their map, identification, country, validity and parts.",
+      "A RINF parameters tab lists every parameter of a resource in the order of the RINF index, grouped by chapter, with a filter. It includes the parameters of a track's contact line system, ETCS and train detection systems, and those marked not applicable or not yet available."
+    ],
+    "improved": [
+      "Hover a parameter's name for its definition and RINF index from ERA's ontology; units come from the ontology too.",
+      "The country shows its flag, and dates with a time zone show the right day."
+    ]
+  },
+  {
     "version": "1.2.0",
     "date": "2026-10-30",
     "improved": [
