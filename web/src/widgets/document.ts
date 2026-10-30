@@ -13,8 +13,13 @@ export function fileType(url: string): string | null {
   return m ? m[1].toUpperCase() : null;
 }
 
-const fileName = (url: string) => {
-  try { return decodeURIComponent(new URL(url).pathname.split('/').filter(Boolean).pop() ?? url); } catch { return url; }
+/** The file's name from its URL; for an API link ending in /download, the document id before it. */
+export const fileName = (url: string) => {
+  try {
+    const segs = new URL(url).pathname.split('/').filter(Boolean).map(decodeURIComponent);
+    const last = segs.pop() ?? url;
+    return /^(download|file|view|content|raw)$/i.test(last) && segs.length ? `Document ${segs.pop()}` : last;
+  } catch { return url; }
 };
 const isWeb = (url: string) => /^https?:\/\//i.test(url.trim());
 
@@ -27,7 +32,8 @@ export const DocumentViewer: Widget = {
       const url = it.cells.url?.[0]?.value?.trim() ?? (isWeb(labels[it.iri] ?? '') ? labels[it.iri] : '');
       const name = it.cells.name?.[0]?.value?.trim();
       const type = url ? fileType(url) : null;
-      const title = name && name.length > 2 ? name : url ? fileName(url) : iriLabel(it.iri, labels);
+      const own = labels[it.iri] && !isWeb(labels[it.iri]) ? labels[it.iri] : null;
+      const title = name && name.length > 2 ? name : own ?? (url ? fileName(url) : iriLabel(it.iri, labels));
       return h('li', { class: 'doc-card' },
         h('span', { class: 'doc-type', 'aria-hidden': 'true' }, type ?? 'DOC'),
         h('span', { class: 'doc-body' },

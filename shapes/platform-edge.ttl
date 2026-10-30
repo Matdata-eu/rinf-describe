@@ -1,0 +1,69 @@
+# Platform edge page: a side-on sketch of the platform (height against the TSI heights,
+# usable length), where it is (track, operational point) and how it is used.
+# The base page (infrastructure-element.ttl) adds identification, validity and the RINF
+# parameters tab.
+PREFIX rd:    <https://rinf-describe.matdata.eu/ns#>
+PREFIX shape: <https://rinf-describe.matdata.eu/shapes/>
+PREFIX dash:  <http://datashapes.org/dash#>
+PREFIX sh:    <http://www.w3.org/ns/shacl#>
+PREFIX era:   <http://data.europa.eu/949/>
+PREFIX gsp:   <http://www.opengis.net/ont/geosparql#>
+PREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
+
+shape:pe-location a sh:PropertyGroup ; rdfs:label "Location" ; sh:order 10 .
+shape:pe-platform a sh:PropertyGroup ; rdfs:label "Platform" ; sh:order 20 .
+
+shape:platform-edge
+    a sh:NodeShape ;
+    rdfs:label "Platform edge" ;
+    sh:targetClass era:PlatformEdge ;
+
+    sh:property [
+        sh:path rdfs:label ; rd:key "title" ;
+        dash:propertyRole dash:LabelRole ;
+    ] ;
+    sh:property [
+        sh:path era:lengthOfPlatform ; sh:name "Usable length" ; rd:key "length-badge" ; sh:order 1 ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "{value} m" ;
+    ] ;
+    sh:property [
+        sh:path era:platformHeight ; sh:name "Height" ; rd:key "height-badge" ; sh:order 2 ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "{value} mm high" ;
+    ] ;
+
+    # --- top: the platform sketch, and the track on the map ---
+    sh:property [
+        sh:name "Platform" ; rd:key "sketch" ; sh:order 1 ;
+        dash:viewer rd:PlatformViewer ;
+        rd:height era:platformHeight ;
+        rd:length era:lengthOfPlatform ;
+        rd:curved era:hasPlatformCurvature ;
+    ] ;
+    sh:property [
+        sh:path [ sh:alternativePath ( ( era:netReference gsp:hasGeometry gsp:asWKT ) ( gsp:hasGeometry gsp:asWKT ) ) ] ;
+        sh:name "Map" ; rd:key "map" ; sh:order 2 ;
+        dash:viewer rd:MapViewer ;
+        rd:context ( shape:part-of era:netReference gsp:hasGeometry gsp:asWKT ) ;
+    ] ;
+
+    # --- Location ---
+    sh:property [ sh:path shape:part-of ; sh:name "Track" ; rd:key "part-of" ; sh:group shape:pe-location ; sh:order 10 ] ;
+    sh:property [ sh:path ( shape:part-of shape:part-of ) ; sh:name "Operational point" ; rd:key "op" ; sh:group shape:pe-location ; sh:order 20 ] ;
+
+    # --- Platform ---
+    sh:property [ sh:path era:platformId ; sh:name "Platform identification" ; sh:group shape:pe-platform ; sh:order 10 ] ;
+    sh:property [
+        sh:path era:lengthOfPlatform ; sh:name "Usable length" ;
+        sh:group shape:pe-platform ; sh:order 20 ;
+        dash:viewer rd:ScaleBarViewer ; rd:marks "200 Regional train; 400 Long-distance train" ;
+    ] ;
+    sh:property [
+        sh:path era:platformHeight ; sh:name "Height of platform" ;
+        sh:group shape:pe-platform ; sh:order 30 ;
+        dash:viewer rd:SymbolViewer ; rd:symbol "platform-height" ;
+    ] ;
+    sh:property [ sh:path era:areaBoardingAid ; sh:name "Range of use of the boarding aid" ; sh:group shape:pe-platform ; sh:order 40 ] ;
+    sh:property [ sh:path era:assistanceStartingTrain ; sh:name "Assistance for starting train" ; sh:group shape:pe-platform ; sh:order 50 ] ;
+    sh:property [ sh:path era:hasPlatformCurvature ; sh:name "Curvature" ; sh:group shape:pe-platform ; sh:order 60 ] ;
+    sh:property [ sh:path era:tenClassification ; sh:name "TEN classification" ; sh:group shape:pe-platform ; sh:order 70 ] .

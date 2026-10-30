@@ -31,6 +31,8 @@ export interface RowEntry {
   items?: Item[];
   params?: Record<string, Term[]>;
   parameters?: Parameter[];
+  /** All linked resources of a table with rd:limit, of which `items` holds the first. */
+  total?: number;
 }
 
 /** One property row of a describe shape, as compiled by the worker (describe_def). */
@@ -113,6 +115,8 @@ export const api = {
   triples: (uri: string, env: string, dir: 'out' | 'in', limit = 1000) => get<TriplesResponse>('triples', { uri, env, dir, limit }),
   graph: (uri: string, env: string) => get<GraphResponse>('graph', { uri, env }),
   search: (q: string, env: string, signal?: AbortSignal) => get<{ results: SearchHit[] }>('search', { q, env }, signal),
+  rows: (uri: string, env: string, key: string, offset: number) =>
+    get<{ key: string; offset: number; items: Item[]; total: number; labels: Record<string, string> }>('rows', { uri, env, key, offset }),
   examples: (env: string) => get<{ results: Example[] }>('examples', { env }),
   exportUrl: (uri: string, env: string, format: 'ttl' | 'nt' | 'csv') =>
     `/api/export?${new URLSearchParams({ uri, env, format })}`,

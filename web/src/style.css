@@ -32,6 +32,7 @@
   --radius: 10px;
   --radius-sm: 6px;
   --top-h: 52px;
+  --layer-0: #2e7d6b; --layer-1: #8a5cc2; --layer-2: #c05621; --layer-3: #3a6ea5;
   --font: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   color-scheme: light dark;
@@ -451,6 +452,67 @@ ul.facilities { list-style: none; margin: 0; padding: 0; display: grid; grid-tem
 .scale-mark { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--line-strong); }
 .scale-mark.reached { background: var(--ok); }
 .scale-mark-label { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); white-space: nowrap; color: var(--muted); }
+.scale-mark-label.end { left: auto; right: -2px; transform: none; }
 
 /* country flag (rd:SymbolViewer "country") */
 .symbol.flag { width: auto; height: auto; font-size: 28px; line-height: 1.1; font-family: "Twemoji Country Flags", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
+
+/* tables with rd:limit: the count and "Show more" */
+.table-foot { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+.table-foot .table-note { margin: 0; }
+
+/* map layers (rd:layers) */
+.map-layers { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin-top: 8px; }
+.map-layers label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.swatch { width: 18px; height: 4px; border-radius: 2px; background: var(--layer-0); }
+.swatch.layer-1 { background: var(--layer-1); } .swatch.layer-2 { background: var(--layer-2); } .swatch.layer-3 { background: var(--layer-3); }
+.map-tip .maplibregl-popup-content { padding: 4px 8px; font: 12px/1.3 var(--font); color: #10273f; }
+
+/* connections (rd:ConnectionsViewer) */
+.connections { margin: 0; }
+.conn-canvas { position: relative; max-width: 760px; margin: 0 auto; aspect-ratio: 640 / 380; }
+.conn-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.conn-line { stroke: var(--line-strong); stroke-width: 2.5; stroke-linecap: round; }
+.conn-far { fill: var(--surface); stroke: var(--accent-strong); stroke-width: 2.5; }
+.conn-hub { fill: var(--accent-strong); }
+.conn-hub-ring { fill: var(--signal-soft); stroke: var(--signal); stroke-width: 3; }
+.conn-labels { position: absolute; inset: 0; }
+.conn-label { position: absolute; display: grid; max-width: 34%; line-height: 1.25; }
+.conn-label a { overflow-wrap: anywhere; }
+.conn-label.right { transform: translate(12px, -50%); text-align: left; }
+.conn-label.left { transform: translate(calc(-100% - 12px), -50%); text-align: right; }
+.conn-label.mid.up { transform: translate(-50%, calc(-100% - 10px)); text-align: center; }
+.conn-label.mid.down { transform: translate(-50%, 10px); text-align: center; }
+.conn-label.centre { transform: translate(-50%, 18px); text-align: center; background: color-mix(in srgb, var(--surface) 85%, transparent); padding: 0 4px; border-radius: 4px; }
+.conn-name { font-weight: 600; }
+.conn-meta { color: var(--muted); }
+.connections figcaption { text-align: center; margin-top: 4px; }
+@media (max-width: 560px) { .conn-label { font-size: 11px; max-width: 40%; } }
+
+/* track layout (rd:TrackLayoutViewer) */
+.track-layout { display: grid; gap: 6px; }
+ol.tl-tracks, ul.tl-sidings { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.tl-track, .tl-siding { display: grid; grid-template-columns: minmax(64px, 200px) 1fr; align-items: center; gap: 10px; min-height: 28px; }
+.tl-siding { grid-template-columns: minmax(64px, 200px) 1fr auto; }
+.tl-id { overflow-wrap: anywhere; font-family: var(--mono); font-size: 12px; line-height: 1.3; }
+.tl-lane { position: relative; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 26px; }
+.tl-rail { position: absolute; left: 0; right: 0; top: 50%; height: 3px; margin-top: -1.5px; border-radius: 2px; background: var(--line-strong); }
+.tl-platform { position: relative; z-index: 1; display: block; padding: 2px 6px; border-radius: 4px; background: var(--signal-soft); box-shadow: inset 0 0 0 1px var(--signal); color: var(--signal-ink); font-size: 11px; text-align: center; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tl-platform:hover { box-shadow: inset 0 0 0 2px var(--signal); }
+.tl-bar { height: 8px; border-radius: 4px; background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); justify-self: start; }
+.tl-head { margin: 8px 0 0; }
+.tl-note { margin: 4px 0 0; }
+
+/* platform sketch (rd:PlatformViewer) */
+.platform-sketch { margin: 0; }
+.platform-svg { display: block; width: 100%; max-width: 720px; height: auto; margin: 0 auto; }
+.pf-rail { stroke: var(--text); stroke-width: 4; stroke-linecap: round; }
+.pf-sleeper { stroke: var(--line-strong); stroke-width: 3; }
+.pf-ref { stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 4 4; }
+.pf-ref.hit { stroke: var(--ok); stroke-dasharray: none; stroke-width: 1.5; }
+.pf-ref-text { fill: var(--muted); font: 11px var(--font); }
+.pf-block { fill: var(--accent-soft); stroke: var(--accent-strong); stroke-width: 2.5; stroke-linejoin: round; }
+.pf-block.unknown { stroke-dasharray: 6 4; }
+.pf-text { fill: var(--text); font: 600 13px var(--font); }
+.platform-sketch figcaption { text-align: center; }
+.symbol .outline.dashed { stroke-dasharray: 4 3; }

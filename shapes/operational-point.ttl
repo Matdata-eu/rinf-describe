@@ -1,0 +1,222 @@
+# Operational point page: map with its tracks and connected sections, the connections to
+# the next operational points, a schematic of its tracks, platforms and sidings, and tabs
+# for the tables and the route compatibility parameters summed up over its tracks.
+# The base page (infrastructure-element.ttl) adds validity and the RINF parameters tab.
+PREFIX rd:    <https://rinf-describe.matdata.eu/ns#>
+PREFIX shape: <https://rinf-describe.matdata.eu/shapes/>
+PREFIX dash:  <http://datashapes.org/dash#>
+PREFIX sh:    <http://www.w3.org/ns/shacl#>
+PREFIX era:   <http://data.europa.eu/949/>
+PREFIX gsp:   <http://www.opengis.net/ont/geosparql#>
+PREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
+
+shape:op-connections a sh:PropertyGroup ; rdfs:label "Connections" ; sh:order 5 .
+shape:op-identification a sh:PropertyGroup ; rdfs:label "Operational point" ; sh:order 10 .
+shape:op-layout a sh:PropertyGroup ; rdfs:label "Layout" ; sh:order 20 .
+shape:op-rules a sh:PropertyGroup ; rdfs:label "Rules and restrictions" ; sh:order 30 .
+shape:op-tracks a sh:PropertyGroup ; rdfs:label "Tracks" ; sh:order 110 ; rd:tab "Tracks and platforms" .
+shape:op-platforms a sh:PropertyGroup ; rdfs:label "Platforms" ; sh:order 120 ; rd:tab "Tracks and platforms" .
+shape:op-sidings a sh:PropertyGroup ; rdfs:label "Sidings" ; sh:order 130 ; rd:tab "Tracks and platforms" .
+shape:op-rcc a sh:PropertyGroup ; rdfs:label "Over the tracks of the operational point" ; sh:order 210 ; rd:tab "Route compatibility" .
+
+shape:operational-point
+    a sh:NodeShape ;
+    rdfs:label "Operational point" ;
+    sh:targetClass era:OperationalPoint ;
+
+    sh:property [
+        sh:path rdfs:label ; rd:key "title" ;
+        dash:propertyRole dash:LabelRole ;
+    ] ;
+
+    # --- badges ---
+    sh:property [
+        sh:path era:opType ; sh:name "Type" ; rd:key "type-badge" ; sh:order 1 ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "{value}" ;
+    ] ;
+    sh:property [
+        sh:path era:uopid ; sh:name "OP ID" ; rd:key "uopid-badge" ; sh:order 2 ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "{value}" ;
+    ] ;
+    sh:property [
+        sh:path rdf:type ; sh:name "Number of tracks" ; rd:key "track-count" ; sh:order 3 ;
+        rd:over shape:parts ; rd:class era:RunningTrack ; rd:aggregate "count" ;
+        dash:viewer rd:AggregateViewer ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "{count} tracks" ;
+    ] ;
+    sh:property [
+        sh:path rdf:type ; sh:name "Number of platforms" ; rd:key "platform-count" ; sh:order 4 ;
+        rd:over ( shape:parts shape:parts ) ; rd:class era:PlatformEdge ; rd:aggregate "count" ;
+        dash:viewer rd:AggregateViewer ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "{count} platforms" ;
+    ] ;
+
+    # --- top of the page: the point, its tracks and the sections that meet here ---
+    sh:property [
+        sh:path [ sh:alternativePath ( ( era:netReference gsp:hasGeometry gsp:asWKT ) ( gsp:hasGeometry gsp:asWKT ) ) ] ;
+        sh:name "Map" ; rd:key "map" ; sh:order 2 ;
+        dash:viewer rd:MapViewer ;
+        rd:layers "connections track-table" ;
+    ] ;
+
+    # --- Connections: the sections of line that start or end here ---
+    sh:property [
+        sh:path [ sh:alternativePath ( [ sh:inversePath era:opStart ] [ sh:inversePath era:opEnd ] ) ] ;
+        sh:name "Connections" ; rd:key "connections" ;
+        sh:group shape:op-connections ; sh:order 10 ;
+        rd:class era:SectionOfLine ; rd:scope "all" ;
+        dash:viewer rd:ConnectionsViewer ;
+        sh:node shape:op-connection ;
+    ] ;
+
+    # --- Operational point ---
+    sh:property [ sh:path era:opName ; sh:name "Name" ; sh:group shape:op-identification ; sh:order 10 ] ;
+    sh:property [ sh:path era:uopid ; sh:name "Operational point ID" ; sh:group shape:op-identification ; sh:order 20 ] ;
+    sh:property [ sh:path era:opType ; sh:name "Type" ; sh:group shape:op-identification ; sh:order 30 ] ;
+    sh:property [ sh:path era:opTypeGaugeChangeover ; sh:name "Track gauge changeover facility" ; sh:group shape:op-identification ; sh:order 40 ] ;
+    sh:property [
+        sh:path era:primaryLocation ; sh:name "Primary location" ; rd:key "primary-location" ;
+        sh:group shape:op-identification ; sh:order 50 ;
+    ] ;
+    sh:property [ sh:path era:referenceBorderPoint ; sh:name "Reference border point" ; sh:group shape:op-identification ; sh:order 60 ] ;
+    sh:property [ sh:path era:kilometer ; sh:name "Kilometre" ; sh:group shape:op-identification ; sh:order 70 ] ;
+
+    # --- Layout: schematic of tracks, platforms and sidings, and the IM's own schematic ---
+    sh:property [
+        sh:path shape:parts ; sh:name "Track layout" ; rd:key "layout" ;
+        sh:group shape:op-layout ; sh:order 10 ;
+        rd:class era:RunningTrack ;
+        dash:viewer rd:TrackLayoutViewer ;
+        rd:platforms "platform-table" ; rd:sidings "siding-table" ;
+        sh:node shape:op-layout-track ;
+    ] ;
+    sh:property [
+        sh:path era:schematicOverviewOP ; sh:name "Schematic overview" ;
+        sh:group shape:op-layout ; sh:order 20 ;
+        dash:viewer rd:DocumentViewer ; sh:node shape:document-card ;
+    ] ;
+    sh:property [
+        sh:path era:digitalSchematicOverview ; sh:name "Digital schematic overview" ;
+        sh:group shape:op-layout ; sh:order 30 ;
+    ] ;
+
+    # --- Rules and restrictions ---
+    sh:property [ sh:path era:localRulesOrRestrictions ; sh:name "Local rules or restrictions" ; sh:group shape:op-rules ; sh:order 10 ] ;
+    sh:property [
+        sh:path era:localRulesOrRestrictionsDoc ; sh:name "Documents" ;
+        sh:group shape:op-rules ; sh:order 20 ;
+        dash:viewer rd:DocumentViewer ; sh:node shape:document-card ;
+    ] ;
+
+    # --- Tracks and platforms tab ---
+    sh:property [
+        sh:path shape:parts ; sh:name "Tracks" ; rd:key "track-table" ;
+        sh:group shape:op-tracks ; sh:order 10 ;
+        rd:class era:RunningTrack ; rd:limit "100" ;
+        dash:viewer dash:ValueTableViewer ;
+        sh:node shape:op-track-row ;
+    ] ;
+    sh:property [
+        sh:path ( shape:parts shape:parts ) ; sh:name "Platforms" ; rd:key "platform-table" ;
+        sh:group shape:op-platforms ; sh:order 10 ;
+        rd:class era:PlatformEdge ; rd:limit "100" ;
+        dash:viewer dash:ValueTableViewer ;
+        sh:node shape:op-platform-row ;
+    ] ;
+    sh:property [
+        sh:path shape:parts ; sh:name "Sidings" ; rd:key "siding-table" ;
+        sh:group shape:op-sidings ; sh:order 10 ;
+        rd:class era:Siding ; rd:limit "100" ;
+        dash:viewer dash:ValueTableViewer ;
+        sh:node shape:op-siding-row ;
+    ] ;
+    sh:property [ rd:key "parts" ; sh:deactivated true ] ;
+
+    # --- Route compatibility: summed up over the tracks ---
+    sh:property [
+        sh:path era:maximumPermittedSpeed ; sh:name "Maximum permitted speed" ; rd:key "rcc-speed" ;
+        rd:over shape:parts ; rd:class era:RunningTrack ; rd:aggregate "range" ;
+        sh:group shape:op-rcc ; sh:order 10 ; dash:viewer rd:AggregateViewer ;
+    ] ;
+    sh:property [
+        sh:path era:wheelSetGauge ; sh:name "Nominal track gauge" ; rd:key "rcc-gauge" ;
+        rd:over shape:parts ; rd:class era:RunningTrack ; rd:aggregate "distinct-count" ;
+        sh:group shape:op-rcc ; sh:order 20 ; dash:viewer rd:AggregateViewer ;
+    ] ;
+    sh:property [
+        sh:path era:gaugingProfile ; sh:name "Gauging" ; rd:key "rcc-gauging" ;
+        rd:over shape:parts ; rd:class era:RunningTrack ; rd:aggregate "distinct-count" ;
+        sh:group shape:op-rcc ; sh:order 30 ; dash:viewer rd:AggregateViewer ;
+    ] ;
+    sh:property [
+        sh:path ( era:contactLineSystem era:contactLineSystemType ) ; sh:name "Contact line system" ; rd:key "rcc-contact-line" ;
+        rd:over shape:parts ; rd:class era:RunningTrack ; rd:aggregate "distinct-count" ;
+        sh:group shape:op-rcc ; sh:order 40 ; dash:viewer rd:AggregateViewer ;
+    ] ;
+    sh:property [
+        sh:path ( era:contactLineSystem era:energySupplySystem ) ; sh:name "Energy supply system" ; rd:key "rcc-energy" ;
+        rd:over shape:parts ; rd:class era:RunningTrack ; rd:aggregate "distinct-count" ;
+        sh:group shape:op-rcc ; sh:order 50 ; dash:viewer rd:AggregateViewer ;
+    ] ;
+    sh:property [
+        sh:path ( shape:own-or-subset era:etcs era:etcsLevelType ) ; sh:name "ETCS level" ; rd:key "rcc-etcs" ;
+        rd:over shape:parts ; rd:class era:RunningTrack ; rd:aggregate "distinct-count" ;
+        sh:group shape:op-rcc ; sh:order 60 ; dash:viewer rd:AggregateViewer ;
+    ] ;
+    sh:property [
+        sh:path ( shape:own-or-subset era:protectionLegacySystem ) ; sh:name "Train protection legacy system" ; rd:key "rcc-legacy" ;
+        rd:over shape:parts ; rd:class era:RunningTrack ; rd:aggregate "distinct-count" ;
+        sh:group shape:op-rcc ; sh:order 70 ; dash:viewer rd:AggregateViewer ;
+    ] ;
+    sh:property [
+        sh:path ( era:trainDetectionSystem era:trainDetectionSystemType ) ; sh:name "Train detection" ; rd:key "rcc-detection" ;
+        rd:over shape:parts ; rd:class era:RunningTrack ; rd:aggregate "distinct-count" ;
+        sh:group shape:op-rcc ; sh:order 80 ; dash:viewer rd:AggregateViewer ;
+    ] ;
+    sh:property [
+        sh:path era:maxPermittedTrainLength ; sh:name "Maximum train length" ; rd:key "rcc-train-length" ;
+        rd:over shape:parts ; rd:class era:RunningTrack ; rd:aggregate "range" ;
+        sh:group shape:op-rcc ; sh:order 90 ; dash:viewer rd:AggregateViewer ;
+    ] .
+
+# A connection: the section of line, its two ends, line and length (the viewer draws the
+# end that is not this operational point), and its geometry for the map layer.
+shape:op-connection
+    a sh:NodeShape ;
+    sh:property [ sh:path era:opStart ; sh:name "From" ; rd:key "start" ; sh:order 10 ] ;
+    sh:property [ sh:path era:opEnd ; sh:name "To" ; rd:key "end" ; sh:order 20 ] ;
+    sh:property [ sh:path era:nationalLine ; sh:name "Line" ; rd:key "line" ; sh:order 30 ] ;
+    sh:property [ sh:path era:lengthOfSectionOfLine ; sh:name "Length" ; rd:key "length" ; sh:order 40 ] ;
+    sh:property [ sh:path ( era:netReference gsp:hasGeometry gsp:asWKT ) ; sh:name "Geometry" ; rd:key "wkt" ; sh:order 90 ] .
+
+shape:op-layout-track
+    a sh:NodeShape ;
+    sh:property [ sh:path era:trackId ; sh:name "Track" ; rd:key "id" ; sh:order 10 ] .
+
+shape:op-track-row
+    a sh:NodeShape ;
+    sh:property [ sh:path era:trackId ; sh:name "Track" ; sh:order 10 ] ;
+    sh:property [ sh:path era:maximumPermittedSpeed ; sh:name "Max speed" ; sh:order 20 ] ;
+    sh:property [ sh:path era:wheelSetGauge ; sh:name "Gauge" ; sh:order 30 ] ;
+    sh:property [ sh:path ( era:contactLineSystem era:contactLineSystemType ) ; sh:name "Contact line" ; sh:order 40 ] ;
+    sh:property [ sh:path ( shape:own-or-subset era:etcs era:etcsLevelType ) ; sh:name "ETCS" ; sh:order 50 ] ;
+    sh:property [ sh:path ( era:netReference gsp:hasGeometry gsp:asWKT ) ; sh:name "Geometry" ; rd:key "wkt" ; sh:order 90 ; rd:hidden "true" ] .
+
+shape:op-platform-row
+    a sh:NodeShape ;
+    sh:property [ sh:path era:platformId ; sh:name "Platform" ; sh:order 10 ] ;
+    sh:property [ sh:path shape:part-of ; sh:name "Track" ; rd:key "track" ; sh:order 20 ] ;
+    sh:property [ sh:path era:lengthOfPlatform ; sh:name "Usable length" ; rd:key "length" ; sh:order 30 ] ;
+    sh:property [ sh:path era:platformHeight ; sh:name "Height (mm)" ; rd:key "height" ; sh:order 40 ] ;
+    sh:property [ sh:path era:areaBoardingAid ; sh:name "Boarding aid" ; sh:order 50 ] ;
+    sh:property [ sh:path era:assistanceStartingTrain ; sh:name "Assistance for starting" ; sh:order 60 ] .
+
+shape:op-siding-row
+    a sh:NodeShape ;
+    sh:property [ sh:path era:sidingId ; sh:name "Siding" ; sh:order 10 ] ;
+    sh:property [ sh:path era:lengthOfSiding ; sh:name "Usable length" ; rd:key "length" ; sh:order 20 ] ;
+    sh:property [ sh:path era:gradient ; sh:name "Gradient" ; sh:order 30 ] ;
+    sh:property [ sh:path era:hasToiletDischarge ; sh:name "Toilet discharge" ; sh:order 40 ] ;
+    sh:property [ sh:path era:hasWaterRestocking ; sh:name "Water" ; sh:order 50 ] ;
+    sh:property [ sh:path era:hasRefuelling ; sh:name "Refuelling" ; sh:order 60 ] .

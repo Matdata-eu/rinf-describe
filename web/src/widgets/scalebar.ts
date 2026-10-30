@@ -38,6 +38,6 @@ export const ScaleBarViewer: Widget = {
       h('div', { class: 'scale-track', role: 'img', 'aria-label': `${text}${marks.length ? `, against ${marks.map((m) => withUnit(formatNumber(m.value), unit) + ' ' + m.label).join(', ')}` : ''}` },
         bar,
         marks.map((m) => h('span', { class: `scale-mark${(value ?? hi ?? 0) >= m.value ? ' reached' : ''}`, style: `left:${pct(m.value)}`, title: `${withUnit(formatNumber(m.value), unit)} ${m.label}` },
-          h('span', { class: 'scale-mark-label small' }, m.label)))));
+          h('span', { class: `scale-mark-label small${(m.value - s0) / (s1 - s0) > 0.75 ? ' end' : ''}` }, m.label)))));
   },
 };

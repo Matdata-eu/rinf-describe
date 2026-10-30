@@ -73,7 +73,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="RINF Describe API", version="1.3.0", lifespan=lifespan,
+app = FastAPI(title="RINF Describe API", version="1.4.0", lifespan=lifespan,
               docs_url="/api/docs", openapi_url="/api/openapi.json")
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 
@@ -204,6 +204,30 @@ def describe(uri: str, env: str | None = None):
             "title": labels.get(iri), "classes": p["classes"], "graph": p["graph"],
             "dataset": _dataset(env, p["graph"]), "pages": pages, "counts": p["counts"], "labels": labels,
             "terms": terms, "chapters": onto.chapters if pages else {}, "timing": p["timing"]}
+
+
+@app.get("/api/rows")
+def rows(uri: str, key: str, env: str | None = None, offset: int = Query(0, ge=0, le=1_000_000)):
+    """More of a table with rd:limit: its linked resources from `offset`, with their labels."""
+    env, iri = _env(env), _iri(uri)
+    p = _page(env, iri)
+    for ds, _doc in p["pages"]:
+        row = next((r for r in ds.rows if r.key == key and r.columns and r.limit), None)
+        if row:
+            break
+    else:
+        raise HTTPException(404, f"no paged table {key!r} on this page")
+    parts = livepage.branches(iri, ds, [row], status=False, offset=offset)
+
+    def read():
+        q = livepage.query(None if row.scope_all else p["graph"], parts)
+        doc = livepage.assemble(shapes.DocShape(ds.iri, ds.class_iri, ds.label, [row]), _sparql(env, q))
+        return doc["rows"].get(key, {})
+    entry = _cached(("rows", env, iri, key, offset), PAGE_CACHE_SECONDS, read)
+    found: set[str] = set()
+    livepage._collect(entry.get("items", []), found)
+    return {"key": key, "offset": offset, "items": entry.get("items", []), "total": entry.get("total"),
+            "labels": _labels(env, found)}
 
 
 @app.get("/api/triples")

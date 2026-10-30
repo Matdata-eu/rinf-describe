@@ -58,6 +58,18 @@ rd:ScaleBarViewer a dash:SingleViewer ;
     rdfs:label "Scale bar" ;
     rdfs:comment "A length as a bar against rd:marks (\"400 Passenger train; 740 Freight train\"), or the range rd:min to rd:max on a scale (rd:scale \"4 7\")." .
 
+rd:ConnectionsViewer a dash:MultiViewer ;
+    rdfs:label "Connections" ;
+    rdfs:comment "The sections of line that start or end at an operational point as spokes, each to the operational point at its other end. Columns: start, end, line, length, wkt." .
+
+rd:TrackLayoutViewer a dash:MultiViewer ;
+    rdfs:label "Track layout" ;
+    rdfs:comment "Schematic of an operational point: its tracks, platform edges on them, and sidings. rd:platforms and rd:sidings name the table rows to read." .
+
+rd:PlatformViewer a dash:SingleViewer ;
+    rdfs:label "Platform" ;
+    rdfs:comment "Side view of a platform edge against the TSI heights 550 and 760 mm. Paths: rd:height, rd:length, rd:curved." .
+
 rd:DataStatusViewer a dash:MultiViewer ;
     rdfs:label "Data status" ;
     rdfs:comment "Parameters marked era:notApplicable or era:notYetAvailable. Shown on every class page; needs no property shape." .
@@ -93,6 +105,21 @@ rd:facility a owl:ObjectProperty ;
 rd:marks a owl:DatatypeProperty ;
     rdfs:label "marks" ;
     rdfs:comment "Reference marks of rd:ScaleBarViewer: value label pairs separated by semicolons." .
+rd:class a owl:ObjectProperty ;
+    rdfs:label "class" ;
+    rdfs:comment "Only the linked resources of this class." .
+rd:limit a owl:DatatypeProperty ;
+    rdfs:label "limit" ;
+    rdfs:comment "At most this many linked resources of a table at a time; the rest on demand." .
+rd:scope a owl:DatatypeProperty ;
+    rdfs:label "scope" ;
+    rdfs:comment "\"all\": evaluate the row over every graph, not only the resource's own." .
+rd:layers a owl:DatatypeProperty ;
+    rdfs:label "layers" ;
+    rdfs:comment "Keys of table rows whose wkt column rd:MapViewer draws as layers." .
+rd:hidden a owl:DatatypeProperty ;
+    rdfs:label "hidden" ;
+    rdfs:comment "\"true\": a column that is read but not shown." .
 rd:key a owl:DatatypeProperty ;
     rdfs:label "key" ;
     rdfs:comment "Stable key of a property row; by default made from sh:name or the path." .

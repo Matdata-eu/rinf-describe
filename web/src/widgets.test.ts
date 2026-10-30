@@ -2,10 +2,13 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { formatDate, parseSteps } from './format.ts';
 import { helpPredicate, helpText, indexUnder } from './rdf.ts';
-import { fileType } from './widgets/document.ts';
+import { bearing, evenly } from './widgets/connections.ts';
+import { fileName, fileType } from './widgets/document.ts';
 import { chaptersOf, indexRoots } from './widgets/parameters.ts';
+import { heightMm } from './widgets/platform.ts';
 import { parseMarks } from './widgets/scalebar.ts';
 import { countryCode } from './widgets/symbol.ts';
+import { commonPrefix } from './widgets/tracklayout.ts';
 
 const ERA = 'http://data.europa.eu/949/';
 
@@ -41,4 +44,28 @@ test('widget helpers', () => {
   assert.equal(countryCode('http://publications.europa.eu/resource/authority/country/SWE'), 'SE');
   assert.equal(formatDate('2025-02-19T00:00:00+01:00'), '19 Feb 2025');
   assert.deepEqual(parseSteps('-06.0(+172.800)'), [{ value: -6, length: 172.8 }]);
+});
+
+test('a connection points the way its section leaves the operational point', () => {
+  // A section running east from the centre, given either way round.
+  assert.equal(Math.round(bearing([4, 50], [[4, 50], [4.1, 50], [4.2, 50]])!), 0);
+  assert.equal(Math.round(bearing([4, 50], [[4, 50.2], [4, 50.1], [4, 50]])!), 90);
+  assert.equal(bearing([4, 50], [[4, 50]]), null);
+});
+
+test('many connections are spread evenly in the order of their bearings', () => {
+  const out = evenly([0, 2, 4, 6, 180, 182, 184, 186, 270]);
+  const sorted = [...out].sort((a, b) => a - b);
+  for (let i = 1; i < sorted.length; i++) assert.ok(Math.abs(sorted[i] - sorted[i - 1] - 40) < 1e-9);
+  assert.ok(out[0] < out[1] && out[1] < out[2] && out[3] < out[4]);
+});
+
+test('platform heights, track id prefixes and document names', () => {
+  assert.equal(heightMm('550'), 550);
+  assert.equal(heightMm('760 mm'), 760);
+  assert.equal(heightMm('other'), null);
+  assert.equal(commonPrefix(['Leuven - Voie A', 'Leuven - Voie B']), 'Leuven - ');
+  assert.equal(commonPrefix(['Leuven - Voie A', 'Leuven|2 - CDS']), '');
+  assert.equal(fileName('https://rinf.data.era.europa.eu/api/v1/document/9c66681895/download/'), 'Document 9c66681895');
+  assert.equal(fileName('https://example.org/files/plan.pdf'), 'plan.pdf');
 });

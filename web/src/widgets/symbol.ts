@@ -1,11 +1,12 @@
 // rd:SymbolViewer: an illustrative, non-dimensioned symbol next to each value's label
 // (rd:symbol "loading-gauge" for gauging profiles, "track-gauge" for the track gauge,
-// "country" for a country's flag).
+// "country" for a country's flag, "platform-height" for a platform beside a rail at its height).
 import type { Term } from '../api.ts';
 import { h, s } from '../dom.ts';
 import { describeHref } from '../nav.ts';
 import { iriLabel } from '../rdf.ts';
 import { termText } from '../format.ts';
+import { heightMm } from './platform.ts';
 import type { Widget } from './types.ts';
 
 function loadingGauge(): SVGElement {
@@ -47,7 +48,19 @@ function country(v: Term): Node {
   return h('span', { class: 'symbol flag', 'aria-hidden': 'true' }, flag);
 }
 
-const SYMBOLS: Record<string, (v: Term) => Node> = { 'loading-gauge': loadingGauge, 'track-gauge': trackGauge, country };
+function platformHeight(v: Term, labels: Record<string, string>): SVGElement {
+  // A platform beside a rail end-on, drawn as high as the label says (in mm), up to 1000 mm.
+  const mm = heightMm(v.iri ? iriLabel(v.iri, labels) : v.value);
+  const top = 58 - Math.min(1000, mm ?? 400) * 0.04;
+  return s('svg', { viewBox: '0 0 64 72', class: 'symbol', 'aria-hidden': 'true' },
+    s('path', { d: 'M4 62h56', class: 'base' }),
+    s('path', { d: 'M42 52h6v6h-6z', class: 'rail-head' }),
+    s('path', { d: `M6 62V${top.toFixed(1)}h28V62`, class: mm === null ? 'outline dashed' : 'outline' }));
+}
+
+const SYMBOLS: Record<string, (v: Term, labels: Record<string, string>) => Node> = {
+  'loading-gauge': loadingGauge, 'track-gauge': trackGauge, country, 'platform-height': platformHeight,
+};
 
 export const SymbolViewer: Widget = {
   render: ({ entry, env, labels, row }) => {
@@ -55,7 +68,7 @@ export const SymbolViewer: Widget = {
     if (!values.length) return null;
     const draw = SYMBOLS[row.settings.symbol ?? ''] ?? loadingGauge;
     return h('div', { class: 'symbols' }, values.map((v) => h('figure', { class: 'symbol-tile' },
-      draw(v),
+      draw(v, labels),
       h('figcaption', null, v.iri
         ? h('a', { class: 'iri-link', href: describeHref(v.iri, env), title: v.iri }, iriLabel(v.iri, labels))
         : termText(v, labels)))));

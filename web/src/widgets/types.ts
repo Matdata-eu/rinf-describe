@@ -2,6 +2,8 @@ import type { ClassPage, RowDef, RowEntry, TermInfo } from '../api.ts';
 
 /** What a widget gets to render one row of a page. */
 export interface Ctx {
+  /** The resource the page describes. */
+  iri: string;
   env: string;
   labels: Record<string, string>;
   row: RowDef;
