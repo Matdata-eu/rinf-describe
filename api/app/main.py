@@ -3,13 +3,16 @@
 Pages come from the describe index that RINF Atlas's worker builds when
 ATLAS_DESCRIBE is on (tables describe_doc, describe_def, describe_triple; labels
 in term). The API only reads that database. A resource the index does not hold
-is described live from ERA's SPARQL endpoint (plain triples, no class page).
+gets its class pages built live from ERA's SPARQL endpoint with the same shapes
+(livepage.py), and its plain triples read live (live.py).
 """
 from __future__ import annotations
 
+import logging
 import math
 import os
 import re
+import time
 from contextlib import asynccontextmanager
 from typing import Any
 from urllib.parse import quote_plus
@@ -22,8 +25,10 @@ from fastapi.middleware.gzip import GZipMiddleware
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
-from . import live
+from . import live, livepage, shapes
 from . import rdf as R
+
+log = logging.getLogger("describe")
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://describe_ro:describe@db:5432/atlas")
 # Environments, in menu order: key=label pairs; the first is the default.
@@ -37,6 +42,10 @@ for _k, _v in os.environ.items():  # DESCRIBE_SPARQL_PROD=https://... overrides 
     if _k.startswith("DESCRIBE_SPARQL_") and _v.strip():
         ENDPOINTS[_k[len("DESCRIBE_SPARQL_"):].lower()] = _v.strip()
 LIVE = os.environ.get("DESCRIBE_LIVE", "1") not in ("0", "false", "no", "off")
+# Rows per SPARQL query and queries in flight for a live class page.
+LIVE_BATCH = int(os.environ.get("DESCRIBE_LIVE_BATCH", "12"))
+LIVE_WORKERS = int(os.environ.get("DESCRIBE_LIVE_WORKERS", "8"))
+LIVE_CACHE_SECONDS = 600
 ATLAS_URL = os.environ.get("DESCRIBE_ATLAS_URL", "https://rinf-atlas.matdata.eu").rstrip("/")
 # Public address of the instance; with it the API serves the sitemaps of the describe pages
 # (docs/seo.md). Without it there are none.
@@ -46,13 +55,19 @@ TRIPLES_MAX = 5000
 GRAPH_MAX = 200
 
 pool: ConnectionPool | None = None
+dset: shapes.DescribeSet | None = None
+_live_pages: dict[tuple[str, str], tuple[float, dict]] = {}
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global pool
+    global pool, dset
     pool = ConnectionPool(DATABASE_URL, min_size=1, max_size=int(os.environ.get("DESCRIBE_DB_POOL", "8")),
                           kwargs={"row_factory": dict_row, "autocommit": True}, open=True)
+    try:
+        dset = shapes.load()
+    except shapes.ShapeError as e:  # live pages show the generic tabs only; indexed pages are unaffected
+        log.error("describe shapes are invalid, no live class pages: %s", e)
     yield
     pool.close()
 
@@ -143,15 +158,54 @@ def config():
     }
 
 
+def _live_page(env: str, iri: str) -> dict:
+    """The class pages of a resource built live from ERA's endpoint, cached for a few minutes."""
+    key = (env, iri)
+    hit = _live_pages.get(key)
+    if hit and time.time() - hit[0] < LIVE_CACHE_SECONDS:
+        return hit[1]
+    try:
+        p = livepage.page(lambda q: live.sparql(ENDPOINTS[env], q), iri, dset or shapes.DescribeSet([], {}),
+                          batch=LIVE_BATCH, workers=LIVE_WORKERS)
+    except httpx.HTTPError as e:
+        raise HTTPException(502, f"ERA's SPARQL endpoint did not answer: {e}") from e
+    if len(_live_pages) > 500:
+        _live_pages.clear()
+    _live_pages[key] = (time.time(), p)
+    return p
+
+
+def _dataset(env: str, graph: str | None) -> dict | None:
+    if not graph:
+        return None
+    ds = _q("SELECT provider, title, country, modified FROM dataset WHERE env=%s AND graph_iri=%s", (env, graph))
+    if not ds:
+        return {"graph": graph}
+    return {"graph": graph, "provider": ds[0]["provider"], "title": ds[0]["title"], "country": ds[0]["country"],
+            "modified": ds[0]["modified"].isoformat() if ds[0]["modified"] else None}
+
+
 @app.get("/api/describe")
-def describe(uri: str, env: str | None = None):
-    """The page of one resource: its class pages (layout + evaluated values), classes, labels."""
+def describe(uri: str, env: str | None = None, source: str = Query("auto", pattern="^(auto|index|live)$")):
+    """The page of one resource: its class pages (layout + evaluated values), classes, labels.
+
+    From the describe index when it holds the resource; otherwise built live from ERA's
+    endpoint with the same shapes. source=live builds it live anyway, source=index never."""
     env, iri = _env(env), _iri(uri)
+    can_live = LIVE and env in ENDPOINTS and source != "index"
+    if source == "live":
+        if not can_live:
+            raise HTTPException(404, f"no live endpoint for {env!r}")
+        return _describe_live(env, iri)
     docs = _q("""SELECT d.shape, d.graph_iri, d.doc, f.class_iri, f.def
                  FROM describe_doc d JOIN describe_def f ON f.shape = d.shape
                  WHERE d.env=%s AND d.iri=%s ORDER BY d.shape""", (env, iri))
     types = [r["o"] for r in _q("SELECT DISTINCT o FROM describe_triple WHERE env=%s AND s=%s AND p=%s AND o_iri",
                                 (env, iri, R.RDF_TYPE))]
+    # Not in the index, or in it without the pages its classes have (shapes newer than the index).
+    if can_live and not docs and (not types or (dset and dset.for_classes(types))):
+        return _describe_live(env, iri)
+    t0 = time.perf_counter()
     counts = _q("""SELECT (SELECT count(*) FROM describe_triple WHERE env=%s AND s=%s) AS out,
                           (SELECT count(*) FROM describe_triple WHERE env=%s AND o=%s AND o_iri) AS inc""",
                 (env, iri, env, iri))
@@ -160,7 +214,7 @@ def describe(uri: str, env: str | None = None):
     if not graph and n_out:
         g = _q("SELECT graph_iri FROM describe_triple WHERE env=%s AND s=%s LIMIT 1", (env, iri))
         graph = g[0]["graph_iri"] if g else None
-    source = "index" if (docs or n_out) else ("live" if LIVE and env in ENDPOINTS else "missing")
+    found = "index" if (docs or n_out) else "missing"
 
     iris: set[str] = {iri, *types}
     if graph:
@@ -180,17 +234,26 @@ def describe(uri: str, env: str | None = None):
         lab = _q("SELECT o, lang FROM describe_triple WHERE env=%s AND s=%s AND p=%s AND NOT o_iri", (env, iri, R.RDFS_LABEL))
         lab.sort(key=lambda r: (r["lang"] not in ("en", None), r["lang"] is not None))
         title = lab[0]["o"] if lab else None
-    dataset = None
-    if graph:
-        ds = _q("SELECT provider, title, country, modified FROM dataset WHERE env=%s AND graph_iri=%s", (env, graph))
-        if ds:
-            dataset = {"graph": graph, "provider": ds[0]["provider"], "title": ds[0]["title"],
-                       "country": ds[0]["country"],
-                       "modified": ds[0]["modified"].isoformat() if ds[0]["modified"] else None}
-        else:
-            dataset = {"graph": graph}
-    return {"iri": iri, "env": env, "source": source, "title": title, "classes": types, "graph": graph,
-            "dataset": dataset, "pages": pages, "counts": {"out": n_out, "in": n_in}, "labels": labels}
+    return {"iri": iri, "env": env, "source": found, "title": title, "classes": types, "graph": graph,
+            "dataset": _dataset(env, graph), "pages": pages, "counts": {"out": n_out, "in": n_in}, "labels": labels,
+            "timing": {"total": round((time.perf_counter() - t0) * 1000)}}
+
+
+def _describe_live(env: str, iri: str) -> dict:
+    p = _live_page(env, iri)
+    labels = dict(p["labels"])
+    pages = []
+    for ds, doc in p["pages"]:
+        d = ds.definition(dset.groups)
+        pages.append({"shape": ds.iri, "class": ds.class_iri, "label": d["label"], "rows": d["rows"],
+                      "groups": d["groups"], "doc": doc})
+    title = labels.get(iri)
+    if not title:
+        ft = _q("SELECT label FROM feature WHERE env=%s AND iri=%s AND label IS NOT NULL LIMIT 1", (env, iri))
+        title = ft[0]["label"] if ft else None
+    return {"iri": iri, "env": env, "source": "live" if p["classes"] or p["counts"]["out"] else "missing",
+            "title": title, "classes": p["classes"], "graph": p["graph"], "dataset": _dataset(env, p["graph"]),
+            "pages": pages, "counts": p["counts"], "labels": labels, "timing": p["timing"]}
 
 
 def _index_triples(env: str, iri: str, direction: str, limit: int, offset: int) -> list[dict]:

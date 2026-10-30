@@ -65,6 +65,8 @@ export interface DescribeResponse {
   pages: ClassPage[];
   counts: { out: number; in: number };
   labels: Record<string, string>;
+  /** Milliseconds spent building the response (live pages: per round of queries). */
+  timing?: Record<string, number>;
 }
 
 export interface Triple { s: string; p: string; o: string; o_iri: boolean; datatype: string | null; lang: string | null }
