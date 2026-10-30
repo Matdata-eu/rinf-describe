@@ -8,3 +8,6 @@ web/node_modules/
 web/dist/
 web/test-results/
 web/playwright-report/
+# Deployer pages (docs/privacy.md); only the examples are tracked.
+site/*
+!site/*.example.html

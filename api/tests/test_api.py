@@ -63,3 +63,18 @@ def test_search_and_examples(client):
     assert hits[0]["iri"] == SOL
     ex = client.get("/api/examples", params={"env": "prod"}).json()["results"]
     assert {e["classLabel"] for e in ex} == {"Section of line", "Running track"}
+
+
+def test_sitemaps(client, monkeypatch):
+    from app import main
+    assert client.get("/api/sitemap.xml").status_code == 404  # no public address, no sitemap
+    monkeypatch.setattr(main, "PUBLIC_URL", "https://describe.example.org")
+    idx = client.get("/api/sitemap.xml")
+    assert idx.status_code == 200 and idx.headers["content-type"].startswith("application/xml")
+    assert "<loc>https://describe.example.org/sitemap-site.xml</loc>" in idx.text
+    assert "<loc>https://describe.example.org/sitemap-1.xml</loc>" in idx.text
+    page = client.get("/api/sitemap-1.xml").text
+    loc = "https://describe.example.org/describe?uri=http%3A%2F%2Fdata.europa.eu%2F949%2FsectionOfLine%2F14fd15444d&amp;env=prod"
+    assert f"<loc>{loc}</loc>" in page
+    assert page.count("<url>") == 92  # 10 sections of line and 82 running tracks in the sample
+    assert client.get("/api/sitemap-2.xml").status_code == 404

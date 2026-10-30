@@ -1,12 +1,19 @@
 import './style.css';
+import { openAbout } from './about.ts';
 import { api, type Config } from './api.ts';
 import { disposeAll } from './cleanup.ts';
 import { h } from './dom.ts';
+import { openHelp } from './help.ts';
 import { homePage } from './home.ts';
 import { interceptLinks, navigate, setNavigateHandler } from './nav.ts';
 import { describePage } from './page.ts';
+import { hasPrivacy } from './privacy.ts';
 import { attachSearch } from './search.ts';
+import { describeDescription, describePath, setPageMeta } from './seo.ts';
+import { share } from './share.ts';
 import { setTheme, themePref, type ThemePref } from './theme.ts';
+import { maybeOpenTour } from './tour.ts';
+import { initWhatsNew } from './whats-new.ts';
 
 const app = document.getElementById('app')!;
 const envSelect = document.getElementById('env-select') as HTMLSelectElement;
@@ -28,7 +35,6 @@ async function route() {
     const uri = params().get('uri');
     if (!uri) { navigate('/', true); return; }
     app.replaceChildren(h('p', { class: 'loading muted' }, 'Loading…'));
-    document.title = 'RINF Describe';
     try {
       const r = await api.describe(uri, env);
       if (my !== seq) return;
@@ -38,17 +44,28 @@ async function route() {
         history.replaceState(null, '', `/describe?${qs}`);
       });
       app.replaceChildren(page);
-      document.title = `${page.querySelector('h1')?.textContent ?? 'Resource'} · RINF Describe`;
+      const title = page.querySelector('h1')?.textContent ?? 'Resource';
+      const badges = [...page.querySelectorAll('.badges .badge')].map((b) => b.textContent ?? '');
+      const envLabel = cfg.envs.find((e) => e.key === r.env)?.label ?? r.env;
+      setPageMeta({
+        title,
+        description: describeDescription(r.pages[0]?.label ?? null, title, envLabel, badges, r.dataset?.provider),
+        path: describePath(r.iri, r.env),
+        // Only what the sitemap lists: class pages of the default environment.
+        index: r.source === 'index' && r.pages.length > 0 && r.env === cfg.envs[0].key,
+      });
     } catch (e) {
       if (my !== seq) return;
+      setPageMeta({ title: 'Not described', path: location.pathname + location.search, index: false });
       app.replaceChildren(h('article', { class: 'page' }, h('section', { class: 'card wide' },
         h('h1', null, 'This resource could not be described'), h('p', { class: 'error' }, String((e as Error).message ?? e)),
         h('p', null, h('a', { href: '/', 'data-nav': true }, 'Back to search')))));
     }
   } else if (location.pathname === '/') {
-    document.title = 'RINF Describe';
+    setPageMeta({ title: null, path: '/', index: env === cfg.envs[0].key });
     app.replaceChildren(homePage(cfg, env));
   } else {
+    setPageMeta({ title: 'Page not found', path: location.pathname, index: false });
     app.replaceChildren(h('article', { class: 'page' }, h('section', { class: 'card wide' },
       h('h1', null, 'Page not found'), h('p', null, h('a', { href: '/', 'data-nav': true }, 'Go to the start page')))));
   }
@@ -69,8 +86,18 @@ function themeButton() {
   paint();
 }
 
+/** Share, help and about in the top bar and the footer; the privacy link when the instance has one. */
+function siteButtons() {
+  document.getElementById('share-btn')!.addEventListener('click', share);
+  for (const id of ['help-btn', 'foot-help']) document.getElementById(id)!.addEventListener('click', openHelp);
+  for (const id of ['about-btn', 'foot-about']) document.getElementById(id)!.addEventListener('click', openAbout);
+  hasPrivacy.then((ok) => { document.getElementById('foot-privacy')!.hidden = !ok; });
+  initWhatsNew();
+}
+
 async function init() {
   themeButton();
+  siteButtons();
   interceptLinks();
   setNavigateHandler(route);
   try { cfg = await api.config(); } catch (e) { console.warn('config', e); }
@@ -83,6 +110,7 @@ async function init() {
   attachSearch(document.getElementById('search-form') as HTMLFormElement, document.getElementById('q') as HTMLInputElement,
     document.getElementById('q-results') as HTMLUListElement, currentEnv);
   await route();
+  maybeOpenTour();
 }
 
 init();
