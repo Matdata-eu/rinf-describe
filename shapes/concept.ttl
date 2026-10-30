@@ -1,0 +1,66 @@
+# Concept page (skos:Concept): a value of a RINF code list, with where it sits in its
+# scheme's tree: its broader concepts up to the top, their other narrower concepts, and its
+# own narrower ones. Not an infrastructure element.
+PREFIX rd:      <https://rinf-describe.matdata.eu/ns#>
+PREFIX shape:   <https://rinf-describe.matdata.eu/shapes/>
+PREFIX dash:    <http://datashapes.org/dash#>
+PREFIX sh:      <http://www.w3.org/ns/shacl#>
+PREFIX era:     <http://data.europa.eu/949/>
+PREFIX skos:    <http://www.w3.org/2004/02/skos/core#>
+PREFIX dcterms: <http://purl.org/dc/terms/>
+PREFIX rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs:    <http://www.w3.org/2000/01/rdf-schema#>
+
+shape:concept-group a sh:PropertyGroup ; rdfs:label "Concept" ; sh:order 10 .
+shape:concept-tree a sh:PropertyGroup ; rdfs:label "Place in the scheme" ; sh:order 20 .
+shape:concept-mappings a sh:PropertyGroup ; rdfs:label "Related and matching concepts" ; sh:order 30 .
+
+shape:broader sh:alternativePath ( skos:broader [ sh:inversePath skos:narrower ] ) .
+shape:narrower sh:alternativePath ( skos:narrower [ sh:inversePath skos:broader ] ) .
+
+shape:concept
+    a sh:NodeShape ;
+    rdfs:label "Concept" ;
+    sh:targetClass skos:Concept ;
+
+    sh:property [ sh:path [ sh:alternativePath ( skos:prefLabel rdfs:label ) ] ; rd:key "title" ; dash:propertyRole dash:LabelRole ] ;
+    sh:property [
+        sh:path skos:notation ; sh:name "Notation" ; rd:key "notation" ;
+        sh:group shape:concept-group ; sh:order 10 ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "{value}" ;
+    ] ;
+    sh:property [
+        sh:path skos:inScheme ; sh:name "Concept scheme" ; rd:key "scheme" ;
+        sh:group shape:concept-group ; sh:order 20 ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "{value}" ;
+    ] ;
+    sh:property [ sh:path skos:altLabel ; sh:name "Also called" ; sh:group shape:concept-group ; sh:order 30 ] ;
+    sh:property [ sh:path skos:definition ; sh:name "Definition" ; sh:group shape:concept-group ; sh:order 40 ] ;
+    sh:property [ sh:path skos:scopeNote ; sh:name "Scope note" ; sh:group shape:concept-group ; sh:order 50 ] ;
+    sh:property [ sh:path [ sh:alternativePath ( skos:note rdfs:comment ) ] ; sh:name "Note" ; rd:key "note" ; sh:group shape:concept-group ; sh:order 60 ] ;
+    sh:property [ sh:path era:rinfIndex ; sh:name "RINF index" ; sh:group shape:concept-group ; sh:order 70 ] ;
+    sh:property [ sh:path era:inCountry ; sh:name "Country" ; sh:group shape:concept-group ; sh:order 80 ; dash:viewer rd:SymbolViewer ; rd:symbol "country" ] ;
+    sh:property [ sh:path dcterms:isReplacedBy ; sh:name "Replaced by" ; sh:group shape:concept-group ; sh:order 90 ] ;
+    sh:property [ sh:path dcterms:replaces ; sh:name "Replaces" ; sh:group shape:concept-group ; sh:order 95 ] ;
+
+    # --- Place in the scheme: the branch from the top concepts down to this one ---
+    sh:property [
+        # Itself and its broader concepts up to the top, each with its narrower concepts;
+        # and the top concepts of its schemes, for the first level.
+        sh:path [ sh:alternativePath (
+            [ sh:zeroOrMorePath shape:broader ]
+            ( [ sh:zeroOrMorePath shape:broader ] shape:narrower )
+            ( skos:inScheme [ sh:alternativePath ( skos:hasTopConcept [ sh:inversePath skos:topConceptOf ] ) ] )
+        ) ] ;
+        sh:name "Branch" ; rd:key "tree" ;
+        sh:group shape:concept-tree ; sh:order 10 ;
+        dash:viewer rd:ConceptTreeViewer ;
+        sh:node shape:concept-tree-row ;
+    ] ;
+    sh:property [ sh:path shape:broader ; sh:name "Broader" ; rd:key "broader" ; sh:group shape:concept-tree ; sh:order 20 ] ;
+    sh:property [ sh:path shape:narrower ; sh:name "Narrower" ; rd:key "narrower" ; sh:group shape:concept-tree ; sh:order 30 ] ;
+
+    # --- Related and matching concepts ---
+    sh:property [ sh:path skos:related ; sh:name "Related" ; sh:group shape:concept-mappings ; sh:order 10 ] ;
+    sh:property [ sh:path skos:exactMatch ; sh:name "Exact match" ; sh:group shape:concept-mappings ; sh:order 20 ] ;
+    sh:property [ sh:path skos:closeMatch ; sh:name "Close match" ; sh:group shape:concept-mappings ; sh:order 30 ] .

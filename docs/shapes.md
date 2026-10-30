@@ -100,6 +100,10 @@ Namespace `https://rinf-describe.matdata.eu/ns#`, declared in
 | `rd:DocumentViewer` | `era:Document` resources as cards: file type, name, open link | `sh:path`, `sh:node shape:document-card` |
 | `rd:FacilitiesViewer` | Yes/no parameters as tiles: yes, no, not applicable, not yet available | `rd:facility`, once per property |
 | `rd:ScaleBarViewer` | A length against reference marks, or a min–max range on a scale | `sh:path` or `rd:min` / `rd:max`; `rd:marks "400 Passenger train; 740 Freight train"`, `rd:scale "4 7"` |
+| `rd:ConceptTreeViewer` | SKOS concepts as a tree along `skos:broader` (a filter on larger trees); on a concept page the concept is marked, with the branch down to it open | `sh:path`, `sh:node` with columns `broader`, `notation` |
+| `rd:TopologyViewer` | The net relations around a linear element as a graph: elements as nodes, placed as on the map, relations as edges with arrows the way a train can pass, dashed when it cannot; zoom, drag, full screen | `sh:path`, `sh:node` with columns `a`, `b`, `navigability`, `origin-a`, `origin-b`; `rd:elements` names the row with the elements (`wkt`, `length`) |
+| `rd:PositionedViewer` | What is positioned on a linear element: points as ticks at their offset from its origin, one lane per type, and everything by type (stretches that run over it too) | `sh:path`, `sh:node` with columns `type`, `on`, `offset` |
+| `rd:LinePositionViewer` | A kilometric post on its line: the line from its first to its last km with its operational points and posts, the operational points and posts either side | The page's `km` row; `rd:table` (sections: `from`, `to`, `start-km`…`end-offset`), `rd:posts` (rows with `km`) |
 
 Every class page also gets a **Data status** card (the parameters marked
 `era:notApplicable` or `era:notYetAvailable`), and every resource the **All properties**,

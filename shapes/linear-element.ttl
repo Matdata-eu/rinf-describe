@@ -1,5 +1,8 @@
-# Linear element page: a piece of the topology network, with the elements it connects to
-# through net relations (era:elementA / era:elementB).
+# Linear element page: a piece of the topology network. Its net relations (era:elementA /
+# era:elementB) and those of its neighbours give the topology two steps out, with the
+# navigability of each connection; the objects positioned on it (signals, switches,
+# kilometric posts... through a topological coordinate, tracks and lines through their
+# sequence of elements) are placed along it.
 PREFIX rd:    <https://rinf-describe.matdata.eu/ns#>
 PREFIX shape: <https://rinf-describe.matdata.eu/shapes/>
 PREFIX dash:  <http://datashapes.org/dash#>
@@ -10,6 +13,12 @@ PREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
 
 shape:le-group a sh:PropertyGroup ; rdfs:label "Linear element" ; sh:order 10 .
+shape:le-topology a sh:PropertyGroup ; rdfs:label "Topology" ; sh:order 20 .
+shape:le-positioned a sh:PropertyGroup ; rdfs:label "Positioned on this element" ; sh:order 30 .
+
+# The net relations of an element, and the elements one relation away.
+shape:le-relations sh:alternativePath ( [ sh:inversePath era:elementA ] [ sh:inversePath era:elementB ] ) .
+shape:le-neighbours sh:alternativePath ( ( [ sh:inversePath era:elementA ] era:elementB ) ( [ sh:inversePath era:elementB ] era:elementA ) ) .
 
 shape:linear-element
     a sh:NodeShape ;
@@ -21,7 +30,7 @@ shape:linear-element
         sh:path ( gsp:hasGeometry gsp:asWKT ) ;
         sh:name "Map" ; rd:key "map" ; sh:order 2 ;
         dash:viewer rd:MapViewer ;
-        rd:layers "connected" ;
+        rd:layers "network" ;
     ] ;
     sh:property [
         sh:path era:lengthOfNetLinearElement ; sh:name "Length" ; rd:key "length" ;
@@ -35,15 +44,67 @@ shape:linear-element
         rd:begin shape:validity-begin ;
         rd:end shape:validity-end ;
     ] ;
+
+    # --- Topology: the net relations two steps out, drawn as a graph ---
     sh:property [
-        sh:path [ sh:alternativePath ( ( [ sh:inversePath era:elementA ] era:elementB ) ( [ sh:inversePath era:elementB ] era:elementA ) ) ] ;
+        sh:path [ sh:alternativePath ( shape:le-relations ( shape:le-neighbours shape:le-relations ) ) ] ;
+        sh:name "Two relations out" ; rd:key "topology" ;
+        sh:group shape:le-topology ; sh:order 10 ;
+        dash:viewer rd:TopologyViewer ;
+        rd:elements "network" ;
+        sh:node shape:le-relation-row ;
+    ] ;
+    # The elements two steps out, with their geometry: the nodes of the graph, a map layer.
+    sh:property [
+        sh:path [ sh:alternativePath ( shape:le-neighbours ( shape:le-neighbours shape:le-neighbours ) ) ] ;
+        sh:name "Elements nearby" ; rd:key "network" ; rd:hidden "true" ;
+        sh:group shape:le-topology ; sh:order 20 ;
+        sh:node shape:le-row ;
+    ] ;
+    sh:property [
+        sh:path shape:le-neighbours ;
         sh:name "Connected elements" ; rd:key "connected" ;
-        sh:group shape:le-group ; sh:order 30 ;
+        sh:group shape:le-topology ; sh:order 30 ;
         dash:viewer dash:ValueTableViewer ;
         sh:node shape:le-row ;
+    ] ;
+
+    # --- What is positioned on it ---
+    sh:property [
+        sh:path [ sh:alternativePath (
+            # A point (signal, switch, kilometric post...): its topological coordinate.
+            ( [ sh:inversePath era:onLinearElement ] [ sh:inversePath era:hasTopoCoordinate ] [ sh:inversePath era:netReference ] )
+            # A stretch that starts or ends on it.
+            ( [ sh:inversePath era:onLinearElement ] [ sh:inversePath era:hasTopoCoordinate ]
+              [ sh:alternativePath ( [ sh:inversePath era:startsAt ] [ sh:inversePath era:endsAt ] ) ] [ sh:inversePath era:netReference ] )
+            # A stretch over a sequence of elements that includes it (a track, a line).
+            ( [ sh:inversePath rdf:first ] [ sh:zeroOrMorePath [ sh:inversePath rdf:rest ] ] [ sh:inversePath era:hasSequence ] [ sh:inversePath era:netReference ] )
+        ) ] ;
+        sh:name "Along the element" ; rd:key "positioned" ;
+        sh:group shape:le-positioned ; sh:order 10 ;
+        dash:viewer rd:PositionedViewer ;
+        sh:node shape:le-positioned-row ;
     ] .
 
 shape:le-row
     a sh:NodeShape ;
-    sh:property [ sh:path era:lengthOfNetLinearElement ; sh:name "Length (m)" ; sh:order 10 ] ;
+    sh:property [ sh:path era:lengthOfNetLinearElement ; sh:name "Length (m)" ; rd:key "length" ; sh:order 10 ] ;
     sh:property [ sh:path ( gsp:hasGeometry gsp:asWKT ) ; rd:key "wkt" ; rd:hidden "true" ; sh:order 99 ] .
+
+# A net relation: the two elements, which of their ends meet, and which way a train can pass.
+shape:le-relation-row
+    a sh:NodeShape ;
+    sh:property [ sh:path era:elementA ; rd:key "a" ; sh:order 10 ] ;
+    sh:property [ sh:path era:elementB ; rd:key "b" ; sh:order 20 ] ;
+    sh:property [ sh:path era:navigability ; rd:key "navigability" ; sh:order 30 ] ;
+    sh:property [ sh:path era:isOnOriginOfElementA ; rd:key "origin-a" ; sh:order 40 ] ;
+    sh:property [ sh:path era:isOnOriginOfElementB ; rd:key "origin-b" ; sh:order 50 ] .
+
+# An object positioned on the element: its type, and where it is (metres from the origin of
+# the element its coordinate is on) when it is a point.
+shape:le-positioned-row
+    a sh:NodeShape ;
+    sh:property [ sh:path rdf:type ; rd:key "type" ; sh:order 10 ] ;
+    sh:property [ sh:path ( era:netReference era:hasTopoCoordinate era:onLinearElement ) ; rd:key "on" ; sh:order 20 ] ;
+    sh:property [ sh:path ( era:netReference era:hasTopoCoordinate era:offsetFromOrigin ) ; rd:key "offset" ; sh:order 30 ] ;
+    sh:property [ sh:path ( era:netReference era:appliesToDirection ) ; rd:key "direction" ; sh:order 40 ] .
