@@ -9,13 +9,16 @@ import { multiplicity, typeName } from './widgets/datamodel.ts';
 import { fileName, fileType } from './widgets/document.ts';
 import { around, stops } from './widgets/lineposition.ts';
 import { gradientSteps, place } from './widgets/lineprofile.ts';
+import { classTree, pageTree } from './widgets/modeltree.ts';
 import { chaptersOf, indexRoots } from './widgets/parameters.ts';
 import { heightMm } from './widgets/platform.ts';
 import { placed } from './widgets/positioned.ts';
 import { parseMarks } from './widgets/scalebar.ts';
+import { tokens } from './widgets/source.ts';
 import { countryCode, directionOf, supplyColor, supplyOf } from './widgets/symbol.ts';
 import { depths, way } from './widgets/topology.ts';
 import { commonPrefix } from './widgets/tracklayout.ts';
+import { classUml, mermaid, pageUml, plantuml } from './widgets/umltext.ts';
 
 const ERA = 'http://data.europa.eu/949/';
 
@@ -169,4 +172,66 @@ test('line position: stops from section ends, neighbours either side', () => {
   assert.deepEqual(st.map((x) => [x.iri, x.km]), [['A', 0], ['B', 10], ['C', 20]]);
   assert.deepEqual(around(st, 12).map((x) => x?.iri), ['B', 'C']);
   assert.deepEqual(around(st, 25).map((x) => x?.iri ?? null), ['C', null]);
+});
+
+const MODEL = {
+  iri: ERA + 'sol/1', env: 'prod',
+  model: {
+    focus: ERA + 'SectionOfLine',
+    boxes: [
+      { iri: ERA + 'SectionOfLine', depth: 2, parents: [ERA + 'InfrastructureElement'],
+        attributes: [{ p: ERA + 'lengthOfSectionOfLine', min: 1, max: 1, type: 'double' }, { p: ERA + 'solNature', min: 0, max: 1, type: 'Concept', scheme: ERA + 'SoLNatures' }],
+        associations: [{ p: ERA + 'opStart', min: 1, max: 1, class: ERA + 'OperationalPoint' }] },
+      { iri: ERA + 'InfrastructureElement', depth: 1, parents: [],
+        attributes: [{ p: ERA + 'lengthOfSectionOfLine', min: 0, max: 1, type: 'double' }, { p: ERA + 'canonicalURI', min: 0, max: 1, type: 'anyURI' }],
+        associations: [] },
+    ],
+    incoming: [{ p: ERA + 'hasPart', min: 0, max: null, class: ERA + 'SectionOfLine', source: ERA + 'NationalLine' }],
+    classes: {},
+    page: {
+      nodes: [
+        { iri: ERA + 'SectionOfLine', hop: 0, side: 0, members: [{ p: ERA + 'lengthOfSectionOfLine', min: 1, max: 1, type: 'double', rows: [] }] },
+        { iri: ERA + 'OperationalPoint', hop: 1, side: 1, members: [{ p: ERA + 'uopid', min: 1, max: 1, type: 'string', rows: [] }] },
+        { iri: ERA + 'Track', hop: 1, side: -1, members: [{ p: ERA + 'gauge', min: 0, max: 1, type: '?', missing: true, rows: [] }] },
+      ],
+      edges: [
+        { p: ERA + 'opStart', min: 1, max: 1, from: ERA + 'SectionOfLine', to: ERA + 'OperationalPoint', rows: [] },
+        { p: ERA + 'isPartOf', min: 0, max: null, from: ERA + 'Track', to: ERA + 'SectionOfLine', rows: [] },
+      ],
+    },
+  },
+  used: { out: { [ERA + 'lengthOfSectionOfLine']: 1, [ERA + 'opStart']: 1 }, in: {}, via: {} },
+};
+
+test('the data model exports as PlantUML and Mermaid class diagrams', () => {
+  const u = classUml(MODEL, false)!;
+  assert.deepEqual(u.classes.find((c) => c.name === 'SectionOfLine')!.members, ['lengthOfSectionOfLine : double [1]']);
+  const puml = plantuml(u);
+  assert.match(puml, /^@startuml\n/);
+  assert.match(puml, /SectionOfLine --\|> InfrastructureElement/);
+  assert.match(puml, /SectionOfLine --> "1" OperationalPoint : opStart/);
+  assert.doesNotMatch(puml, /NationalLine/);   // not used on the resource
+  assert.match(plantuml(classUml(MODEL, true)!), /NationalLine --> "0\.\.\*" SectionOfLine : hasPart/);
+  const mmd = mermaid(pageUml(MODEL)!);
+  assert.match(mmd, /^---\ntitle: What the page of a SectionOfLine shows\n---\nclassDiagram\n/);
+  assert.match(mmd, /Track --> "0\.\.\*" SectionOfLine : isPartOf/);
+  assert.match(mmd, /gauge : \?/);
+});
+
+test('the content tree lists a property once, as the subclass narrows it', () => {
+  const root = classTree(MODEL, true)!;
+  assert.deepEqual(root.children!.map((n) => [n.name, n.note ?? '', n.state]), [
+    ['lengthOfSectionOfLine', '', 'on'], ['opStart', '', 'on'], ['solNature', '', 'off'], ['canonicalURI', 'from InfrastructureElement', 'off']]);
+  assert.equal(root.children![1].children, null);   // a link opens when asked
+  const page = pageTree(MODEL)!;
+  assert.deepEqual(page.children!.map((n) => n.name), ['lengthOfSectionOfLine', 'opStart', '^isPartOf']);
+  assert.deepEqual(page.children![1].children!.map((n) => n.name), ['uopid']);
+  assert.equal(page.children![2].children![0].state, 'missing');
+});
+
+test('RDF text is split into highlighted tokens', () => {
+  const ttl = tokens('<http://x/a> a era:Foo ; rdfs:label "a # b"@en . # note', 'ttl').filter(([k]) => k).map(([k, t]) => `${k}:${t}`);
+  assert.deepEqual(ttl, ['iri:<http://x/a>', 'keyword:a', 'name:era:Foo', 'name:rdfs:label', 'string:"a # b"', 'name:@en', 'comment:# note']);
+  const js = tokens('{"@id": "http://x/a"}', 'jsonld').filter(([k]) => k).map(([k, t]) => `${k}:${t}`);
+  assert.deepEqual(js, ['key:"@id"', 'string:"http://x/a"']);
 });

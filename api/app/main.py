@@ -233,6 +233,17 @@ def model(uri: str, env: str | None = None):
     return {"iri": iri, "env": env, "model": m, "used": _cached(("used", env, iri), PAGE_CACHE_SECONDS, used)}
 
 
+@app.get("/api/model/class")
+def class_model(cls: str = Query(..., alias="class"), env: str | None = None):
+    """A class and its superclasses with their properties from ERA's SHACL shapes, for opening a
+    branch of the data model's content tree."""
+    env, c = _env(env), _iri(cls)
+    m = datamodel.model(_ontology(env), [c])
+    if not m:
+        raise HTTPException(404, "ERA's SHACL shapes say nothing about this class")
+    return {"class": c, "env": env, "focus": m["focus"], "boxes": m["boxes"], "classes": m["classes"]}
+
+
 @app.get("/api/rows")
 def rows(uri: str, key: str, env: str | None = None, offset: int = Query(0, ge=0, le=1_000_000)):
     """More of a table with rd:limit: its linked resources from `offset`, with their labels."""
@@ -289,8 +300,8 @@ _SAFE = re.compile(r"[^A-Za-z0-9_.-]+")
 
 
 @app.get("/api/export")
-def export(uri: str, env: str | None = None, format: str = Query("ttl", pattern="^(ttl|nt|csv)$")):
-    """The resource's outgoing triples as Turtle, N-Triples or CSV."""
+def export(uri: str, env: str | None = None, format: str = Query("ttl", pattern="^(ttl|nt|rdf|jsonld|csv)$")):
+    """The resource's outgoing triples as Turtle, N-Triples, RDF/XML, JSON-LD or CSV."""
     env, iri = _env(env), _iri(uri)
     rows, labels = _triples(env, iri, "out", TRIPLES_MAX)
     if not rows:
@@ -298,6 +309,10 @@ def export(uri: str, env: str | None = None, format: str = Query("ttl", pattern=
     name = _SAFE.sub("-", iri.rstrip("/").rsplit("/", 1)[-1]).strip("-") or "resource"
     if format == "nt":
         body, media = R.ntriples(rows), "application/n-triples"
+    elif format == "rdf":
+        body, media = R.rdfxml(rows), "application/rdf+xml"
+    elif format == "jsonld":
+        body, media = R.jsonld(rows), "application/ld+json"
     elif format == "csv":
         body, media = R.table(rows, labels), "text/csv"
     else:

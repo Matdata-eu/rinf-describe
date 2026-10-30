@@ -36,7 +36,8 @@ axis, changes over time, data status (not applicable / not yet available), value
 resources expanded in place, the RINF parameters by index chapter, documents, facilities,
 scale bars, the neighbourhood graph and the data model diagram. Help text, units and RINF
 indexes come from ERA's ontology. Each is a `dash:viewer` a shape picks per property; the
-tabs All properties, Incoming links, Graph and Data model come with every page.
+tabs All properties, Incoming links, Graph, Data model (diagram or content tree, with SVG,
+PlantUML and Mermaid export) and RDF (Turtle, RDF/XML, JSON-LD, N-Triples) come with every page.
 
 ## Run it
 

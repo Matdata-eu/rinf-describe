@@ -4,11 +4,14 @@
 // they point at and come in on the left from the classes that point here. Filled dots and
 // solid lines are what this resource has; a ringed dot, what its common characteristics
 // subset gives it.
-import { api, type ModelBox, type ModelMember, type ModelResponse } from '../api.ts';
+import { api, type ClassModelResponse, type ModelBox, type ModelMember, type ModelResponse } from '../api.ts';
 import { onDispose } from '../cleanup.ts';
-import { h, s } from '../dom.ts';
+import { append, h, s } from '../dom.ts';
 import { describeHref } from '../nav.ts';
 import { localName, prefixed } from '../rdf.ts';
+import { branch, classTree, drawTree, pageTree, type TNode } from './modeltree.ts';
+import { naturalSize, panZoom } from './panzoom.ts';
+import { classUml, mermaid, pageUml, plantuml } from './umltext.ts';
 
 const LINE = 18, HEAD = 40, PAD = 10, GAP_Y = 48, SLOT_GAP = 14, EDGE_ROOM = 70;
 const FONT = '12px "IBM Plex Mono", monospace', HEAD_FONT = '600 13px "IBM Plex Sans", sans-serif';
@@ -393,6 +396,12 @@ export function drawPage(res: ModelResponse): SVGSVGElement | null {
 /** The SVG with its computed colours and fonts written in, for a download that looks the same. */
 function standalone(svg: SVGSVGElement): string {
   const clone = svg.cloneNode(true) as SVGSVGElement;
+  const { w, h: hgt } = naturalSize(svg);
+  clone.setAttribute('viewBox', `0 0 ${w} ${hgt}`);
+  clone.setAttribute('width', String(w));
+  clone.setAttribute('height', String(hgt));
+  clone.removeAttribute('data-w');
+  clone.removeAttribute('data-h');
   const src = svg.querySelectorAll('*'), dst = clone.querySelectorAll('*');
   src.forEach((el, i) => {
     const cs = getComputedStyle(el);
@@ -405,75 +414,179 @@ function standalone(svg: SVGSVGElement): string {
   return new XMLSerializer().serializeToString(clone);
 }
 
+function save(body: string, name: string, type: string) {
+  const url = URL.createObjectURL(new Blob([body], { type }));
+  h('a', { href: url, download: name }).click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export function dataModelView(iri: string, env: string): HTMLElement {
   const note = h('p', { class: 'muted small' }, 'Loading the data model…');
   const wrap = h('div', { class: 'card uml-card' }, note);
   let disposed = false;
-  onDispose(() => { disposed = true; });
+  onDispose(() => { disposed = true; if (document.fullscreenElement === wrap) void document.exitFullscreen?.(); });
   api.model(iri, env).then((res) => {
     if (disposed) return;
     if (!res.model) { note.textContent = 'ERA’s SHACL shapes say nothing about the classes of this resource.'; return; }
-    // Fitted when that keeps the text legible; otherwise the diagram keeps its size and scrolls.
-    const hasPage = !!res.model.page?.nodes.length;
-    let all = false, fit = window.innerWidth >= 700, view: 'page' | 'class' = hasPage ? 'page' : 'class';
-    let chosenFit: boolean | null = null;
-    const canvas = h('div', { class: `uml-canvas${fit ? ' fit' : ''}` });
+    const model = res.model;
+    const hasPage = !!model.page?.nodes.length;
+    let all = false, view: 'page' | 'class' = hasPage ? 'page' : 'class', shape: 'diagram' | 'tree' = 'diagram';
+    // The content trees: which nodes are open, and the branches loaded for the class view.
+    const pageRoot = pageTree(res);
+    const open = { page: new Set<string>(), class: new Set<string>() };
+    const loaded = new Map<string, TNode[]>();
+    const classModels = new Map<string, Promise<ClassModelResponse>>();
+    let loading: string | undefined;
+
+    const frame = h('div', { class: 'uml-canvas', tabindex: 0, 'aria-label': 'Diagram: drag to move, Ctrl + scroll or + and − to zoom' });
+    const hint = h('div', { class: 'uml-hint', 'aria-hidden': 'true' }, 'Ctrl + scroll to zoom');
+    let hintTimer = 0;
+    const isFull = () => wrap.classList.contains('is-full');
+    const pz = panZoom(frame, {
+      wheel: isFull,
+      onHint: () => { hint.classList.add('show'); clearTimeout(hintTimer); hintTimer = window.setTimeout(() => hint.classList.remove('show'), 1200); },
+    });
+    const zoomBtn = (label: string, title: string, fn: () => void) => {
+      const b = h('button', { class: 'btn ghost small', type: 'button', title, 'aria-label': title }, label);
+      b.addEventListener('click', fn);
+      return b;
+    };
+    const fullBtn = h('button', { class: 'btn ghost small', type: 'button', 'aria-pressed': 'false' }, 'Full screen');
+    frame.append(hint, h('div', { class: 'uml-zoom' },
+      zoomBtn('+', 'Zoom in', () => pz.zoom(1.25)), zoomBtn('−', 'Zoom out', () => pz.zoom(0.8)), zoomBtn('Fit', 'Fit the diagram in the frame', () => pz.fit())));
+
     const pageBtn = h('button', { class: 'seg-btn', type: 'button' }, 'What this page shows');
-    const classBtn = h('button', { class: 'seg-btn', type: 'button' }, `${className(res.model.focus)} in ERA’s model`);
+    const classBtn = h('button', { class: 'seg-btn', type: 'button' }, `${className(model.focus)} in ERA’s model`);
+    const diagramBtn = h('button', { class: 'seg-btn', type: 'button' }, 'Diagram');
+    const treeBtn = h('button', { class: 'seg-btn', type: 'button' }, 'Content tree');
     const allBtn = h('button', { class: 'btn ghost small', type: 'button', 'aria-pressed': 'false' }, 'Show all attributes');
-    const fitBtn = h('button', { class: 'btn ghost small', type: 'button', 'aria-pressed': String(fit) }, 'Fit to width');
-    const dl = h('button', { class: 'btn ghost small', type: 'button' }, 'Download SVG');
-    const counts = res.model.boxes.reduce((t, b) => t + b.attributes.length + b.associations.length, 0);
-    const pageNodes = (res.model.page?.nodes ?? []) as PageNode[];
+    const menu = h('details', { class: 'menu' });
+    const item = (label: string, fn: () => void) => {
+      const b = h('button', { type: 'button', role: 'menuitem' }, label);
+      b.addEventListener('click', () => { menu.open = false; fn(); });
+      return b;
+    };
+    const fileBase = () => `${localName(model.focus)}-${view === 'page' ? 'page' : 'data'}-model`;
+    const uml = () => (view === 'page' ? pageUml(res) : classUml(res, all));
+    menu.append(h('summary', { class: 'btn ghost small' }, 'Export'), h('div', { class: 'menu-items', role: 'menu' },
+      item('SVG image', () => {
+        const svg = frame.querySelector('svg');
+        if (svg) save(standalone(svg as SVGSVGElement), `${fileBase()}${shape === 'tree' ? '-tree' : ''}.svg`, 'image/svg+xml');
+      }),
+      item('PlantUML', () => { const u = uml(); if (u) save(plantuml(u), `${fileBase()}.puml`, 'text/plain'); }),
+      item('Mermaid', () => { const u = uml(); if (u) save(mermaid(u), `${fileBase()}.mmd`, 'text/plain'); })));
+
+    const counts = model.boxes.reduce((t, b) => t + b.attributes.length + b.associations.length, 0);
+    const pageNodes = (model.page?.nodes ?? []) as PageNode[];
     const missing = pageNodes.reduce((t, n) => t + n.members.filter((m) => m.missing).length + (n.untyped ? 1 : 0), 0);
     const about = h('p', { class: 'muted small' });
-    const draw = () => {
-      const svg = (view === 'page' ? drawPage(res) : drawModel(res, all, () => { all = true; draw(); }));
-      canvas.replaceChildren(svg ?? '');
-      // Unless chosen, a diagram is fitted to the width when that keeps its text legible.
-      if (chosenFit === null && svg) {
-        fit = Number(svg.getAttribute('width')) <= Math.max(canvas.clientWidth, 320) * 1.35;
-        canvas.classList.toggle('fit', fit);
-        fitBtn.setAttribute('aria-pressed', String(fit));
+
+    const graft = (n: TNode): TNode => {
+      if (n.children === null && loaded.has(n.key)) n.children = loaded.get(n.key)!;
+      n.children?.forEach(graft);
+      return n;
+    };
+    const toggle = (n: TNode, want: boolean) => {
+      const set = open[view];
+      if (!want) { set.delete(n.key); draw(true); return; }
+      if (n.children !== null) { set.add(n.key); draw(true); return; }
+      const cls = n.cls!;
+      if (!classModels.has(cls)) classModels.set(cls, api.classModel(cls, env));
+      loading = n.key;
+      draw(true);
+      classModels.get(cls)!.then((cm) => {
+        loaded.set(n.key, branch(n, cm));
+        set.add(n.key);
+      }).catch(() => {
+        classModels.delete(cls);
+        loaded.set(n.key, []);
+      }).finally(() => { loading = undefined; if (!disposed) draw(true); });
+    };
+
+    const draw = (keep = false) => {
+      let svg: SVGSVGElement | null;
+      if (shape === 'tree') {
+        const root = view === 'page' ? pageRoot : classTree(res, all);
+        svg = root ? drawTree(graft(root), open[view], env, toggle, loading) : null;
+      } else {
+        svg = view === 'page' ? drawPage(res) : drawModel(res, all, () => { all = true; draw(); });
       }
-      // Scrolled to the resource's class when the diagram is larger than its frame.
-      const focus = svg?.querySelector('.uml-rect.focus');
-      if (focus && !fit) {
-        const fx = Number(focus.getAttribute('x')), fy = Number(focus.getAttribute('y'));
-        canvas.scrollLeft = Math.max(0, fx + Number(focus.getAttribute('width')) / 2 - canvas.clientWidth / 2);
-        canvas.scrollTop = Math.max(0, fy + Number(focus.getAttribute('height')) / 2 - canvas.clientHeight / 2);
+      if (!svg) { frame.querySelector('svg')?.remove(); return; }
+      // The frame is as tall as the diagram fitted to its width, within the window.
+      if (!keep && !isFull()) {
+        const { w, h: hgt } = naturalSize(svg);
+        const cw = frame.clientWidth || wrap.clientWidth || 800;
+        const fitted = hgt * Math.min(1, (cw - 24) / w) + 24;
+        frame.style.height = `${Math.round(Math.min(Math.max(fitted, 280), window.innerHeight * 0.75))}px`;
       }
+      pz.show(svg, keep, shape === 'tree');
       allBtn.textContent = all ? 'Filled and mandatory only' : 'Show all attributes';
       allBtn.setAttribute('aria-pressed', String(all));
       allBtn.hidden = view === 'page';
       pageBtn.setAttribute('aria-pressed', String(view === 'page'));
       classBtn.setAttribute('aria-pressed', String(view === 'class'));
-      about.replaceChildren(...(view === 'page'
-        ? [`Every class and property this page reads, ${pageNodes.length - 1} classes away from ${className(res.model!.focus)} at most ${Math.max(...pageNodes.map((n) => n.hop))} links. Links followed forwards are on the right, backwards on the left. Hover a property for the rows that show it.`,
-          missing ? h('span', { class: 'uml-warn' }, ` ${missing} step${missing === 1 ? '' : 's'} not in ERA’s SHACL shapes, marked with ?.`) : '']
-        : [`${className(res.model!.focus)} and its superclasses in ERA’s SHACL shapes: ${counts} properties. `,
-          h('span', { class: 'uml-key' }, h('span', { class: 'uml-key-dot on' }), ' filled on this resource ',
-            Object.keys(res.used.via ?? {}).length ? [h('span', { class: 'uml-key-dot via' }), ' on its common characteristics subset '] : null,
-            h('span', { class: 'uml-key-dot' }), ' not filled')]));
+      diagramBtn.setAttribute('aria-pressed', String(shape === 'diagram'));
+      treeBtn.setAttribute('aria-pressed', String(shape === 'tree'));
+      const treeKey = [h('span', { class: 'uml-key' }, h('span', { class: 'tn-key' }), ' mandatory ', h('span', { class: 'tn-key optional' }), ' optional ',
+        h('span', { class: 'tn-key many' }), ' repeated')];
+      about.replaceChildren();
+      append(about, [view === 'page'
+        ? [shape === 'tree'
+          ? 'What this page reads, as a tree from its class: links followed backwards are written ^name. '
+          : `Every class and property this page reads, ${pageNodes.length - 1} classes away from ${className(model.focus)} at most ${Math.max(...pageNodes.map((n) => n.hop))} links. Links followed forwards are on the right, backwards on the left. Hover a property for the rows that show it.`,
+        missing ? h('span', { class: 'uml-warn' }, ` ${missing} step${missing === 1 ? '' : 's'} not in ERA’s SHACL shapes, marked with ?. `) : '',
+        shape === 'tree' ? treeKey : '']
+        : [shape === 'tree'
+          ? `${className(model.focus)} and the properties ERA’s SHACL shapes give it; open a link with + for the properties of the class it points at. `
+          : `${className(model.focus)} and its superclasses in ERA’s SHACL shapes: ${counts} properties. `,
+        h('span', { class: 'uml-key' }, h('span', { class: 'uml-key-dot on' }), ' filled on this resource ',
+          Object.keys(res.used.via ?? {}).length ? [h('span', { class: 'uml-key-dot via' }), ' on its common characteristics subset '] : null,
+          h('span', { class: 'uml-key-dot' }), ' not filled'),
+        shape === 'tree' ? [' ', treeKey] : '']]);
     };
     pageBtn.addEventListener('click', () => { view = 'page'; draw(); });
     classBtn.addEventListener('click', () => { view = 'class'; draw(); });
+    diagramBtn.addEventListener('click', () => { shape = 'diagram'; draw(); });
+    treeBtn.addEventListener('click', () => { shape = 'tree'; draw(); });
     allBtn.addEventListener('click', () => { all = !all; draw(); });
-    fitBtn.addEventListener('click', () => { fit = !fit; chosenFit = fit; canvas.classList.toggle('fit', fit); fitBtn.setAttribute('aria-pressed', String(fit)); });
-    dl.addEventListener('click', () => {
-      const svg = canvas.querySelector('svg');
-      if (!svg) return;
-      const url = URL.createObjectURL(new Blob([standalone(svg as SVGSVGElement)], { type: 'image/svg+xml' }));
-      const a = h('a', { href: url, download: `${localName(res.model!.focus)}-${view === 'page' ? 'page' : 'data'}-model.svg` });
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+    // Full screen: the browser's where it can, else the card over the whole window.
+    const setFull = (on: boolean) => {
+      wrap.classList.toggle('is-full', on);
+      document.body.classList.toggle('uml-full-open', on);
+      fullBtn.setAttribute('aria-pressed', String(on));
+      fullBtn.textContent = on ? 'Exit full screen' : 'Full screen';
+      requestAnimationFrame(() => { pz.resized(); if (on) pz.fit(); });
+    };
+    fullBtn.addEventListener('click', () => {
+      const on = !isFull();
+      if (wrap.requestFullscreen && document.fullscreenEnabled) {
+        if (on) wrap.requestFullscreen().catch(() => setFull(true));
+        else if (document.fullscreenElement) void document.exitFullscreen();
+        else setFull(false);
+      } else setFull(on);
     });
+    const onFs = () => setFull(document.fullscreenElement === wrap);
+    document.addEventListener('fullscreenchange', onFs);
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && isFull() && !document.fullscreenElement) setFull(false); };
+    document.addEventListener('keydown', onKey);
+    const ro = new ResizeObserver(() => pz.resized());
+    ro.observe(frame);
+    onDispose(() => {
+      document.removeEventListener('fullscreenchange', onFs);
+      document.removeEventListener('keydown', onKey);
+      document.body.classList.remove('uml-full-open');
+      ro.disconnect();
+    });
+
     note.replaceWith(
       h('div', { class: 'uml-head' },
-        hasPage ? h('div', { class: 'seg', role: 'group', 'aria-label': 'Diagram' }, pageBtn, classBtn) : null,
-        h('div', { class: 'uml-tools' }, allBtn, fitBtn, dl)),
+        h('div', { class: 'uml-segs' },
+          hasPage ? h('div', { class: 'seg', role: 'group', 'aria-label': 'Diagram' }, pageBtn, classBtn) : null,
+          h('div', { class: 'seg', role: 'group', 'aria-label': 'Shown as' }, diagramBtn, treeBtn)),
+        h('div', { class: 'uml-tools' }, allBtn, menu, fullBtn)),
       about);
-    wrap.append(canvas);
+    wrap.append(frame);
     draw();
   }).catch((e: Error) => { if (!disposed) note.textContent = `The data model could not be loaded: ${e.message}`; });
   return wrap;

@@ -37,3 +37,23 @@ def test_iri_check():
     assert not R.valid_iri("http://x/a b")
     assert not R.valid_iri("<http://x>")
     assert not R.valid_iri("nocolon")
+
+
+def _parsed(text: str, fmt) -> set:
+    import pyoxigraph as ox
+    return {(str(t.subject), str(t.predicate), str(t.object)) for t in ox.parse(text.encode(), format=fmt)}
+
+
+def test_rdfxml_and_jsonld_hold_the_same_triples():
+    import pyoxigraph as ox
+    nt = _parsed(R.ntriples(T), ox.RdfFormat.N_TRIPLES)
+    assert _parsed(R.rdfxml(T), ox.RdfFormat.RDF_XML) == nt
+    assert _parsed(R.jsonld(T), ox.RdfFormat.JSON_LD) == nt
+
+
+def test_jsonld_is_compact():
+    import json
+    doc = json.loads(R.jsonld(T))
+    assert doc["@type"] == "era:SectionOfLine"
+    assert set(doc["@context"]) == {"era", "rdfs", "xsd"}
+    assert doc["era:lengthOfSectionOfLine"] == {"@value": "3.646", "@type": "xsd:double"}
