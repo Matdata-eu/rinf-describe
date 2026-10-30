@@ -17,7 +17,7 @@ import { initWhatsNew } from './whats-new.ts';
 
 const app = document.getElementById('app')!;
 const envSelect = document.getElementById('env-select') as HTMLSelectElement;
-let cfg: Config = { envs: [{ key: 'prod', label: 'PROD', indexed: false, updatedAt: null }], live: true, atlasUrl: null };
+let cfg: Config = { envs: [{ key: 'prod', label: 'PROD' }], atlasUrl: null };
 
 const params = () => new URLSearchParams(location.search);
 const currentEnv = () => {
@@ -52,7 +52,7 @@ async function route() {
         description: describeDescription(r.pages[0]?.label ?? null, title, envLabel, badges, r.dataset?.provider),
         path: describePath(r.iri, r.env),
         // Only what the sitemap lists: class pages of the default environment.
-        index: r.source === 'index' && r.pages.length > 0 && r.env === cfg.envs[0].key,
+        index: r.source === 'live' && r.pages.length > 0 && r.env === cfg.envs[0].key,
       });
     } catch (e) {
       if (my !== seq) return;

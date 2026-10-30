@@ -34,16 +34,17 @@ address, `/describe?uri=<IRI>&env=<env>`. When a page opens, the app
 - the canonical link and `og:url`, `/describe?uri=<IRI>&env=<default env>`
   without the tab, so the tabs of a page count as one page;
 - `noindex` on pages that are not in the sitemap: other environments than the
-  first in `DESCRIBE_ENVS` (UAT), resources without a class page, resources read
-  live from ERA, and unknown addresses.
+  first in `DESCRIBE_ENVS` (UAT), resources without a class page, and unknown
+  addresses.
 
 The sitemaps list exactly those canonical addresses. `/sitemap.xml` is an
 index served by the API (`DESCRIBE_PUBLIC_URL` is passed to it too):
 `/sitemap-site.xml` with the start page and your pages in `site/`, written by
 the web container at start, then `/sitemap-1.xml`, `/sitemap-2.xml`, … with
 40,000 describe pages each and the publication date of their dataset as
-`lastmod`. They follow the index: a resource ERA adds shows up after Atlas's
-next poll.
+`lastmod`. The API reads them from ERA's SPARQL endpoint (every resource of a
+class with a shape) and keeps them for a day: a resource ERA adds shows up the
+next day.
 
 The settings apply on every start: change `.env` and run
 `docker compose up -d`. Check the result with:

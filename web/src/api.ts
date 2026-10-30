@@ -1,6 +1,6 @@
 // HTTP API client and the shapes of its answers (api/app/main.py).
 
-/** An RDF term as the describe index stores it: an IRI, or a literal. */
+/** An RDF term on a page: an IRI, or a literal. */
 export interface Term { iri?: string; value?: string; datatype?: string; lang?: string }
 /** A value counted over linked resources (rd:aggregate "distinct-count"). */
 export type CountedTerm = Term & { count: number };
@@ -57,7 +57,7 @@ export interface ClassPage {
 export interface DescribeResponse {
   iri: string;
   env: string;
-  source: 'index' | 'live' | 'missing';
+  source: 'live' | 'missing';
   title: string | null;
   classes: string[];
   graph: string | null;
@@ -65,20 +65,20 @@ export interface DescribeResponse {
   pages: ClassPage[];
   counts: { out: number; in: number };
   labels: Record<string, string>;
-  /** Milliseconds spent building the response (live pages: per round of queries). */
+  /** Milliseconds spent building the page, per round of queries. */
   timing?: Record<string, number>;
 }
 
 export interface Triple { s: string; p: string; o: string; o_iri: boolean; datatype: string | null; lang: string | null }
 
 export interface TriplesResponse {
-  iri: string; dir: 'out' | 'in'; source: 'index' | 'live'; triples: Triple[]; labels: Record<string, string>; truncated: boolean;
+  iri: string; dir: 'out' | 'in'; triples: Triple[]; labels: Record<string, string>; truncated: boolean;
 }
 
 export interface GraphResponse { iri: string; out: Triple[]; in: Triple[]; types: Record<string, string[]>; labels: Record<string, string> }
 
-export interface EnvInfo { key: string; label: string; indexed: boolean; updatedAt: string | null }
-export interface Config { envs: EnvInfo[]; live: boolean; atlasUrl: string | null }
+export interface EnvInfo { key: string; label: string }
+export interface Config { envs: EnvInfo[]; atlasUrl: string | null }
 export interface SearchHit { iri: string; label: string | null; class: string | null }
 export interface Example { iri: string; label: string | null; class: string; classLabel: string | null }
 

@@ -1,11 +1,12 @@
-"""Fallback for resources the describe index does not hold: ask ERA's SPARQL endpoint.
+"""Talking to ERA: its SPARQL endpoint and its dataset explorer.
 
-The plain triples (outgoing and incoming) and their labels; the class pages of such a
-resource are built in livepage.py, through sparql() below.
+The plain triples of a resource (outgoing and incoming) and their labels; the class
+pages are built in livepage.py, through sparql() below.
 """
 from __future__ import annotations
 
 import time
+from datetime import datetime, timezone
 
 import httpx
 
@@ -49,6 +50,7 @@ def triples(endpoint: str, iri: str, direction: str, limit: int, timeout: float 
         rows = [_row(b["s"]["value"], b["p"]["value"], {"type": "uri", "value": iri})
                 for b in sparql(endpoint, f"SELECT ?s ?p WHERE {{ ?s ?p <{iri}> }} LIMIT {limit}", timeout)
                 if b["s"]["type"] == "uri"]
+    rows.sort(key=lambda t: (t["p"], t["o"] if direction == "out" else t["s"]))
     iris = {iri} | {t["p"] for t in rows} | {t["s"] for t in rows} | {t["o"] for t in rows if t["o_iri"]}
     labels: dict[str, str] = {}
     todo = [i for i in iris if i.startswith("http") and ">" not in i][:300]
@@ -65,3 +67,30 @@ def triples(endpoint: str, iri: str, direction: str, limit: int, timeout: float 
         _cache.clear()
     _cache[key] = (time.time(), rows, labels)
     return rows, labels
+
+
+def published(api: str | None, timeout: float = 20.0) -> dict[str, dict]:
+    """The latest dataset of each infrastructure manager in ERA's dataset explorer, by the
+    organisation code that ends the IRI of its graph. {} when there is no explorer or it fails."""
+    if not api:
+        return {}
+    try:
+        r = _client.get(f"{api}/dataset/published", params={"latest": "true", "groupBy": "im"},
+                        headers={"Accept": "application/json"}, timeout=timeout)
+        r.raise_for_status()
+        data = r.json()
+    except (httpx.HTTPError, ValueError):
+        return {}
+    out: dict[str, dict] = {}
+    for d in data:
+        acc = d.get("account") or {}
+        if not acc.get("code"):
+            continue
+        ts = d.get("datePublished") or d.get("dateCreated")
+        out[acc["code"]] = {
+            "provider": (acc.get("name") or "").strip() or None,
+            "title": d.get("fileName") or acc["code"],
+            "country": (acc.get("country") or {}).get("code"),
+            "modified": datetime.fromtimestamp(ts / 1000, tz=timezone.utc).isoformat() if ts else None,
+        }
+    return out

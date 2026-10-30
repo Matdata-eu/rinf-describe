@@ -1,39 +1,23 @@
-# Deploying next to RINF Atlas
+# Deploying
 
-RINF Describe has no indexer of its own: RINF Atlas's worker builds the describe index
-from this repository's shapes, in Atlas's database. RINF Describe adds two containers
-(API and web) and a one-off job that creates a read-only database role.
+RINF Describe needs no database and no other service of its own: two containers (API and
+web) and outbound HTTPS to ERA's SPARQL endpoint and dataset explorer, and to RINF
+Atlas's public API for the search box.
 
 ```
-ERA ──> Atlas worker ──> Atlas database (PostGIS) <── describe-api ──> describe-web :8090
-           ▲               feature, term, dataset,     (read-only role)
-           │               describe_doc, describe_def,
-  rinf-describe/shapes     describe_triple
+ERA SPARQL + dataset explorer ──> describe-api ──> describe-web :8090
+RINF Atlas /api/search ─────────┘
 ```
 
-## 1. Switch Atlas's describe index on
-
-In RINF Atlas's `.env`, point at this repository's shapes and start Atlas with its
-describe overlay ([Atlas docs/describe.md](https://github.com/Matdata-eu/rinf-atlas/blob/main/docs/describe.md)):
+## Start it
 
 ```sh
-# rinf-atlas/.env
-ATLAS_DESCRIBE_SHAPES_DIR=../rinf-describe/shapes
-
-docker compose -f docker-compose.yml -f docker-compose.describe.yml up -d
-```
-
-The first poll builds the pages of every loaded graph from the mirror. `describe_triple`
-holds a copy of every provider triple, so try it on one country first with
-`ATLAS_ONLY_GRAPHS`.
-
-## 2. Start RINF Describe
-
-```sh
-cp .env.example .env     # port, Atlas's network name, the read-only role's password
+cp .env.example .env     # port, environments, the RINF Atlas instance for search
 docker compose pull      # the published images (or: docker compose up -d --build)
 docker compose up -d
 ```
+
+Open `http://<host>:8090/describe?uri=<IRI>&env=prod`.
 
 The images are published to GitHub Container Registry by
 `.github/workflows/docker-publish.yml`: `ghcr.io/matdata-eu/rinf-describe-api` and
@@ -42,54 +26,50 @@ version tag `vX.Y.Z`. `DESCRIBE_VERSION` in `.env` picks the tag. To release, ad
 release to `web/src/whats-new.json`, set the version in `web/package.json`, and push a tag:
 
 ```sh
-git tag v1.1.0 && git push origin v1.1.0
+git tag v1.2.0 && git push origin v1.2.0
 ```
 
-`db-role` creates the role `describe_ro` with `SELECT` on the tables the API reads, then
-exits; it runs again on every `up`, which also grants tables Atlas created since. The API
-joins Atlas's network (`ATLAS_NETWORK`, `rinf-atlas_default` unless Atlas's project is
-named otherwise) to reach its database; the web container serves the UI and proxies
-`/api/` to the API.
+## Settings
 
-Open `http://<host>:8090/describe?uri=<IRI>&env=prod`.
+| Variable | Default | What |
+|---|---|---|
+| `DESCRIBE_ENVS` | `prod=PROD,uat=UAT` | Environments in menu order; the first is the default |
+| `DESCRIBE_SPARQL_<ENV>` | ERA's endpoints | Another SPARQL endpoint for an environment |
+| `DESCRIBE_DATASETS_<ENV>` | ERA's dataset explorers | Another dataset explorer API (publisher and publication date) |
+| `DESCRIBE_LIVE_BATCH` | `12` | Shape rows per SPARQL query |
+| `DESCRIBE_LIVE_WORKERS` | `8` | SPARQL queries in flight per page |
+| `DESCRIBE_ATLAS_URL` | `https://rinf-atlas.matdata.eu` | RINF Atlas for the search box and the "Open in RINF Atlas" button; empty: IRIs only, no button |
+| `DESCRIBE_PUBLIC_URL` | empty | Public address: canonical links, sitemaps, search engines ([seo.md](seo.md)) |
 
-## 3. A public instance
+Pages are kept in the API for ten minutes, the start-page examples and the sitemaps for a
+day, the dataset explorer's answer for an hour. `scripts/bench_live.py` times pages
+against ERA's endpoint for a few batch settings.
+
+## A public instance
 
 Set `DESCRIBE_PUBLIC_URL` to the instance's HTTPS address so search engines may index it
 and get its sitemaps ([seo.md](seo.md)), and add a privacy statement in `site/`
 ([privacy.md](privacy.md)).
 
-## Without the describe index
+## Upgrading from 1.1 or earlier
 
-The app also runs against an Atlas database without the describe tables, or for IRIs the
-index does not hold (`DESCRIBE_LIVE=1`, the default): it then builds the class page live
-from ERA's SPARQL endpoint with the same shapes (the image carries `shapes/`), and reads
-the triples of the generic tabs live too. A live page is the same document as an indexed
-one; it takes a few SPARQL queries instead of a database lookup. `DESCRIBE_LIVE_BATCH`
-(shape rows per query, default 12) and `DESCRIBE_LIVE_WORKERS` (queries in flight per
-page, default 8) tune it, and live pages are cached for ten minutes.
+Up to 1.1, the API read a describe index from RINF Atlas's database. It no longer does:
 
-`/api/describe?source=live` builds a page live even when the index holds it, and
-`source=index` never asks ERA; `scripts/bench_live.py` compares the two.
+1. Remove `ATLAS_NETWORK`, `ATLAS_DB_HOST`, `ATLAS_DB_NAME`, `ATLAS_DB_USER`,
+   `POSTGRES_PASSWORD`, `DESCRIBE_DB_PASSWORD` and `DESCRIBE_LIVE` from `.env`.
+2. `docker compose pull && docker compose up -d --remove-orphans` (drops the `db-role`
+   job).
+3. Optionally, in Atlas's database: `DROP OWNED BY describe_ro; DROP ROLE describe_ro;`.
+   Atlas can stop building the index: start it without `docker-compose.describe.yml`.
 
 ## Development
 
 ```sh
-# a PostgreSQL to play with, and Atlas's worker for its indexer
-pip install -e ../rinf-atlas/worker -r api/requirements.txt
-export DATABASE_URL=postgresql://atlas:atlas@localhost:5432/atlas
-psql "$DATABASE_URL" -f scripts/dev-schema.sql
-python scripts/dev_seed.py --atlas ../rinf-atlas --vocab   # Atlas's Luxembourg sample
-
-(cd api && DESCRIBE_LIVE=0 uvicorn app.main:app --reload)
-(cd web && npm install && npm run dev)                     # http://localhost:5173
+pip install -r api/requirements.txt
+(cd api && uvicorn app.main:app --reload)            # against ERA's endpoints
+(cd web && npm install && npm run dev)               # http://localhost:5173
 ```
 
-`dev_seed.py` builds the pages with Atlas's own indexer from Atlas's
-`tests/fixtures/lu-sample.nt.gz`. The sample lacks the kilometric posts its railway
-locations point to; the script adds them with the kilometre their labels state, so km
-positions show in development. `--vocab` downloads ERA's SKOS concept schemes and
-ontology (tag `v3.3.4`) from ERA's GitLab for labels.
-
 Checks: `ruff check api scripts tests`, `pytest -q tests` (shapes), `cd api && pytest -q`
-(API, with `DATABASE_URL`), `cd web && npm test && npm run build`.
+(API), `cd web && npm test && npm run build`. The tests serve the Luxembourg sample in
+`tests/fixtures/` as a SPARQL endpoint with pyoxigraph, so they need no network.
