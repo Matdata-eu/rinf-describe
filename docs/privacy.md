@@ -68,7 +68,9 @@ backups, hosting provider).
 **Requests your server makes to ERA and RINF Atlas**
 
 - For every page, the API queries ERA's SPARQL endpoint for the resource's page
-  and its triples, and ERA's dataset explorer for who published it. The request
+  and its triples, and ERA's dataset explorer for who published it. Once a day it
+  also reads ERA's ontology and SHACL shapes, the start page's examples and the
+  sitemaps, which carry nothing about visitors. The request
   comes from your server and carries only the resource's IRI, not the visitor's
   IP address.
 - The text typed in the search box is sent to the RINF Atlas instance in

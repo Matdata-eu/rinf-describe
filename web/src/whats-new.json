@@ -1,74 +1,37 @@
 [
   {
-    "version": "1.7.0",
-    "date": "2026-10-30",
-    "new": [
-      "Signals show their type, ID, orientation as an arrow, distance to the danger point and km.",
-      "Reference border points show the two countries and the operational points on either side, on the map too.",
-      "Kilometric posts, hot axle box detectors, bridges, TEN-T classifications, documents and linear elements (with the elements they connect to) have pages of their own.",
-      "Every signal, switch, level crossing and other point asset shows the national line and km it is at."
-    ],
-    "improved": [
-      "Map layers can hold points as well as lines: click a dot to open it."
-    ]
-  },
-  {
-    "version": "1.6.0",
-    "date": "2026-10-30",
-    "new": [
-      "Contact line systems, ETCS installations and train detection systems have their own page, with the tracks that use them. The energy supply shows as a symbol in OpenRailwayMap's colours.",
-      "Infrastructure managers show key figures: operational points, sections of line, km of line, tracks, and the shares of energy supply and ETCS level. These pages are kept for a day.",
-      "Primary locations show their code, country, region, use (passenger, freight, container handling, handover point), the operational points and subsidiary locations that refer to them, and flags that change over time."
-    ],
-    "improved": [
-      "A resource published by several providers opens in the provider whose code it carries."
-    ]
-  },
-  {
-    "version": "1.5.0",
-    "date": "2026-10-30",
-    "new": [
-      "National lines have a page: the line on the map, a profile along km with the speed, energy supply, ETCS, gauge and number of tracks of each section, its sections and operational points in km order, and its kilometric posts.",
-      "Sections of line show what lies along them at its km: tunnels, phase separations and kilometric posts. They list their neighbouring sections and their restrictions (axle load, load capability, noise, operational regime, industrial risk).",
-      "Tracks show a cross-section on the Route compatibility tab (gauge, gauging profile, contact wire height, rail inclination), the platforms along them, and their running direction as an arrow."
-    ],
-    "improved": [
-      "Pages of national lines are kept for a day, since they sum up all their sections and tracks."
-    ]
-  },
-  {
-    "version": "1.4.0",
-    "date": "2026-10-30",
-    "new": [
-      "Operational points have their own page: the sections of line that meet there as spokes pointing the way they leave, a schematic of the tracks with their platforms and sidings, tables of tracks, platforms and sidings, and what the tracks allow (speed, gauge, energy, ETCS, train length).",
-      "Platform edges show a side view of their height against the TSI heights of 550 and 760 mm, and their usable length against regional and long-distance trains.",
-      "Sidings show their usable length against passenger and freight trains, their servicing facilities and the energy they offer.",
-      "Tunnels show their length, fire category, safety installations and documents."
-    ],
-    "improved": [
-      "Maps can show more than the resource: an operational point's sections of line are a layer you can switch off, and clicking a line opens its page.",
-      "Long tables show the first 100 rows and a Show more button.",
-      "Documents without a name are named after their document id instead of 'download'."
-    ]
-  },
-  {
-    "version": "1.3.0",
+    "version": "1.2.0",
     "date": "2026-10-30",
     "new": [
       "Every infrastructure element has a page now, not only sections of line and tracks: operational points, tunnels, platforms, sidings, signals and the rest get their map, identification, country, validity and parts.",
-      "A RINF parameters tab lists every parameter of a resource in the order of the RINF index, grouped by chapter, with a filter. It includes the parameters of a track's contact line system, ETCS and train detection systems, and those marked not applicable or not yet available."
+      "A RINF parameters tab lists every parameter of a resource in the order of the RINF index, grouped by chapter, with a filter. It includes the parameters of a track's contact line system, ETCS and train detection systems, and those marked not applicable or not yet available.",
+      "Operational points have their own page: the sections of line that meet there as spokes pointing the way they leave, a schematic of the tracks with their platforms and sidings, tables of tracks, platforms and sidings, and what the tracks allow (speed, gauge, energy, ETCS, train length).",
+      "Platform edges show a side view of their height against the TSI heights of 550 and 760 mm, and their usable length against regional and long-distance trains.",
+      "Sidings show their usable length against passenger and freight trains, their servicing facilities and the energy they offer.",
+      "Tunnels show their length, fire category, safety installations and documents.",
+      "National lines have a page: the line on the map, a profile along km with the speed, energy supply, ETCS, gauge and number of tracks of each section, its sections and operational points in km order, and its kilometric posts.",
+      "Sections of line show what lies along them at its km: tunnels, phase separations and kilometric posts. They list their neighbouring sections and their restrictions (axle load, load capability, noise, operational regime, industrial risk).",
+      "Tracks show a cross-section on the Route compatibility tab (gauge, gauging profile, contact wire height, rail inclination), the platforms along them, and their running direction as an arrow.",
+      "Contact line systems, ETCS installations and train detection systems have their own page, with the tracks that use them. The energy supply shows as a symbol in OpenRailwayMap's colours.",
+      "Infrastructure managers show key figures: operational points, sections of line, km of line, tracks, and the shares of energy supply and ETCS level. These pages are kept for a day.",
+      "Primary locations show their code, country, region, use (passenger, freight, container handling, handover point), the operational points and subsidiary locations that refer to them, and flags that change over time.",
+      "Signals show their type, ID, orientation as an arrow, distance to the danger point and km.",
+      "Reference border points show the two countries and the operational points on either side, on the map too.",
+      "Kilometric posts, hot axle box detectors, bridges, TEN-T classifications, documents and linear elements (with the elements they connect to) have pages of their own.",
+      "Every signal, switch, level crossing and other point asset shows the national line and km it is at.",
+      "A Data model tab draws UML class diagrams from ERA's own SHACL shapes. \"What this page shows\" follows every value on the page back through the model, however many links away, and names the rows that show each property; the class view lists all attributes of the class and its superclasses and marks what this resource has. Both download as SVG."
     ],
     "improved": [
-      "Hover a parameter's name for its definition and RINF index from ERA's ontology; units come from the ontology too.",
-      "The country shows its flag, and dates with a time zone show the right day."
-    ]
-  },
-  {
-    "version": "1.2.0",
-    "date": "2026-10-30",
-    "improved": [
       "Every page is now built on the spot from ERA's SPARQL endpoint, so it always shows what ERA publishes today. The notes about the describe index are gone.",
-      "The search box finds names through RINF Atlas's search; a pasted IRI still opens directly."
+      "The search box finds names through RINF Atlas's search; a pasted IRI still opens directly.",
+      "Hover a parameter's name for its definition and RINF index from ERA's ontology; units come from the ontology too.",
+      "The country shows its flag, and dates with a time zone show the right day.",
+      "Maps can show more than the resource: an operational point's sections of line are a layer you can switch off, and clicking a line opens its page.",
+      "Long tables show the first 100 rows and a Show more button.",
+      "Documents without a name are named after their document id instead of 'download'.",
+      "Pages of national lines are kept for a day, since they sum up all their sections and tracks.",
+      "A resource published by several providers opens in the provider whose code it carries.",
+      "Map layers can hold points as well as lines: click a dot to open it."
     ]
   },
   {
