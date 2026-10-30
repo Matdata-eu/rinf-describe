@@ -69,7 +69,7 @@ backups, hosting provider).
 **Requests your server makes to ERA**
 
 - For a resource that is not in the index (`DESCRIBE_LIVE=1`, the default),
-  the API queries ERA's SPARQL endpoint. The request comes from your server and
+  the API queries ERA's SPARQL endpoint for its page and its triples. The request comes from your server and
   carries only the resource's IRI, not the visitor's IP address.
 - RINF Atlas's worker, not RINF Describe, keeps the index current from ERA.
 
