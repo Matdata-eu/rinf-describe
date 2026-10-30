@@ -1,0 +1,59 @@
+# Train detection system page: the system that tracks name with era:trainDetectionSystem.
+# Not an infrastructure element: no base page.
+PREFIX rd:    <https://rinf-describe.matdata.eu/ns#>
+PREFIX shape: <https://rinf-describe.matdata.eu/shapes/>
+PREFIX dash:  <http://datashapes.org/dash#>
+PREFIX sh:    <http://www.w3.org/ns/shacl#>
+PREFIX era:   <http://data.europa.eu/949/>
+PREFIX gsp:   <http://www.opengis.net/ont/geosparql#>
+PREFIX time:  <http://www.w3.org/2006/time#>
+PREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
+
+shape:tds-system a sh:PropertyGroup ; rdfs:label "Train detection" ; sh:order 10 .
+shape:tds-vehicle a sh:PropertyGroup ; rdfs:label "Vehicle requirements" ; sh:order 20 .
+shape:tds-used a sh:PropertyGroup ; rdfs:label "Used by" ; sh:order 40 .
+
+shape:train-detection-system
+    a sh:NodeShape ;
+    rdfs:label "Train detection system" ;
+    sh:targetClass era:TrainDetectionSystem ;
+
+    sh:property [ sh:path rdfs:label ; rd:key "title" ; dash:propertyRole dash:LabelRole ] ;
+
+    sh:property [
+        sh:path era:trainDetectionSystemType ; sh:name "Type" ; rd:key "type" ;
+        sh:group shape:tds-system ; sh:order 10 ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "{value}" ;
+    ] ;
+    sh:property [ sh:path era:trainDetectionSystemSpecificCheck ; sh:name "Specific checks needed" ; sh:group shape:tds-system ; sh:order 20 ] ;
+    sh:property [
+        sh:path era:trainDetectionSystemSpecificCheckDocument ; sh:name "Procedure for the specific checks" ;
+        sh:group shape:tds-system ; sh:order 30 ;
+        dash:viewer rd:DocumentViewer ; sh:node shape:document-card ;
+    ] ;
+    sh:property [ sh:path era:frequencyBandsForDetection ; sh:name "Frequency bands for detection" ; sh:group shape:tds-system ; sh:order 40 ] ;
+    sh:property [ sh:path era:tdsFrenchTrainDetectionSystemLimitation ; sh:name "Section with train detection limitation" ; sh:group shape:tds-system ; sh:order 50 ] ;
+
+    sh:property [ sh:path era:maxImpedanceWheelset ; sh:name "Maximum impedance between wheels of a wheelset" ; sh:group shape:tds-vehicle ; sh:order 10 ] ;
+    sh:property [ sh:path era:tdsMaximumMagneticField ; sh:name "Maximum magnetic field" ; sh:group shape:tds-vehicle ; sh:order 20 ] ;
+    sh:property [ sh:path era:tdsMinAxleLoadVehicleCategory ; sh:name "Minimum axle load vehicle category" ; sh:group shape:tds-vehicle ; sh:order 30 ] ;
+
+    sh:property [
+        sh:path rdf:type ; sh:name "Tracks" ; rd:key "use-count" ;
+        rd:over [ sh:inversePath era:trainDetectionSystem ] ; rd:aggregate "count" ;
+        sh:group shape:tds-used ; sh:order 10 ; dash:viewer rd:AggregateViewer ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "Used by {count}" ;
+    ] ;
+    sh:property [
+        sh:path [ sh:inversePath era:trainDetectionSystem ] ; sh:name "Used by" ; rd:key "use-table" ;
+        sh:group shape:tds-used ; sh:order 20 ;
+        dash:viewer dash:ValueTableViewer ; rd:limit "100" ;
+        sh:node shape:used-by-row ;
+    ] ;
+
+    sh:property [
+        sh:name "RINF parameters" ; rd:key "rinf-parameters" ;
+        sh:group shape:ie-parameters ; sh:order 10 ;
+        dash:viewer rd:ParameterIndexViewer ;
+    ] .

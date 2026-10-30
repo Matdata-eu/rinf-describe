@@ -1,0 +1,65 @@
+# ETCS page: the ETCS installation that tracks (or their common characteristics subsets)
+# name with era:etcs. Not an infrastructure element: no base page.
+PREFIX rd:    <https://rinf-describe.matdata.eu/ns#>
+PREFIX shape: <https://rinf-describe.matdata.eu/shapes/>
+PREFIX dash:  <http://datashapes.org/dash#>
+PREFIX sh:    <http://www.w3.org/ns/shacl#>
+PREFIX era:   <http://data.europa.eu/949/>
+PREFIX gsp:   <http://www.opengis.net/ont/geosparql#>
+PREFIX time:  <http://www.w3.org/2006/time#>
+PREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
+
+shape:etcs-system a sh:PropertyGroup ; rdfs:label "ETCS" ; sh:order 10 .
+shape:etcs-access a sh:PropertyGroup ; rdfs:label "Access conditions" ; sh:order 20 .
+shape:etcs-used a sh:PropertyGroup ; rdfs:label "Used by" ; sh:order 40 .
+
+shape:etcs
+    a sh:NodeShape ;
+    rdfs:label "ETCS" ;
+    sh:targetClass era:ETCS ;
+
+    sh:property [ sh:path rdfs:label ; rd:key "title" ; dash:propertyRole dash:LabelRole ] ;
+
+    sh:property [
+        sh:path era:etcsLevelType ; sh:name "ETCS level" ; rd:key "level" ;
+        sh:group shape:etcs-system ; sh:order 10 ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "{value}" ;
+    ] ;
+    sh:property [
+        sh:path era:etcsBaseline ; sh:name "ETCS baseline" ; rd:key "baseline" ;
+        sh:group shape:etcs-system ; sh:order 20 ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "{value}" ;
+    ] ;
+    sh:property [ sh:path era:etcsMVersion ; sh:name "M_version" ; sh:group shape:etcs-system ; sh:order 30 ] ;
+    sh:property [ sh:path era:etcsSystemCompatibility ; sh:name "System compatibility" ; sh:group shape:etcs-system ; sh:order 40 ] ;
+    sh:property [ sh:path era:etcsInfill ; sh:name "Infill installed" ; sh:group shape:etcs-system ; sh:order 50 ] ;
+    sh:property [ sh:path era:hasEtcsNationalPacket44 ; sh:name "National applications (packet 44)" ; sh:group shape:etcs-system ; sh:order 60 ] ;
+
+    sh:property [ sh:path era:etcsInfillLineAccess ; sh:name "Infill needed for line access" ; sh:group shape:etcs-access ; sh:order 10 ] ;
+    sh:property [ sh:path era:trainIntegrityOnBoardRequired ; sh:name "Train integrity confirmation on board required" ; sh:group shape:etcs-access ; sh:order 20 ] ;
+    sh:property [ sh:path era:hasETCSRestrictionsConditions ; sh:name "Operating restrictions or conditions" ; sh:group shape:etcs-access ; sh:order 30 ] ;
+    sh:property [
+        sh:path era:etcsRestrictionsConditionsDoc ; sh:name "Restrictions or conditions" ;
+        sh:group shape:etcs-access ; sh:order 40 ;
+        dash:viewer rd:DocumentViewer ; sh:node shape:document-card ;
+    ] ;
+
+    sh:property [
+        sh:path rdf:type ; sh:name "Tracks and subsets" ; rd:key "use-count" ;
+        rd:over [ sh:inversePath era:etcs ] ; rd:aggregate "count" ;
+        sh:group shape:etcs-used ; sh:order 10 ; dash:viewer rd:AggregateViewer ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "Used by {count}" ;
+    ] ;
+    sh:property [
+        sh:path [ sh:inversePath era:etcs ] ; sh:name "Used by" ; rd:key "use-table" ;
+        sh:group shape:etcs-used ; sh:order 20 ;
+        dash:viewer dash:ValueTableViewer ; rd:limit "100" ;
+        sh:node shape:used-by-row ;
+    ] ;
+
+    sh:property [
+        sh:name "RINF parameters" ; rd:key "rinf-parameters" ;
+        sh:group shape:ie-parameters ; sh:order 10 ;
+        dash:viewer rd:ParameterIndexViewer ;
+    ] .

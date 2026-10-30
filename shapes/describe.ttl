@@ -86,6 +86,14 @@ rd:CrossSectionViewer a dash:SingleViewer ;
     rdfs:label "Cross-section" ;
     rdfs:comment "A track end-on, not to scale. Paths: rd:gauge, rd:loadingGauge, rd:wireMin, rd:wireMax, rd:inclination." .
 
+rd:KeyFiguresViewer a dash:MultiViewer ;
+    rdfs:label "Key figures" ;
+    rdfs:comment "Stat tiles for the summary rows named in rd:figures: numbers, and shares as a bar." .
+
+rd:ChangesViewer a dash:MultiViewer ;
+    rdfs:label "Changes over time" ;
+    rdfs:comment "Parameters with an applicability period on a time axis. Columns: parameter, value, begin, end." .
+
 rd:DataStatusViewer a dash:MultiViewer ;
     rdfs:label "Data status" ;
     rdfs:comment "Parameters marked era:notApplicable or era:notYetAvailable. Shown on every class page; needs no property shape." .
@@ -136,6 +144,9 @@ rd:layers a owl:DatatypeProperty ;
 rd:hidden a owl:DatatypeProperty ;
     rdfs:label "hidden" ;
     rdfs:comment "\"true\": a column that is read but not shown." .
+rd:figures a owl:DatatypeProperty ;
+    rdfs:label "figures" ;
+    rdfs:comment "Keys of the summary rows rd:KeyFiguresViewer shows." .
 rd:table a owl:DatatypeProperty ;
     rdfs:label "table" ;
     rdfs:comment "Key of another row of the page whose values the widget draws (the sections of a line profile); the row needs no path." .

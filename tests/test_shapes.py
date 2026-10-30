@@ -189,3 +189,15 @@ def test_national_line(docs):
     assert len(items) == 3
     assert all(it["aggregates"]["tracks"]["count"] >= 1 for it in items)
     assert any(it["aggregates"]["speed"].get("max") for it in items)
+
+
+def test_shared_systems_and_primary_location(docs):
+    """Contact line systems, ETCS and train detection systems list the tracks that use them;
+    a primary location the operational points that carry it."""
+    _, by = docs
+    cls = by[(ERA + "contactLineSystem/2626f3a315", "contact-line-system")]["rows"]
+    assert cls["use-count"]["aggregate"]["count"] >= 1 and cls["use-table"]["items"]
+    assert by[(ERA + "etcs/40cdd32526", "etcs")]["rows"]["use-count"]["aggregate"]["count"] >= 1
+    assert by[(ERA + "trainDetectionSystem/ec667c8d88", "train-detection-system")]["rows"]["use-table"]["items"]
+    pl = [d for (i, s), d in by.items() if s == "primary-location" and d["rows"].get("linked")]
+    assert pl and all(d["rows"]["code"]["values"] for d in pl)

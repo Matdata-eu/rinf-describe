@@ -292,7 +292,10 @@ def page(sparql: Sparql, iri: str, dset: DescribeSet, batch: int = 12, workers: 
                 by_graph[b["g"]["value"]].append(b["t"]["value"])
         classes = sorted({c for cs in by_graph.values() for c in cs})
         # The graph that types the resource with a class page, else any graph that types it.
-        graph = next((g for g, cs in sorted(by_graph.items()) if shapes_for(cs)), min(by_graph, default=None))
+        # Typed in several graphs (an IM role, a primary location): first the provider whose
+        # code is in the IRI (.../organisationRole/0087_IM in graph/0087).
+        order = sorted(by_graph, key=lambda g: (g.rstrip("/").rsplit("/", 1)[-1] not in iri, g))
+        graph = next((g for g in order if shapes_for(by_graph[g])), order[0] if order else None)
         timing["head"] = (time.perf_counter() - t0) * 1000
         shapes = shapes_for(by_graph.get(graph, [])) if graph else []
         jobs = []

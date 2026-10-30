@@ -9,7 +9,7 @@ import { place } from './widgets/lineprofile.ts';
 import { chaptersOf, indexRoots } from './widgets/parameters.ts';
 import { heightMm } from './widgets/platform.ts';
 import { parseMarks } from './widgets/scalebar.ts';
-import { countryCode, directionOf } from './widgets/symbol.ts';
+import { countryCode, directionOf, supplyColor, supplyOf } from './widgets/symbol.ts';
 import { commonPrefix } from './widgets/tracklayout.ts';
 
 const ERA = 'http://data.europa.eu/949/';
@@ -101,4 +101,12 @@ test('the running direction of a track', () => {
   assert.equal(directionOf({ iri: D + '10' }, {}), 'normal');
   assert.equal(directionOf({ iri: D + 'TrackRunningDirections/20' }, {}), 'opposite');
   assert.equal(directionOf({ iri: 'x' }, { x: 'B' }), 'both');
+});
+
+test('energy supply systems: current, voltage, frequency and map colour', () => {
+  assert.deepEqual(supplyOf('AC 15kV-16.7Hz'), { ac: true, volts: 15000, hz: 16.7 });
+  assert.deepEqual(supplyOf('DC 600 V'), { ac: false, volts: 600, hz: null });
+  assert.equal(supplyOf('not electrified'), null);
+  assert.notEqual(supplyColor(supplyOf('AC 25kV-50Hz')), supplyColor(supplyOf('AC 15kV-16.7Hz')));
+  assert.notEqual(supplyColor(supplyOf('DC 3kV')), supplyColor(supplyOf('DC 1.5kV')));
 });

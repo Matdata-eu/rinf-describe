@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.6.0",
+    "date": "2026-10-30",
+    "new": [
+      "Contact line systems, ETCS installations and train detection systems have their own page, with the tracks that use them. The energy supply shows as a symbol in OpenRailwayMap's colours.",
+      "Infrastructure managers show key figures: operational points, sections of line, km of line, tracks, and the shares of energy supply and ETCS level. These pages are kept for a day.",
+      "Primary locations show their code, country, region, use (passenger, freight, container handling, handover point), the operational points and subsidiary locations that refer to them, and flags that change over time."
+    ],
+    "improved": [
+      "A resource published by several providers opens in the provider whose code it carries."
+    ]
+  },
+  {
     "version": "1.5.0",
     "date": "2026-10-30",
     "new": [

@@ -1,7 +1,8 @@
 // rd:SymbolViewer: an illustrative, non-dimensioned symbol next to each value's label
 // (rd:symbol "loading-gauge" for gauging profiles, "track-gauge" for the track gauge,
 // "country" for a country's flag, "platform-height" for a platform beside a rail at its height,
-// "direction" for the normal running direction against the kilometres).
+// "direction" for the normal running direction against the kilometres, "energy-supply" for
+// the voltage and frequency in OpenRailwayMap's colours).
 import type { Term } from '../api.ts';
 import { h, s } from '../dom.ts';
 import { describeHref } from '../nav.ts';
@@ -80,8 +81,34 @@ function direction(v: Term, labels: Record<string, string>): SVGElement {
     s('path', { d: path, class: d ? 'outline' : 'outline dashed' }));
 }
 
+/** Current, voltage and frequency of an energy supply system label ("AC 25kV-50Hz", "DC 750V"). */
+export function supplyOf(label: string): { ac: boolean; volts: number; hz: number | null } | null {
+  const m = /^\s*(AC|DC)\s*([\d.]+)\s*(k?)V(?:\s*-\s*([\d.]+)\s*Hz)?/i.exec(label);
+  if (!m) return null;
+  return { ac: m[1].toUpperCase() === 'AC', volts: Number(m[2]) * (m[3] ? 1000 : 1), hz: m[4] ? Number(m[4]) : null };
+}
+
+/** The colour OpenRailwayMap draws an energy supply system with. */
+export function supplyColor(sup: { ac: boolean; volts: number; hz: number | null } | null): string {
+  if (!sup) return 'var(--line-strong)';
+  if (sup.ac) return sup.hz !== null && sup.hz < 20 ? '#2e8b3e' : '#c4262e';
+  if (sup.volts >= 3000) return '#1f5fbf';
+  if (sup.volts >= 1500) return '#8a3fb5';
+  return '#e07a10';
+}
+
+function energySupply(v: Term, labels: Record<string, string>): SVGElement {
+  // A bolt in the system's map colour, ~ for alternating current.
+  const sup = supplyOf(v.iri ? iriLabel(v.iri, labels) : v.value ?? '');
+  return s('svg', { viewBox: '0 0 64 72', class: 'symbol', 'aria-hidden': 'true' },
+    s('circle', { cx: 32, cy: 34, r: 24, style: `fill:${supplyColor(sup)}` }),
+    s('path', { d: 'M35 14L22 38h10l-4 20 14-26H32z', style: 'fill:#fff' }),
+    sup?.ac ? s('path', { d: 'M18 64q4-5 8 0t8 0 8 0 8 0', class: 'outline' }) : s('path', { d: 'M18 64h28', class: 'outline' }));
+}
+
 const SYMBOLS: Record<string, (v: Term, labels: Record<string, string>) => Node> = {
   'loading-gauge': loadingGauge, 'track-gauge': trackGauge, country, 'platform-height': platformHeight, direction,
+  'energy-supply': energySupply,
 };
 
 export const SymbolViewer: Widget = {
