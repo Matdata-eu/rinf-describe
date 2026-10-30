@@ -1,5 +1,19 @@
 [
   {
+    "version": "1.0.0",
+    "date": "2026-10-30",
+    "new": [
+      "Section of line pages show the train protection legacy system of their tracks."
+    ],
+    "improved": [
+      "The national line of a section of line links to the line's own page.",
+      "ETCS and the train protection legacy system are also read from the common characteristics subsets a track belongs to, so tracks that only state them there show them too."
+    ],
+    "fixed": [
+      "Operational points, national lines and tracks show their name instead of their address in the tracks table, All properties, Incoming links and the graph."
+    ]
+  },
+  {
     "version": "0.1.0",
     "date": "2026-10-30",
     "new": [
