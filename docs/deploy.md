@@ -42,7 +42,7 @@ version tag `vX.Y.Z`. `DESCRIBE_VERSION` in `.env` picks the tag. To release, ad
 release to `web/src/whats-new.json`, set the version in `web/package.json`, and push a tag:
 
 ```sh
-git tag v1.0.0 && git push origin v1.0.0
+git tag v1.1.0 && git push origin v1.1.0
 ```
 
 `db-role` creates the role `describe_ro` with `SELECT` on the tables the API reads, then

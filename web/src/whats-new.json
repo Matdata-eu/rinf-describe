@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.1.0",
+    "date": "2026-10-30",
+    "new": [
+      "Resources that are not in the index yet get their full page, built live from ERA's SPARQL endpoint in about a tenth of a second: route, map, track summaries, tables and data status, the same as an indexed page."
+    ],
+    "improved": [
+      "All properties and Incoming links show their counts on pages read live too, and \"read live from ERA\" under the title says where a page comes from."
+    ]
+  },
+  {
     "version": "1.0.0",
     "date": "2026-10-30",
     "new": [
