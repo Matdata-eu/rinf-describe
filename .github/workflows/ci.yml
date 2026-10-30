@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: atlas
+          POSTGRES_PASSWORD: atlas
+          POSTGRES_DB: atlas
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U atlas" --health-interval 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://atlas:atlas@localhost:5432/atlas
+      ATLAS_DIR: ${{ github.workspace }}/rinf-atlas
+    steps:
+      - uses: actions/checkout@v7
+      # The describe indexer lives in RINF Atlas's worker; the shapes are checked with it.
+      - uses: actions/checkout@v7
+        with:
+          repository: Matdata-eu/rinf-atlas
+          path: rinf-atlas
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: pip install -r api/requirements.txt -e rinf-atlas/worker pytest ruff
+      - run: ruff check api scripts tests
+      - name: Shapes compile and evaluate on Atlas's sample
+        run: pytest -q tests
+      - name: Seed a describe index from the sample
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/dev-schema.sql
+          python scripts/dev_seed.py --atlas rinf-atlas
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -v pw=ci -f db/readonly.sql
+      - name: API tests (read-only role)
+        working-directory: api
+        env:
+          DATABASE_URL: postgresql://describe_ro:ci@localhost:5432/atlas
+        run: pytest -q tests
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+      - run: npm run build
+
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker compose config -q
+      - run: docker compose build
