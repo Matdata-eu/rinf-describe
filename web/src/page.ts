@@ -69,6 +69,7 @@ function header(r: DescribeResponse, cfg: Config, badges: string[]): HTMLElement
   if (env) meta.push(h('span', null, env.label));
   if (ds?.modified) meta.push(h('span', null, `published ${formatDate(ds.modified)}`));
   if (r.source === 'index' && env?.updatedAt) meta.push(h('span', null, `indexed ${formatDate(env.updatedAt)}`));
+  if (r.source === 'live') meta.push(h('span', null, 'read live from ERA'));
   const atlas = cfg.atlasUrl && r.pages.length
     ? h('a', { class: 'btn ghost small', href: `${cfg.atlasUrl}/#env=${encodeURIComponent(r.env)}&sel=${encodeURIComponent(r.iri).replace(/%3A/g, ':').replace(/%2F/g, '/')}`, target: '_blank', rel: 'noopener' }, 'Open in RINF Atlas')
     : null;
@@ -150,8 +151,8 @@ export function describePage(r: DescribeResponse, cfg: Config, wantTab: string |
     }
   }
   if (overview.length) tabs.unshift({ key: 'overview', label: 'Overview', render: () => h('div', { class: 'cards' }, overview) });
-  tabs.push({ key: 'properties', label: 'All properties', count: r.source === 'index' ? r.counts.out : undefined, render: () => lazyTriples(r.iri, r.env, 'out') });
-  tabs.push({ key: 'incoming', label: 'Incoming links', count: r.source === 'index' ? r.counts.in : undefined, render: () => lazyTriples(r.iri, r.env, 'in') });
+  tabs.push({ key: 'properties', label: 'All properties', count: r.source !== 'missing' ? r.counts.out : undefined, render: () => lazyTriples(r.iri, r.env, 'out') });
+  tabs.push({ key: 'incoming', label: 'Incoming links', count: r.source !== 'missing' ? r.counts.in : undefined, render: () => lazyTriples(r.iri, r.env, 'in') });
   tabs.push({ key: 'graph', label: 'Graph', render: () => graphView(r.iri, r.env) });
 
   let current = tabs.find((t) => t.key === wantTab) ?? tabs[0];
