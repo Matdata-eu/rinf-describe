@@ -5,6 +5,9 @@ RINF index of every property (row help and the RINF parameters tab), the names o
 RINF index chapters (the labels of the grouping super-properties, such as
 era:energySubsystemDataParameter at 1.1.1.2), and the class hierarchy, so a shape on
 era:InfrastructureElement applies to every infrastructure class.
+
+With it comes ERA's own SHACL shapes graph, which says per class which properties it has,
+of which datatype or class, and how many: the data model the "Data model" tab draws.
 """
 from __future__ import annotations
 
@@ -18,6 +21,9 @@ from dataclasses import dataclass, field
 log = logging.getLogger("describe")
 
 GRAPH = "http://data.europa.eu/949/graph/rinf/ontology"
+SHACL_GRAPH = "http://data.europa.eu/949/graph/rinf/shacl"
+SH = "http://www.w3.org/ns/shacl#"
+SKOS_CONCEPT = "http://www.w3.org/2004/02/skos/core#Concept"
 ERA = "http://data.europa.eu/949/"
 RDFS = "http://www.w3.org/2000/01/rdf-schema#"
 SKOS = "http://www.w3.org/2004/02/skos/core#"
@@ -40,6 +46,8 @@ class Ontology:
     terms: dict[str, dict] = field(default_factory=dict)          # property -> {label, comment, index, unit}
     chapters: dict[str, str] = field(default_factory=dict)        # RINF index -> chapter name
     parents: dict[str, set[str]] = field(default_factory=dict)    # class -> direct superclasses
+    classes: dict[str, dict] = field(default_factory=dict)        # class -> {label, comment}
+    model: dict[str, list[dict]] = field(default_factory=dict)    # class -> its SHACL properties
 
     def ancestors(self, cls: str) -> list[str]:
         """Superclasses of a class, nearest first."""
@@ -73,7 +81,7 @@ def _index_key(ix: str) -> tuple:
 def read(sparql: Sparql) -> Ontology:
     o = Ontology()
     rows = sparql(f"""SELECT ?p ?k ?v WHERE {{ GRAPH <{GRAPH}> {{
-        VALUES ?k {{ <{RDFS}label> <{RDFS}comment> <{ERA}rinfIndex> <{ERA}unitOfMeasure> }}
+        VALUES ?k {{ <{RDFS}label> <{RDFS}comment> <{ERA}rinfIndex> <{ERA}unitOfMeasure> <{RDFS}range> <{ERA}inSkosConceptScheme> }}
         ?p ?k ?v FILTER(isIRI(?p)) FILTER(!isLiteral(?v) || lang(?v) = '' || langMatches(lang(?v), 'en')) }} }}""")
     acc: dict[str, dict] = defaultdict(lambda: {"index": []})
     for b in rows:
@@ -82,6 +90,9 @@ def read(sparql: Sparql) -> Ontology:
         if k == "rinfIndex":
             if v not in t["index"]:
                 t["index"].append(v.strip())
+        elif k in ("range", "inSkosConceptScheme"):
+            if b["v"]["type"] == "uri":
+                t["scheme" if k == "inSkosConceptScheme" else k] = v
         elif k == "unitOfMeasure":
             t["unit"] = UNIT_SYMBOLS.get(v[len(QUDT_UNIT):], v.rsplit("/", 1)[-1]) if v.startswith(QUDT_UNIT) else None
         elif k not in t:
@@ -103,7 +114,35 @@ def read(sparql: Sparql) -> Ontology:
     for b in sparql(f"""SELECT ?c ?s WHERE {{ GRAPH <{GRAPH}> {{ ?c <{RDFS}subClassOf> ?s
                         FILTER(isIRI(?c) && isIRI(?s)) }} }}"""):
         o.parents.setdefault(b["c"]["value"], set()).add(b["s"]["value"])
+    for b in sparql(f"""SELECT ?c ?k ?v WHERE {{ GRAPH <{GRAPH}> {{ ?c a <http://www.w3.org/2002/07/owl#Class> ; ?k ?v
+                        VALUES ?k {{ <{RDFS}label> <{RDFS}comment> }} FILTER(isIRI(?c))
+                        FILTER(lang(?v) = '' || langMatches(lang(?v), 'en')) }} }}"""):
+        o.classes.setdefault(b["c"]["value"], {}).setdefault(b["k"]["value"].rsplit("#", 1)[-1], b["v"]["value"].strip())
+    o.model = read_model(sparql)
     return o
+
+
+def read_model(sparql: Sparql) -> dict[str, list[dict]]:
+    """Per target class, the properties ERA's SHACL shapes give it: path, datatype or class,
+    and cardinality. A path checked by several shapes (a violation and a warning) is one
+    property, with the violation's counts first."""
+    rows = sparql(f"""SELECT ?c ?p ?dt ?cls ?min ?max ?sev WHERE {{ GRAPH <{SHACL_GRAPH}> {{
+        ?n <{SH}targetClass> ?c ; <{SH}property> ?ps . ?ps <{SH}path> ?p FILTER(isIRI(?p))
+        OPTIONAL {{ ?ps <{SH}datatype> ?dt }} OPTIONAL {{ ?ps <{SH}class> ?cls }}
+        OPTIONAL {{ ?ps <{SH}minCount> ?min }} OPTIONAL {{ ?ps <{SH}maxCount> ?max }}
+        OPTIONAL {{ ?ps <{SH}severity> ?sev }} }} }}""")
+    rows.sort(key=lambda b: not b.get("sev", {}).get("value", "").endswith("Violation"))
+    by: dict[str, dict[str, dict]] = defaultdict(dict)
+    for b in rows:
+        c, p = b["c"]["value"], b["p"]["value"]
+        prop = by[c].setdefault(p, {"p": p})
+        for k in ("dt", "cls"):
+            if k in b and b[k]["type"] == "uri":
+                prop.setdefault("datatype" if k == "dt" else "class", b[k]["value"])
+        for k in ("min", "max"):
+            if k in b and k not in prop and b[k]["value"].isdigit():
+                prop[k] = int(b[k]["value"])
+    return {c: sorted(ps.values(), key=lambda x: x["p"]) for c, ps in by.items()}
 
 
 class Cache:

@@ -9,6 +9,7 @@ import { describeHref } from './nav.ts';
 import { RDF_TYPE, helpPredicate, helpText, iriLabel, humanize, localName, prefixed } from './rdf.ts';
 import { valueNode } from './widgets/basic.ts';
 import { dataStatus } from './widgets/datastatus.ts';
+import { dataModelView } from './widgets/datamodel.ts';
 import { graphView } from './widgets/graph.ts';
 import { widgetFor, type Ctx } from './widgets/index.ts';
 import { indexRoots } from './widgets/parameters.ts';
@@ -169,6 +170,7 @@ export function describePage(r: DescribeResponse, cfg: Config, wantTab: string |
   tabs.push({ key: 'properties', label: 'All properties', count: r.source !== 'missing' ? r.counts.out : undefined, render: () => lazyTriples(r.iri, r.env, 'out') });
   tabs.push({ key: 'incoming', label: 'Incoming links', count: r.source !== 'missing' ? r.counts.in : undefined, render: () => lazyTriples(r.iri, r.env, 'in') });
   tabs.push({ key: 'graph', label: 'Graph', render: () => graphView(r.iri, r.env) });
+  if (r.classes.length) tabs.push({ key: 'model', label: 'Data model', render: () => dataModelView(r.iri, r.env) });
 
   let current = tabs.find((t) => t.key === wantTab) ?? tabs[0];
   const panel = h('div', { class: 'tab-panel', role: 'tabpanel' });

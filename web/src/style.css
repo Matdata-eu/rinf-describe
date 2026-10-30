@@ -577,3 +577,40 @@ ul.changes-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8
 .change.past .change-bar { background: var(--line-strong); }
 .change-today { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--signal-ink); }
 @media (max-width: 560px) { .change { grid-template-columns: 1fr; gap: 4px; } }
+
+/* Data model tab: a UML class diagram from ERA's SHACL shapes. */
+.uml-card { padding: 12px; }
+.uml-head { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; margin: 0 4px 10px; }
+.uml-head p { margin: 0; }
+.uml-tools { display: flex; flex-wrap: wrap; gap: 6px; }
+.uml-key { white-space: nowrap; }
+.uml-key-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--accent-strong); margin-left: 8px; vertical-align: 0; }
+.uml-key-dot.on { background: var(--accent-strong); }
+.uml-key-dot.via { background: var(--accent-soft); border-width: 2px; }
+.uml-canvas { overflow: auto; max-height: 80vh; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); }
+.uml-canvas.fit { max-height: none; }
+.uml-canvas.fit .uml-svg { max-width: 100%; height: auto; }
+.uml-svg { display: block; }
+.uml-rect { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1.2; }
+.uml-rect.focus { stroke: var(--accent-strong); stroke-width: 2.4; }
+.uml-rect.side { stroke-dasharray: 4 3; }
+.uml-rect.side.used { stroke-dasharray: none; stroke: var(--accent-strong); }
+.uml-rule { stroke: var(--border); stroke-width: 1; }
+.uml-name { fill: var(--text); font: 600 13px var(--font); }
+.uml-name.focus { fill: var(--accent-strong); }
+.uml-box a:hover .uml-name, .uml-box a:focus .uml-name { text-decoration: underline; }
+.uml-sub { fill: var(--muted); font: 11px var(--font); }
+.uml-attr { fill: var(--muted); font: 12px var(--mono); }
+.uml-attr-line.used .uml-attr { fill: var(--text); }
+.uml-attr.muted { font-style: italic; }
+.uml-dot { fill: none; stroke: var(--line-strong); stroke-width: 1.2; }
+.uml-dot.on { fill: var(--accent-strong); stroke: var(--accent-strong); }
+.uml-dot.via { fill: var(--accent-soft); stroke: var(--accent-strong); stroke-width: 2; }
+.uml-more { fill: var(--accent-strong); font: 12px var(--font); cursor: pointer; text-decoration: underline; }
+.uml-gen { fill: none; stroke: var(--line-strong); stroke-width: 1.4; }
+.uml-gen-head { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1.2; }
+.uml-assoc { fill: none; stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 3 3; opacity: .7; }
+.uml-assoc.used { stroke: var(--accent-strong); stroke-width: 1.6; stroke-dasharray: none; opacity: 1; }
+.uml-nav-head { fill: none; stroke: var(--line-strong); stroke-width: 1.4; }
+.uml-role { fill: var(--muted); font: 11px var(--mono); paint-order: stroke; stroke: var(--bg); stroke-width: 4px; stroke-linejoin: round; }
+.uml-role.used { fill: var(--text); font-weight: 600; }

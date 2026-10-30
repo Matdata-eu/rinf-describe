@@ -4,6 +4,7 @@ import { formatDate, parseSteps } from './format.ts';
 import { helpPredicate, helpText, indexUnder } from './rdf.ts';
 import { markOf } from './widgets/alongline.ts';
 import { bearing, evenly } from './widgets/connections.ts';
+import { multiplicity, typeName } from './widgets/datamodel.ts';
 import { fileName, fileType } from './widgets/document.ts';
 import { place } from './widgets/lineprofile.ts';
 import { chaptersOf, indexRoots } from './widgets/parameters.ts';
@@ -110,4 +111,14 @@ test('energy supply systems: current, voltage, frequency and map colour', () => 
   assert.equal(supplyOf('not electrified'), null);
   assert.notEqual(supplyColor(supplyOf('AC 25kV-50Hz')), supplyColor(supplyOf('AC 15kV-16.7Hz')));
   assert.notEqual(supplyColor(supplyOf('DC 3kV')), supplyColor(supplyOf('DC 1.5kV')));
+});
+
+test('the data model writes UML multiplicities and attribute types', () => {
+  assert.equal(multiplicity({ min: 0, max: null }), '[0..*]');
+  assert.equal(multiplicity({ min: 1, max: 1 }), '[1]');
+  assert.equal(multiplicity({ min: 0, max: 1 }), '[0..1]');
+  assert.equal(multiplicity({ min: 1, max: null }), '[1..*]');
+  assert.equal(typeName({ p: 'x', min: 0, max: null, type: 'Concept', scheme: `${ERA}concepts/line-category/LineCategories` }), 'LineCategories');
+  assert.equal(typeName({ p: 'x', min: 0, max: 1, type: 'boolean' }), 'boolean');
+  assert.equal(typeName({ p: 'x', min: 0, max: 1 }), 'IRI');
 });

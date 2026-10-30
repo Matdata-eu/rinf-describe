@@ -52,7 +52,10 @@ flowchart LR
    row's `dash:viewer` picks a widget from `web/src/widgets/`. No class name appears in
    the UI code.
 5. All properties, Incoming links and Graph load on demand from `/api/triples` and
-   `/api/graph`, which read the triples from the endpoint too.
+   `/api/graph`, which read the triples from the endpoint too. Data model loads from
+   `/api/model`: the resource's class, its superclasses and their associations from ERA's
+   SHACL shapes graph (`graph/rinf/shacl`, read with the ontology once a day), and which of
+   those properties the resource uses.
 
 The start page's examples (one resource per class with a shape of its own) and the
 sitemaps (every resource of a class with a page, subclasses included) are SPARQL queries

@@ -99,6 +99,24 @@ export interface TriplesResponse {
 
 export interface GraphResponse { iri: string; out: Triple[]; in: Triple[]; types: Record<string, string[]>; labels: Record<string, string> }
 
+/** A property of a class in ERA's SHACL shapes: an attribute (type, maybe a code list) or an
+ * association (class); incoming ones name the class they come from (source). */
+export interface ModelMember {
+  p: string; min: number; max: number | null; label?: string; comment?: string; index?: string[];
+  type?: string; scheme?: string; class?: string; source?: string;
+}
+export interface ModelBox {
+  iri: string; label?: string; comment?: string; depth: number; parents: string[];
+  attributes: ModelMember[]; associations: ModelMember[];
+}
+export interface ModelResponse {
+  iri: string; env: string;
+  model: { focus: string; boxes: ModelBox[]; incoming: ModelMember[]; classes: Record<string, { iri: string; label?: string; comment?: string }> } | null;
+  /** How often the resource uses each property, as subject (out) and object (in), and the
+   * properties given on a common characteristics subset it belongs to (via). */
+  used: { out: Record<string, number>; in: Record<string, number>; via?: Record<string, number> };
+}
+
 export interface EnvInfo { key: string; label: string }
 export interface Config { envs: EnvInfo[]; atlasUrl: string | null }
 export interface SearchHit { iri: string; label: string | null; class: string | null }
@@ -121,6 +139,7 @@ export const api = {
   describe: (uri: string, env: string) => get<DescribeResponse>('describe', { uri, env }),
   triples: (uri: string, env: string, dir: 'out' | 'in', limit = 1000) => get<TriplesResponse>('triples', { uri, env, dir, limit }),
   graph: (uri: string, env: string) => get<GraphResponse>('graph', { uri, env }),
+  model: (uri: string, env: string) => get<ModelResponse>('model', { uri, env }),
   search: (q: string, env: string, signal?: AbortSignal) => get<{ results: SearchHit[] }>('search', { q, env }, signal),
   rows: (uri: string, env: string, key: string, offset: number) =>
     get<{ key: string; offset: number; items: Item[]; total: number; labels: Record<string, string> }>('rows', { uri, env, key, offset }),

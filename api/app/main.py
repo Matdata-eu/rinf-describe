@@ -23,7 +23,7 @@ import httpx
 from fastapi import FastAPI, HTTPException, Query, Response
 from fastapi.middleware.gzip import GZipMiddleware
 
-from . import atlas, live, livepage, ontology, shapes
+from . import atlas, datamodel, live, livepage, ontology, shapes
 from . import rdf as R
 
 log = logging.getLogger("describe")
@@ -205,6 +205,28 @@ def describe(uri: str, env: str | None = None):
             "title": labels.get(iri), "classes": p["classes"], "graph": p["graph"],
             "dataset": _dataset(env, p["graph"]), "pages": pages, "counts": p["counts"], "labels": labels,
             "terms": terms, "chapters": onto.chapters if pages else {}, "timing": p["timing"]}
+
+
+@app.get("/api/model")
+def model(uri: str, env: str | None = None):
+    """The data model of the resource's class from ERA's SHACL shapes (the "Data model" tab), with
+    how often the resource uses each property, out and in."""
+    env, iri = _env(env), _iri(uri)
+    p = _page(env, iri)
+    m = datamodel.model(_ontology(env), p["classes"])
+    if not m:
+        return {"iri": iri, "env": env, "model": None, "used": {"out": {}, "in": {}, "via": {}}}
+
+    def used():
+        # "via": given on a common characteristics subset the resource belongs to.
+        q = (f"SELECT ?d ?p (COUNT(*) AS ?n) WHERE {{ {{ <{iri}> ?p ?o BIND('out' AS ?d) }} UNION "
+             f"{{ ?s ?p <{iri}> BIND('in' AS ?d) }} UNION {{ <{iri}> <http://data.europa.eu/949/belongsTo> ?c . "
+             f"?c a <http://data.europa.eu/949/CommonCharacteristicsSubset> ; ?p ?o BIND('via' AS ?d) }} }} GROUP BY ?d ?p")
+        out: dict[str, dict[str, int]] = {"out": {}, "in": {}, "via": {}}
+        for b in _sparql(env, q):
+            out[b["d"]["value"]][b["p"]["value"]] = int(b["n"]["value"])
+        return out
+    return {"iri": iri, "env": env, "model": m, "used": _cached(("used", env, iri), PAGE_CACHE_SECONDS, used)}
 
 
 @app.get("/api/rows")
