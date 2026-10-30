@@ -20,7 +20,7 @@ flowchart LR
     WEB[describe-web<br/>nginx + TypeScript UI]
   end
   S -- in the image --> API
-  GDB -- pages, triples, labels, ontology,<br/>examples, sitemaps --> API
+  GDB -- pages, triples, labels, ontology,<br/>SHACL shapes, examples, sitemaps --> API
   EXP -- publisher and date --> API
   AAPI -- search by name --> API
   API -- /api --> WEB
@@ -30,7 +30,7 @@ flowchart LR
 | Part | Technology | Role |
 |---|---|---|
 | `shapes/` | SHACL, DASH, `rd:` terms | What each class page shows: groups, tabs, order, and the widget of each row ([shapes.md](shapes.md)). Compiled by the API at start. |
-| `describe-api` | Python, FastAPI, httpx, pyoxigraph | Pages, triples, graph, exports, examples and sitemaps from ERA's SPARQL endpoint; publisher and publication date from ERA's dataset explorer; search through Atlas. Contract: `/api/docs` on a running instance. |
+| `describe-api` | Python, FastAPI, httpx, pyoxigraph | Pages, triples, graph, data model, exports, examples and sitemaps from ERA's SPARQL endpoint; publisher and publication date from ERA's dataset explorer; search through Atlas. Contract: `/api/docs` on a running instance. |
 | `describe-web` | TypeScript, Vite, MapLibre GL JS, vis-network, nginx | The single-page UI; nginx serves the build, proxies `/api/` to the API and writes the search engine settings at start ([seo.md](seo.md)). |
 
 ## A page, end to end
@@ -39,8 +39,10 @@ flowchart LR
 2. The app calls `GET /api/describe`. The API (`api/app/livepage.py`) asks ERA's endpoint
    in three rounds, each run in parallel: the resource's named graph, classes and triple
    counts; the rows of the matching shapes, evaluated inside that graph, a few rows per
-   query; and the labels of every IRI on the page. About 130 ms for a section of line.
-   The page is kept for ten minutes. The shapes that apply are those of the resource's
+   query; and the labels of every IRI on the page. A few hundred milliseconds at most.
+   The page is kept for ten minutes, or longer when its shape says so (`rd:cacheSeconds`:
+   national line and infrastructure manager pages, which sum up thousands of resources,
+   are kept a day). The shapes that apply are those of the resource's
    classes and their superclasses in the ERA ontology, merged into one page (the base
    page of `era:InfrastructureElement` under the class page).
 3. The response carries what the ERA ontology says about the properties on the page
@@ -96,7 +98,8 @@ to the classes with a page; a pasted IRI opens directly.
 | `api/app/live.py` | ERA's SPARQL endpoint (triples, labels) and dataset explorer |
 | `api/app/atlas.py` | RINF Atlas's search API |
 | `api/app/shapes.py`, `livepage.py` | The shapes compiled and merged, and class pages evaluated from them |
-| `api/app/ontology.py` | The ERA ontology: property help, units, RINF index, class hierarchy |
+| `api/app/ontology.py` | The ERA ontology and SHACL shapes: property help, units, RINF index, class hierarchy, each class's properties |
+| `api/app/datamodel.py` | The Data model tab: a class in ERA's model, and the classes and properties a page's rows pass through |
 | `api/app/rdf.py` | Turtle, N-Triples and CSV writers |
 | `web/src/page.ts`, `layout.ts` | The describe page and its layout from the compiled shapes |
 | `web/src/widgets/` | One module per viewer |
