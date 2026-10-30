@@ -1,14 +1,14 @@
 // rd:DataStatusViewer: the parameters a resource marks era:notApplicable or
 // era:notYetAvailable, as two collapsible lists. Computed for every class page.
-import type { ClassPage } from '../api.ts';
+import type { ClassPage, TermInfo } from '../api.ts';
 import { h } from '../dom.ts';
 import { humanize, localName, prefixed } from '../rdf.ts';
 
-function propertyLabel(iri: string, labels: Record<string, string>): string {
-  return labels[iri] ? labels[iri][0].toUpperCase() + labels[iri].slice(1) : humanize(localName(iri));
-}
-
-export function dataStatus(page: ClassPage, labels: Record<string, string>): HTMLElement | null {
+export function dataStatus(page: ClassPage, labels: Record<string, string>, terms: Record<string, TermInfo> = {}): HTMLElement | null {
+  const propertyLabel = (iri: string, labels: Record<string, string>) => {
+    const l = terms[iri]?.label ?? labels[iri];
+    return l ? l[0].toUpperCase() + l.slice(1) : humanize(localName(iri));
+  };
   const ds = page.doc.dataStatus ?? {};
   const lists: [string, string, string[]][] = [
     ['Not applicable', 'The infrastructure manager states these parameters do not apply here.', ds.notApplicable ?? []],
@@ -22,5 +22,5 @@ export function dataStatus(page: ClassPage, labels: Record<string, string>): HTM
       h('p', { class: 'muted small' }, note),
       h('ul', { class: 'chips' }, [...list]
         .sort((a, b) => propertyLabel(a, labels).localeCompare(propertyLabel(b, labels)))
-        .map((iri) => h('li', { class: 'chip', title: prefixed(iri) }, propertyLabel(iri, labels)))))));
+        .map((iri) => h('li', { class: 'chip', title: [terms[iri]?.comment, prefixed(iri)].filter(Boolean).join('\n') }, propertyLabel(iri, labels)))))));
 }

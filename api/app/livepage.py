@@ -18,13 +18,15 @@ from collections import defaultdict
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 
-from .shapes import DescribeSet, DocShape
+from .ontology import Ontology
+from .shapes import WHOLE_VIEWERS, DescribeSet, DocShape
 
 ERA = "http://data.europa.eu/949/"
 XSD = "http://www.w3.org/2001/XMLSchema#"
 RDF_LANG = "http://www.w3.org/1999/02/22-rdf-syntax-ns#langString"
 RDF_TYPE = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
 RDFS_LABEL = "http://www.w3.org/2000/01/rdf-schema#label"
+INFRA = ERA + "InfrastructureElement"
 SKOS_PREF = "http://www.w3.org/2004/02/skos/core#prefLabel"
 STATUS = (("notApplicable", ERA + "notApplicable"), ("notYetAvailable", ERA + "notYetAvailable"))
 
@@ -91,11 +93,18 @@ def _lit(s: str) -> str:
 def branches(iri: str, ds: DocShape) -> list[str]:
     """One UNION branch per value set of the page. ?k says what a binding is for:
     v|row (values), o|row (children via rd:over, ?c), i|row (linked resources of a table),
-    c|row|col (a column on each of them), p|row|name (viewer path), s|name (data status)."""
+    c|row|col (a column on each of them), p|row|name (viewer path), s|name (data status),
+    x|row (every property of the resource, ?c) and y|row|via (every property of a resource
+    ?x it links to with `via` that is not an infrastructure element itself: its contact line
+    system, ETCS...)."""
     s = f"<{iri}>"
     out = []
     for row in ds.rows:
-        if row.over:
+        if row.viewer in WHOLE_VIEWERS:
+            out.append(f"{{ {s} ?c ?v BIND({_lit('x|' + row.key)} AS ?k) }}")
+            out.append(f"{{ {s} ?q ?x FILTER(isIRI(?x)) FILTER NOT EXISTS {{ ?x a <{INFRA}> }} ?x ?c ?v "
+                       f"BIND(CONCAT({_lit('y|' + row.key + '|')}, STR(?q)) AS ?k) }}")
+        elif row.over:
             out.append(f"{{ {s} {row.over} ?c . OPTIONAL {{ ?c {row.path} ?v }} BIND({_lit('o|' + row.key)} AS ?k) }}")
         elif row.columns:
             out.append(f"{{ {s} {row.path} ?v BIND({_lit('i|' + row.key)} AS ?k) }}")
@@ -112,16 +121,27 @@ def branches(iri: str, ds: DocShape) -> list[str]:
 
 
 def query(graph: str, parts: list[str]) -> str:
-    return f"SELECT ?k ?c ?v WHERE {{ GRAPH <{graph}> {{ {' UNION '.join(parts)} }} }}"
+    return f"SELECT ?k ?c ?v ?x WHERE {{ GRAPH <{graph}> {{ {' UNION '.join(parts)} }} }}"
 
 
 def assemble(ds: DocShape, bindings: list[dict]) -> dict:
     """The describe document of one resource from the bindings of its branches."""
     vals: dict[str, list] = {}                            # v|row, i|row, p|row|name, s|name
     kids: dict[str, dict[str, list]] = defaultdict(dict)  # o|row, c|row|col -> child -> values
+    props: dict[str, dict[tuple, list]] = defaultdict(dict)  # x|row, y|row -> (p, via, of) -> values
     for b in bindings:
         k = b["k"]["value"]
         v = term(b.get("v"))
+        if k[0] in "xy":
+            if v is None or b.get("c", {}).get("type") != "uri":
+                continue
+            if k[0] == "x":
+                key, where = k, (b["c"]["value"], None, None)
+            else:
+                row_key, via = k[2:].split("|", 1)
+                key, where = "x|" + row_key, (b["c"]["value"], via, b.get("x", {}).get("value"))
+            _add(props[key].setdefault(where, []), v)
+            continue
         if k[0] in "oc":
             c = b.get("c")
             if not c or c["type"] != "uri":
@@ -134,7 +154,12 @@ def assemble(ds: DocShape, bindings: list[dict]) -> dict:
     rows: dict[str, dict] = {}
     for row in ds.rows:
         e: dict = {}
-        if row.over:
+        if row.viewer in WHOLE_VIEWERS:
+            found = props.get(f"x|{row.key}", {})
+            if found:
+                e["parameters"] = [{"p": p, **({"via": via, "of": of} if via else {}), "values": vs}
+                                   for (p, via, of), vs in sorted(found.items(), key=lambda kv: tuple(x or "" for x in kv[0]))]
+        elif row.over:
             if f"o|{row.key}" in kids:
                 e["aggregate"] = aggregate(row.aggregate or "distinct-count", kids[f"o|{row.key}"])
         elif row.columns:
@@ -193,9 +218,26 @@ def _collect(node, out: set[str]) -> None:
                 _collect(x, out)
 
 
-def page(sparql: Sparql, iri: str, dset: DescribeSet, batch: int = 12, workers: int = 8) -> dict:
+def _indexed(ds: DocShape, doc: dict, onto: Ontology) -> dict:
+    """Keeps the RINF parameters: the properties with a RINF index."""
+    for row in ds.rows:
+        e = doc["rows"].get(row.key)
+        if e and "parameters" in e:
+            e["parameters"] = [x for x in e["parameters"] if "index" in onto.terms.get(x["p"], {})]
+            if not e["parameters"]:
+                del doc["rows"][row.key]
+    return doc
+
+
+def page(sparql: Sparql, iri: str, dset: DescribeSet, batch: int = 12, workers: int = 8,
+         onto: Ontology | None = None) -> dict:
     """Everything /api/describe needs about one resource, read from the endpoint:
-    graph, classes, counts, pages [(shape, doc)], labels and timings in ms."""
+    graph, classes, counts, pages [(shape, doc)], labels and timings in ms. With the
+    ontology, shapes of superclasses apply too (shapes.DescribeSet.for_resource)."""
+    onto = onto or Ontology()
+
+    def shapes_for(classes):
+        return dset.for_resource(classes, onto.ancestors, onto.depth)
     t0 = time.perf_counter()
     timing: dict[str, float] = {}
     with ThreadPoolExecutor(workers) as pool:
@@ -208,18 +250,23 @@ def page(sparql: Sparql, iri: str, dset: DescribeSet, batch: int = 12, workers: 
                 by_graph[b["g"]["value"]].append(b["t"]["value"])
         classes = sorted({c for cs in by_graph.values() for c in cs})
         # The graph that types the resource with a class page, else any graph that types it.
-        graph = next((g for g, cs in sorted(by_graph.items()) if dset.for_classes(cs)), min(by_graph, default=None))
+        graph = next((g for g, cs in sorted(by_graph.items()) if shapes_for(cs)), min(by_graph, default=None))
         timing["head"] = (time.perf_counter() - t0) * 1000
-        shapes = dset.for_classes(by_graph.get(graph, [])) if graph else []
+        shapes = shapes_for(by_graph.get(graph, [])) if graph else []
         jobs = []
         for ds in shapes:
             parts = branches(iri, ds)
+            # The whole-resource branches (x|, y|) return many rows: a query of their own each.
+            alone = [p for p in parts if 'AS ?k' in p and ('"x|' in p or '"y|' in p)]
+            parts = [p for p in parts if p not in alone]
+            for p in alone:
+                jobs.append((ds, pool.submit(sparql, query(graph, [p]))))
             for n in range(0, len(parts), batch):
                 jobs.append((ds, pool.submit(sparql, query(graph, parts[n:n + batch]))))
         found: dict[str, list[dict]] = defaultdict(list)
         for ds, f in jobs:
             found[ds.iri].extend(f.result())
-        pages = [(ds, assemble(ds, found[ds.iri])) for ds in shapes]
+        pages = [(ds, _indexed(ds, assemble(ds, found[ds.iri]), onto)) for ds in shapes]
         timing["rows"] = (time.perf_counter() - t0) * 1000 - timing["head"]
         iris: set[str] = {iri, *classes} | ({graph} if graph else set())
         for ds, doc in pages:

@@ -2,13 +2,14 @@
 #
 # Standard SHACL and DASH, plus the rd: terms of describe.ttl (docs/shapes.md).
 # Groups carry their tab with rd:tab; groups without one sit on the Overview tab.
+# The base page (infrastructure-element.ttl) adds identification, validity, the parts
+# (platforms, signals) and the RINF parameters tab.
 PREFIX rd:    <https://rinf-describe.matdata.eu/ns#>
 PREFIX shape: <https://rinf-describe.matdata.eu/shapes/>
 PREFIX dash:  <http://datashapes.org/dash#>
 PREFIX sh:    <http://www.w3.org/ns/shacl#>
 PREFIX era:   <http://data.europa.eu/949/>
 PREFIX gsp:   <http://www.opengis.net/ont/geosparql#>
-PREFIX time:  <http://www.w3.org/2006/time#>
 PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
 
 # Overview tab
@@ -43,7 +44,7 @@ shape:running-track
 
     # --- Location ---
     sh:property [
-        sh:path [ sh:alternativePath ( era:isPartOf [ sh:inversePath era:hasPart ] ) ] ;
+        sh:path shape:part-of ;
         sh:name "Part of" ; sh:group shape:rt-location ; sh:order 10 ;
     ] ;
     sh:property [
@@ -53,21 +54,6 @@ shape:running-track
     sh:property [
         sh:path era:trackDirection ; sh:name "Normal running direction" ;
         sh:group shape:rt-location ; sh:order 30 ;
-    ] ;
-    sh:property [
-        sh:path era:infrastructureManager ; sh:name "Infrastructure manager" ;
-        sh:group shape:rt-location ; sh:order 40 ;
-    ] ;
-    sh:property [
-        sh:path era:inCountry ; sh:name "Country" ;
-        sh:group shape:rt-location ; sh:order 50 ;
-    ] ;
-    sh:property [
-        sh:name "Validity" ; rd:key "validity" ;
-        sh:group shape:rt-location ; sh:order 60 ;
-        dash:viewer rd:ValidityViewer ;
-        rd:begin ( era:validity time:hasBeginning time:inXSDDate ) ;
-        rd:end ( era:validity time:hasEnd time:inXSDDate ) ;
     ] ;
 
     # --- Track characteristics ---
@@ -130,17 +116,17 @@ shape:running-track
 
     # --- Signalling and radio: ETCS expanded in place ---
     sh:property [
-        sh:path ( _:own-or-subset era:etcs ) ; sh:name "ETCS" ;
+        sh:path ( shape:own-or-subset era:etcs ) ; sh:name "ETCS" ;
         sh:group shape:rt-signalling ; sh:order 10 ;
         dash:viewer dash:DetailsViewer ;
         sh:node shape:rt-etcs ;
     ] ;
     sh:property [
-        sh:path ( _:own-or-subset era:etcs era:etcsLevelType ) ; sh:name "ETCS level" ; rd:key "etcs-level-badge" ; sh:order 2 ;
+        sh:path ( shape:own-or-subset era:etcs era:etcsLevelType ) ; sh:name "ETCS level" ; rd:key "etcs-level-badge" ; sh:order 2 ;
         dash:propertyRole dash:KeyInfoRole ;
     ] ;
     sh:property [
-        sh:path ( _:own-or-subset era:protectionLegacySystem ) ; sh:name "Train protection legacy system" ;
+        sh:path ( shape:own-or-subset era:protectionLegacySystem ) ; sh:name "Train protection legacy system" ;
         sh:group shape:rt-signalling ; sh:order 20 ;
     ] ;
     sh:property [
@@ -318,12 +304,3 @@ shape:rt-train-detection
     a sh:NodeShape ;
     sh:property [ sh:path era:trainDetectionSystemType ; sh:name "Type" ; sh:order 10 ] ;
     sh:property [ sh:path era:trainDetectionSystemSpecificCheck ; sh:name "Specific check" ; sh:order 20 ] .
-
-# A track's own parameters, or those of the common characteristics subsets it belongs to
-# (era:belongsTo, or era:contains from the subset) and the subsets those are part of
-# (era:subsetOf). Infrastructure managers often state ETCS and the legacy train protection
-# on a subset rather than on each track.
-_:own-or-subset sh:zeroOrOnePath (
-    [ sh:alternativePath ( era:belongsTo [ sh:inversePath era:contains ] ) ]
-    [ sh:zeroOrMorePath era:subsetOf ]
-) .

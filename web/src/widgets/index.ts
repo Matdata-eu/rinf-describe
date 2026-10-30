@@ -2,8 +2,12 @@
 // gets the plain viewer that fits its data (as a generic DASH tool would).
 import { DASH, RD } from '../rdf.ts';
 import { AggregateViewer, DetailsViewer, LabelViewer, LrsLocationViewer, URIViewer, ValueTableViewer } from './basic.ts';
+import { DocumentViewer } from './document.ts';
+import { FacilitiesViewer } from './facilities.ts';
 import { MapViewer } from './map.ts';
+import { ParameterIndexViewer } from './parameters.ts';
 import { RouteDiagramViewer } from './route.ts';
+import { ScaleBarViewer } from './scalebar.ts';
 import { StepChartViewer } from './stepchart.ts';
 import { SymbolViewer } from './symbol.ts';
 import type { Ctx, Widget } from './types.ts';
@@ -22,6 +26,10 @@ export const WIDGETS: Record<string, Widget> = {
   [RD + 'StepChartViewer']: StepChartViewer,
   [RD + 'SymbolViewer']: SymbolViewer,
   [RD + 'ValidityViewer']: ValidityViewer,
+  [RD + 'ParameterIndexViewer']: ParameterIndexViewer,
+  [RD + 'DocumentViewer']: DocumentViewer,
+  [RD + 'FacilitiesViewer']: FacilitiesViewer,
+  [RD + 'ScaleBarViewer']: ScaleBarViewer,
 };
 
 export function widgetFor(ctx: Pick<Ctx, 'row' | 'entry'>): Widget {

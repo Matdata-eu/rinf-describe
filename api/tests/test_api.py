@@ -36,6 +36,7 @@ def client():
     saved = live.sparql, live.published, main.atlas
     live.sparql, live.published, main.atlas = sparql, published, SimpleNamespace(search=search)
     main._cache.clear()
+    main.ontologies.clear()
     with TestClient(main.app) as c:
         yield c
     live.sparql, live.published, main.atlas = saved
@@ -54,6 +55,11 @@ def test_section_of_line_page(client):
     assert rows["route"]["params"]["start"][0]["iri"].endswith("/operationalPoint/0a98ad94be")
     assert {i["iri"] for i in rows["track-table"]["items"]} <= set(r["labels"])
     assert r["counts"]["out"] == 14
+    # The ontology's word on the properties: help, units, the RINF parameters tab.
+    assert r["terms"][ERA + "lengthOfSectionOfLine"]["index"] == ["1.1.0.0.0.5"]
+    assert r["chapters"]["1.1.0.0.0"] == "Section of line generic information"
+    assert any(x["p"] == ERA + "solNature" for x in rows["rinf-parameters"]["parameters"])
+    assert "validity" in rows and "parts" not in rows
 
 
 def test_triples_and_graph(client):
@@ -103,7 +109,7 @@ def test_config(client):
 
 def test_search_and_examples(client):
     hits = client.get("/api/search", params={"q": "Michelau", "env": "prod"}).json()["results"]
-    assert hits[0]["iri"] == SOL and hits[0]["class"] == ERA + "SectionOfLine"
+    assert any(h["iri"] == SOL and h["class"] == ERA + "SectionOfLine" for h in hits)
     assert client.get("/api/search", params={"q": SOL, "env": "prod"}).json()["results"] == [
         {"iri": SOL, "label": None, "class": None}]
     ex = client.get("/api/examples", params={"env": "prod"}).json()["results"]
@@ -145,5 +151,7 @@ def test_sitemaps(client, monkeypatch):
     page = client.get("/api/sitemap-1.xml").text
     loc = "https://describe.example.org/describe?uri=http%3A%2F%2Fdata.europa.eu%2F949%2FsectionOfLine%2F14fd15444d&amp;env=prod"
     assert f"<loc>{loc}</loc><lastmod>2026-10-01</lastmod>" in page
-    assert page.count("<url>") == 92  # 10 sections of line and 82 running tracks in the sample
+    # Every infrastructure element of the sample has a page: 10 sections of line, 82 running
+    # tracks and the operational points, platforms, sidings... (the base page).
+    assert page.count("<url>") == 218
     assert client.get("/api/sitemap-2.xml").status_code == 404

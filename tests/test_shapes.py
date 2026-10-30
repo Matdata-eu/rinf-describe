@@ -18,18 +18,24 @@ ROOT, G, ERA, SOL = S.ROOT, S.G, S.ERA, S.SOL
 
 
 def build_docs(sparql, dset) -> dict:
-    """{(resource, shape name): document} for every resource of a class with a shape."""
+    """{(resource, shape name): document} for every resource of a class with a shape, its
+    shapes merged as on its page (the base page under its class page)."""
+    from app import ontology
+    onto = ontology.read(sparql)
+    types: dict[str, list[str]] = {}
+    for ds in dset.shapes:
+        for b in sparql(f"SELECT ?s ?t WHERE {{ ?s a <{ds.class_iri}> ; a ?t }}"):
+            types.setdefault(b["s"]["value"], []).append(b["t"]["value"])
     out = {}
-    with ThreadPoolExecutor(4) as pool:
-        for ds in dset.shapes:
-            iris = [b["s"]["value"] for b in sparql(f"SELECT ?s WHERE {{ ?s a <{ds.class_iri}> }}")]
 
-            def one(iri, ds=ds):
-                parts = livepage.branches(iri, ds)
-                rows = [b for n in range(0, len(parts), 7) for b in sparql(livepage.query(G, parts[n:n + 7]))]
-                return livepage.assemble(ds, rows)
-            for iri, doc in zip(iris, pool.map(one, iris)):
-                out[(iri, ds.iri.rsplit("/", 1)[-1])] = doc
+    def one(iri):
+        (ds,) = dset.for_resource(types[iri], onto.ancestors, onto.depth)
+        parts = livepage.branches(iri, ds)
+        rows = [b for n in range(0, len(parts), 7) for b in sparql(livepage.query(G, parts[n:n + 7]))]
+        return ds, livepage.assemble(ds, rows)
+    with ThreadPoolExecutor(4) as pool:
+        for iri, (ds, doc) in zip(types, pool.map(one, types)):
+            out[(iri, ds.iri.rsplit("/", 1)[-1])] = doc
     return out
 
 
@@ -46,9 +52,39 @@ def docs(sparql):
 
 def test_one_page_per_class(docs):
     dset, by = docs
-    assert {s.class_iri for s in dset.shapes} == {ERA + "SectionOfLine", ERA + "RunningTrack"}
+    assert {ERA + "SectionOfLine", ERA + "RunningTrack", ERA + "InfrastructureElement"} <= {s.class_iri for s in dset.shapes}
     shapes = [k[1] for k in by]
     assert shapes.count("section-of-line") == 10 and shapes.count("running-track") == 82
+
+
+def test_shapes_merge_over_the_base_page(sparql):
+    """A section of line gets its own rows and those of the infrastructure element page, its
+    own winning on the same key; the deactivated parts row is gone."""
+    from app import ontology
+    onto = ontology.read(sparql)
+    dset = shapes.load(ROOT / "shapes")
+    assert ERA + "InfrastructureElement" in onto.ancestors(ERA + "RunningTrack")
+    (ds,) = dset.for_resource([ERA + "SectionOfLine"], onto.ancestors, onto.depth)
+    keys = {r.key for r in ds.rows}
+    assert ds.class_iri == ERA + "SectionOfLine" and ds.label == "Section of line"
+    assert {"route", "track-table", "validity", "country", "rinf-parameters"} <= keys and "parts" not in keys
+    assert next(r for r in ds.rows if r.key == "map").params  # the section's map (with context), not the base one
+    # A class without a shape of its own gets the base page through the ontology.
+    (base,) = dset.for_resource([ERA + "Tunnel"], onto.ancestors, onto.depth)
+    assert base.class_iri == ERA + "InfrastructureElement"
+    assert dset.for_resource([ERA + "Document"], onto.ancestors, onto.depth) == []
+
+
+def test_rinf_parameters(sparql):
+    from app import ontology
+    onto = ontology.read(sparql)
+    p = livepage.page(sparql, SOL, shapes.load(ROOT / "shapes"), onto=onto)
+    ((ds, doc),) = p["pages"]
+    params = {x["p"].rsplit("/", 1)[-1] for x in doc["rows"]["rinf-parameters"]["parameters"]}
+    assert {"lengthOfSectionOfLine", "opStart", "opEnd", "solNature"} <= params
+    assert "canonicalURI" not in params  # no RINF index
+    assert onto.chapters["1.1.0.0.0"] == "Section of line generic information"
+    assert onto.terms[ERA + "maximumPermittedSpeed"]["unit"] == "km/h"
 
 
 def test_section_of_line(docs):
@@ -61,6 +97,7 @@ def test_section_of_line(docs):
     assert rows["map"]["values"][0]["value"].startswith("LINESTRING")
     assert len(rows["map"]["params"]["context"]) == 2   # the two operational points
     assert rows["validity"]["params"]["begin"][0]["value"] == "2025-12-31"
+    assert "parts" not in rows
 
 
 def test_running_track(docs):

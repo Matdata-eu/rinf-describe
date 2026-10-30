@@ -2,8 +2,10 @@
 
 Readable pages for the resources of ERA's Register of Infrastructure (RINF): a section of
 line with its route, map and the parameters of its tracks summed up; a track with its
-gradient profile, contact line, ETCS and route compatibility parameters; and every other
-resource with all its properties, incoming links and a graph.
+gradient profile, contact line, ETCS and route compatibility parameters; every
+infrastructure element with its map, identification and all its RINF parameters by RINF
+index chapter; and every other resource with all its properties, incoming links and a
+graph.
 
 - **Laid out by SHACL DASH shapes.** What a class page shows, in which group, tab and
   order, and which widget draws each value is in [`shapes/`](shapes): standard SHACL and
@@ -23,9 +25,10 @@ first-visit tour, What's new and Share work as in RINF Atlas.
 
 Route diagram, map (OpenStreetMap + OpenRailwayMap), summaries over linked resources
 (ranges, counts per value), railway locations (`km 53+240`), step chart (gradient
-profile), symbols (gauging, track gauge), validity on a time axis, data status (not
-applicable / not yet available), value tables, resources expanded in place, and the
-neighbourhood graph. Each is a `dash:viewer` a shape picks per property.
+profile), symbols (gauging, track gauge, country), validity on a time axis, data status
+(not applicable / not yet available), value tables, resources expanded in place, the
+RINF parameters by index chapter, documents, facilities, scale bars, and the
+neighbourhood graph. Help text, units and RINF indexes come from ERA's ontology. Each is a `dash:viewer` a shape picks per property.
 
 ## Run it
 

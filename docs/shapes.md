@@ -4,6 +4,32 @@ A class page is one `sh:NodeShape` with `sh:targetClass` in [`shapes/`](../shape
 file per class. Nothing about a class is in code: the shapes say which properties a page
 shows, in which group, tab and order, and which widget draws each one.
 
+## Base page and merging
+
+A resource gets every shape whose class it has, asserted or as a superclass in the ERA
+ontology (`rdfs:subClassOf`, read from ERA's endpoint). They are merged into one page:
+rows merge by `rd:key`, the more specific class winning. So
+[`infrastructure-element.ttl`](../shapes/infrastructure-element.ttl) on
+`era:InfrastructureElement` gives every infrastructure class a page (map, identification,
+validity, parts and the RINF parameters tab), and a class shape only adds or overrides
+what it needs. To drop a base row, deactivate its key:
+
+```turtle
+sh:property [ rd:key "parts" ; sh:deactivated true ] .
+```
+
+Shared pieces live in [`common.ttl`](../shapes/common.ttl): named paths
+(`shape:own-or-subset`, `shape:part-of`, `shape:parts`, `shape:validity-begin`,
+`shape:validity-end`) and the document card (`shape:document-card`). A named node with
+path triples (`sh:alternativePath`, `rdf:first`...) is read as that path wherever a path
+goes, so files can share it; a blank node cannot be shared between files.
+
+## Help, units and RINF index from the ontology
+
+Every row whose path ends in an ERA property gets the ontology's definition and RINF
+index as its help text, and the ontology's unit when the row has no `rd:unit`. Write
+`rd:unit` only to override it.
+
 The API compiles this folder at start (the image carries it) and evaluates the shapes of a
 resource's classes on ERA's SPARQL endpoint each time its page is opened
 ([architecture.md](architecture.md)). After an edit, restart the API.
@@ -34,6 +60,8 @@ Namespace `https://rinf-describe.matdata.eu/ns#`, declared in
 | `rd:key` | row | Stable key of the row (default: from `sh:name` or the path); needed when two rows share a name |
 | other `rd:x` with a path | row | A named path the row's widget reads (`rd:start`, `rd:km`, ...) |
 | other `rd:x` with a literal | row | A widget setting (`rd:symbol "track-gauge"`) |
+| the same `rd:x` more than once | row | Numbered `x`, `x.1`, `x.2`... in a stable order (`rd:facility`) |
+| `sh:deactivated true` | row | Hides the row of that `rd:key` from a less specific shape |
 
 ## Widgets
 
@@ -48,8 +76,12 @@ Namespace `https://rinf-describe.matdata.eu/ns#`, declared in
 | `rd:AggregateViewer` | `85–140 km/h`, `1435 (3) · 1668 (3)`, `6` | `sh:path`, `rd:over`, `rd:aggregate` |
 | `rd:LrsLocationViewer` | The value with its position, `km 53+240` | `sh:path`, `rd:km`, `rd:offset` (metres) |
 | `rd:StepChartViewer` | A `value(length),...` profile as a step chart: rising green, falling red | `sh:path`, `rd:unit`, `rd:lengthUnit` |
-| `rd:SymbolViewer` | An illustrative, non-dimensioned symbol per value | `sh:path`, `rd:symbol` (`loading-gauge`, `track-gauge`) |
+| `rd:SymbolViewer` | An illustrative, non-dimensioned symbol per value | `sh:path`, `rd:symbol` (`loading-gauge`, `track-gauge`, `country`) |
 | `rd:ValidityViewer` | Validity period on a time axis with today marked | `rd:begin`, `rd:end` (`era:validity` is an `era:TemporalFeature`, a `time:TemporalDuration`) |
+| `rd:ParameterIndexViewer` | Every RINF parameter of the resource (and of the non-infrastructure resources it links to: contact line system, ETCS...) by RINF index chapter, with a filter; parameters marked not applicable or not yet available too | No path; optional `rd:indexRoot "1.2.1"` (default: the root most parameters share) |
+| `rd:DocumentViewer` | `era:Document` resources as cards: file type, name, open link | `sh:path`, `sh:node shape:document-card` |
+| `rd:FacilitiesViewer` | Yes/no parameters as tiles: yes, no, not applicable, not yet available | `rd:facility`, once per property |
+| `rd:ScaleBarViewer` | A length against reference marks, or a min–max range on a scale | `sh:path` or `rd:min` / `rd:max`; `rd:marks "400 Passenger train; 740 Freight train"`, `rd:scale "4 7"` |
 
 Every class page also gets a **Data status** card (the parameters marked
 `era:notApplicable` or `era:notYetAvailable`), and every resource the **All properties**,
@@ -81,6 +113,8 @@ shape:section-of-line a sh:NodeShape ;
 ## Limits
 
 - One `sh:targetClass` per node shape (a second class needs a second shape).
+- `rd:ParameterIndexViewer` follows one link from the resource (to resources that are not
+  infrastructure elements themselves) and keeps the properties with a RINF index.
 - Paths are evaluated inside the resource's own named graph; labels are the `skos:prefLabel` or `rdfs:label` of each IRI on the endpoint (all graphs, including the SKOS vocabularies).
 - `sh:node` is one level deep, and its columns take plain paths (no `rd:over`).
 - Paths are evaluated on the resource itself; a widget that needs values of a linked resource reaches them with a sequence path (`( era:netReference era:startsAt era:hasLrsCoordinate era:kmPost era:kilometer )`).

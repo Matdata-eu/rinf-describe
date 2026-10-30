@@ -1,4 +1,4 @@
-import type { ClassPage, RowDef, RowEntry } from '../api.ts';
+import type { ClassPage, RowDef, RowEntry, TermInfo } from '../api.ts';
 
 /** What a widget gets to render one row of a page. */
 export interface Ctx {
@@ -7,6 +7,9 @@ export interface Ctx {
   row: RowDef;
   entry: RowEntry;
   page: ClassPage;
+  /** The ontology's word on the properties of the page (labels, definitions, units, RINF index). */
+  terms?: Record<string, TermInfo>;
+  chapters?: Record<string, string>;
 }
 
 export interface Widget {

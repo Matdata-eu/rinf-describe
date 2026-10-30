@@ -1,5 +1,6 @@
-"""ERA's data for the tests: the Luxembourg sample (fixtures/lu-sample.nt.gz) in a
-pyoxigraph store, answering SPARQL the way ERA's endpoint does (JSON result bindings)."""
+"""ERA's data for the tests: the Luxembourg sample (fixtures/lu-sample.nt.gz) and the
+ERA ontology's labels, definitions, units, RINF indexes and classes
+(fixtures/era-ontology.nt.gz) in a pyoxigraph store, answering SPARQL the way ERA's endpoint does (JSON result bindings)."""
 from __future__ import annotations
 
 import gzip
@@ -10,6 +11,8 @@ import pyoxigraph as ox
 
 ROOT = Path(__file__).resolve().parent.parent
 SAMPLE = ROOT / "tests" / "fixtures" / "lu-sample.nt.gz"
+ONTOLOGY = ROOT / "tests" / "fixtures" / "era-ontology.nt.gz"
+ONTOLOGY_GRAPH = "http://data.europa.eu/949/graph/rinf/ontology"
 ERA = "http://data.europa.eu/949/"
 G = ERA + "graph/0082"
 SOL = ERA + "sectionOfLine/14fd15444d"
@@ -18,6 +21,7 @@ SOL = ERA + "sectionOfLine/14fd15444d"
 def store() -> ox.Store:
     st = ox.Store()
     st.load(gzip.decompress(SAMPLE.read_bytes()), format=ox.RdfFormat.N_TRIPLES, to_graph=ox.NamedNode(G))
+    st.load(gzip.decompress(ONTOLOGY.read_bytes()), format=ox.RdfFormat.N_TRIPLES, to_graph=ox.NamedNode(ONTOLOGY_GRAPH))
     return st
 
 

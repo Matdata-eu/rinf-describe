@@ -20,7 +20,7 @@ flowchart LR
     WEB[describe-web<br/>nginx + TypeScript UI]
   end
   S -- in the image --> API
-  GDB -- pages, triples, labels,<br/>examples, sitemaps --> API
+  GDB -- pages, triples, labels, ontology,<br/>examples, sitemaps --> API
   EXP -- publisher and date --> API
   AAPI -- search by name --> API
   API -- /api --> WEB
@@ -40,17 +40,24 @@ flowchart LR
    in three rounds, each run in parallel: the resource's named graph, classes and triple
    counts; the rows of the matching shapes, evaluated inside that graph, a few rows per
    query; and the labels of every IRI on the page. About 130 ms for a section of line.
-   The page is kept for ten minutes.
-3. The app lays the page out from the layout alone (`web/src/layout.ts`): groups become
+   The page is kept for ten minutes. The shapes that apply are those of the resource's
+   classes and their superclasses in the ERA ontology, merged into one page (the base
+   page of `era:InfrastructureElement` under the class page).
+3. The response carries what the ERA ontology says about the properties on the page
+   (`api/app/ontology.py`, read once a day from the endpoint's ontology graph): label,
+   definition, unit and RINF index, and the names of the RINF index chapters. They give
+   every row its help text and unit, and the RINF parameters tab its chapters.
+4. The app lays the page out from the layout alone (`web/src/layout.ts`): groups become
    cards, `rd:tab` groups become tabs, `dash:KeyInfoRole` rows become badges, and each
    row's `dash:viewer` picks a widget from `web/src/widgets/`. No class name appears in
    the UI code.
-4. All properties, Incoming links and Graph load on demand from `/api/triples` and
+5. All properties, Incoming links and Graph load on demand from `/api/triples` and
    `/api/graph`, which read the triples from the endpoint too.
 
-The start page's examples (one resource per class with a shape) and the sitemaps are
-SPARQL queries as well, kept for a day. The search box sends names to Atlas's
-`/api/search`, limited to the classes with a shape; a pasted IRI opens directly.
+The start page's examples (one resource per class with a shape of its own) and the
+sitemaps (every resource of a class with a page, subclasses included) are SPARQL queries
+as well, kept for a day. The search box sends names to Atlas's `/api/search`, limited
+to the classes with a page; a pasted IRI opens directly.
 
 ## Key design choices
 
@@ -82,7 +89,8 @@ SPARQL queries as well, kept for a day. The search box sends names to Atlas's
 | `api/app/main.py` | HTTP API |
 | `api/app/live.py` | ERA's SPARQL endpoint (triples, labels) and dataset explorer |
 | `api/app/atlas.py` | RINF Atlas's search API |
-| `api/app/shapes.py`, `livepage.py` | The shapes compiled, and class pages evaluated from them |
+| `api/app/shapes.py`, `livepage.py` | The shapes compiled and merged, and class pages evaluated from them |
+| `api/app/ontology.py` | The ERA ontology: property help, units, RINF index, class hierarchy |
 | `api/app/rdf.py` | Turtle, N-Triples and CSV writers |
 | `web/src/page.ts`, `layout.ts` | The describe page and its layout from the compiled shapes |
 | `web/src/widgets/` | One module per viewer |

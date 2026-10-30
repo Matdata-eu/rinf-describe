@@ -3,9 +3,9 @@
     pip install -r api/requirements.txt
     python scripts/bench_live.py --env prod
 
-Picks --n sections of line and --n running tracks spread over ERA's data (or takes
---iri), builds each page with the API's own code (no cache), with each --batch
-setting. Prints a Markdown table: median, 90th percentile and maximum in
+Picks --n resources of each class with a shape of its own (or of each --class, e.g.
+--class Tunnel --class Signal) spread over ERA's data, or takes --iri, and builds each page
+with the API's own code (no cache, the ontology read once), with each --batch setting. Prints a Markdown table: median, 90th percentile and maximum in
 milliseconds, and the number of SPARQL queries per page.
 """
 from __future__ import annotations
@@ -17,12 +17,11 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "api"))
-from app import live, livepage, shapes  # noqa: E402
+from app import live, livepage, ontology, shapes  # noqa: E402
 
 ERA = "http://data.europa.eu/949/"
 ENDPOINTS = {"prod": "https://graph.data.era.europa.eu/repositories/rinf-plus",
              "uat": "https://graph.uat.data.test-era.europa.eu/repositories/rinf-plus"}
-CLASSES = {"SectionOfLine": ERA + "SectionOfLine", "RunningTrack": ERA + "RunningTrack"}
 
 
 def sample(endpoint: str, cls: str, n: int) -> list[str]:
@@ -50,19 +49,23 @@ def main() -> None:
     ap.add_argument("--endpoint", help="SPARQL endpoint (default: ERA's for --env)")
     ap.add_argument("--n", type=int, default=10, help="resources per class")
     ap.add_argument("--iri", action="append", default=[], help="these resources instead of a sample")
+    ap.add_argument("--class", dest="classes", action="append", default=[], help="ERA class (local name) to sample")
     ap.add_argument("--batch", default="12", help="rows per query to try, comma separated (e.g. 4,12,100)")
     ap.add_argument("--workers", type=int, default=8)
     args = ap.parse_args()
     endpoint = args.endpoint or ENDPOINTS[args.env]
     dset = shapes.load()
+    sq = lambda q: live.sparql(endpoint, q, 120)  # noqa: E731
+    onto = ontology.read(sq)
+    own = {s.class_iri for s in dset.shapes}
+    classes = [ERA + c for c in args.classes] or sorted(c for c in own if not onto.descendants(c) & own)
 
     if args.iri:
         picks = {"given": args.iri}
     else:
-        picks = {name: sample(endpoint, cls, args.n) for name, cls in CLASSES.items()}
+        picks = {cls.rsplit("/", 1)[-1]: sample(endpoint, cls, args.n) for cls in classes}
     print(f"endpoint {endpoint}; {sum(map(len, picks.values()))} resources", file=sys.stderr)
 
-    sq = lambda q: live.sparql(endpoint, q, 120)  # noqa: E731
     sq("SELECT ?s WHERE { ?s ?p ?o } LIMIT 1")  # open the connection first
     results: list[tuple[str, str, list[float], str]] = []
     for name, iris in picks.items():
@@ -76,7 +79,7 @@ def main() -> None:
             ms, queries, parts = [], [], {"head": [], "rows": [], "labels": []}
             for iri in iris:
                 t = time.perf_counter()
-                p = livepage.page(sq, iri, dset, batch=batch, workers=args.workers)
+                p = livepage.page(sq, iri, dset, batch=batch, workers=args.workers, onto=onto)
                 ms.append((time.perf_counter() - t) * 1000)
                 queries.append(p["queries"])
                 for k in parts:

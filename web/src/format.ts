@@ -14,7 +14,9 @@ export function formatNumber(v: number | string): string {
 export const isOpenEnd = (d: string) => /^9{4}-/.test(d) || d.startsWith('9999');
 
 export function formatDate(d: string): string {
-  const t = Date.parse(d.length === 10 ? d + 'T00:00:00Z' : d);
+  // The calendar date as written: 2025-02-19T00:00:00+01:00 is 19 Feb, whatever the offset.
+  const day = /^\d{4}-\d{2}-\d{2}/.exec(d)?.[0];
+  const t = Date.parse(day ? day + 'T00:00:00Z' : d);
   return Number.isFinite(t) ? DATE.format(t) : d;
 }
 
@@ -67,7 +69,7 @@ export function fillTemplate(tpl: string, fields: Record<string, string | number
 export interface Step { value: number; length: number }
 export function parseSteps(text: string): Step[] {
   const out: Step[] = [];
-  for (const m of text.matchAll(/([+-]?\d+(?:[.,]\d+)?)\s*\(\s*(\d+(?:[.,]\d+)?)\s*\)/g)) {
+  for (const m of text.matchAll(/([+-]?\d+(?:[.,]\d+)?)\s*\(\s*\+?(\d+(?:[.,]\d+)?)\s*\)/g)) {
     const value = Number(m[1].replace(',', '.'));
     const length = Number(m[2].replace(',', '.'));
     if (Number.isFinite(value) && Number.isFinite(length) && length > 0) out.push({ value, length });
