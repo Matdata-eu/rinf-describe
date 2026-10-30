@@ -47,3 +47,42 @@ def test_boxes_attributes_and_associations():
     assert im["class"] == ERA + "OrganisationRole" and im["min"] == 1 and im["max"] is None
     assert [(x["source"], x["p"]) for x in m["incoming"]] == [(ERA + "SectionOfLine", ERA + "track")]
     assert set(m["classes"]) >= {ERA + "Document", ERA + "OrganisationRole", ERA + "SectionOfLine"}
+
+
+def test_path_walks():
+    from app.datamodel import path_walks
+    a, b, c = (f"<{ERA}{x}>" for x in "abc")
+    assert path_walks(f"({a}|^{b})/{c}") == [[(ERA + "a", False), (ERA + "c", False)], [(ERA + "b", True), (ERA + "c", False)]]
+    assert path_walks(f"^({a}/{b})") == [[(ERA + "b", True), (ERA + "a", True)]]
+    assert path_walks(f"{a}?/{b}") == [[(ERA + "b", False)], [(ERA + "a", False), (ERA + "b", False)]]
+
+
+def test_page_model_follows_rows_over_several_hops():
+    from types import SimpleNamespace as N
+
+    from app.datamodel import page_model
+    o = onto()
+    o.parents[ERA + "OperationalPoint"] = {ERA + "InfrastructureElement"}
+    o.model[ERA + "InfrastructureElement"].append({"p": ERA + "hasPart", "class": ERA + "InfrastructureElement"})
+    o.model[ERA + "SectionOfLine"].append({"p": ERA + "opStart", "class": ERA + "OperationalPoint"})
+    o.model[ERA + "SectionOfLine"].append({"p": ERA + "length", "datatype": XSD + "double"})
+
+    def row(key, path, over=None, columns=(), filter_class=None):
+        return N(key=key, name=key, group=None, path=path, over=over, columns=list(columns), params={},
+                 viewer=None, filter_class=filter_class)
+    rows = [
+        row("tracks", f"<{ERA}hasPart>", columns=[N(key="id", name="Track id", path=f"<{ERA}trackId>", over=None, filter_class=None)]),
+        row("sections", f"<{ERA}length>", over=f"^<{ERA}opStart>"),
+        row("odd", f"<{ERA}nowhere>/<{ERA}trackId>"),
+    ]
+    pm = page_model(o, ERA + "OperationalPoint", rows, {})
+    nodes = {n["iri"]: n for n in pm["nodes"]}
+    # hasPart leads to an infrastructure element; one with a track id is a running track.
+    assert nodes[ERA + "RunningTrack"]["narrowedFrom"] == ERA + "InfrastructureElement"
+    assert [m["p"] for m in nodes[ERA + "RunningTrack"]["members"]] == [ERA + "trackId"]
+    assert nodes[ERA + "RunningTrack"]["members"][0]["rows"] == ["tracks › Track id"]
+    assert nodes[ERA + "SectionOfLine"]["side"] == -1 and nodes[ERA + "SectionOfLine"]["hop"] == 1
+    edges = {(e["from"], e["p"], e["to"]) for e in pm["edges"]}
+    assert (ERA + "SectionOfLine", ERA + "opStart", ERA + "OperationalPoint") in edges
+    # A step ERA's shapes do not define ends in an untyped box.
+    assert nodes[f"untyped:{ERA}nowhere"]["untyped"]

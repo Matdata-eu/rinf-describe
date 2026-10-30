@@ -111,7 +111,11 @@ export interface ModelBox {
 }
 export interface ModelResponse {
   iri: string; env: string;
-  model: { focus: string; boxes: ModelBox[]; incoming: ModelMember[]; classes: Record<string, { iri: string; label?: string; comment?: string }> } | null;
+  model: {
+    focus: string; boxes: ModelBox[]; incoming: ModelMember[]; classes: Record<string, { iri: string; label?: string; comment?: string }>;
+    /** What the page shows: the classes its rows' paths pass through, with the properties read on each. */
+    page?: { nodes: unknown[]; edges: unknown[] };
+  } | null;
   /** How often the resource uses each property, as subject (out) and object (in), and the
    * properties given on a common characteristics subset it belongs to (via). */
   used: { out: Record<string, number>; in: Record<string, number>; via?: Record<string, number> };

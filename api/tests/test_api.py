@@ -82,6 +82,8 @@ def test_data_model(client):
     assert any(a["p"] == ERA + "solNature" for a in sol["attributes"])
     assert {a["class"] for a in sol["associations"]} >= {ERA + "OperationalPoint"}
     assert r["used"]["out"][ERA + "solNature"] == 1 and set(r["used"]) == {"out", "in", "via"}
+    page = {n["iri"]: n for n in m["page"]["nodes"]}
+    assert page[ERA + "SectionOfLine"]["hop"] == 0 and page[ERA + "OperationalPoint"]["hop"] == 1
     none = client.get("/api/model", params={"uri": ERA + "nothing/here", "env": "prod"}).json()
     assert none["model"] is None
 

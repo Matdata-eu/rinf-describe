@@ -61,7 +61,7 @@ export function openHelp() {
           [b('All properties'), ': every triple about the resource, grouped by property. The number on the tab is how many there are.'],
           [b('Incoming links'), ': the resources that link to this one, for example the section of line a track belongs to.'],
           [b('Graph'), ': the resource and its neighbours as a network. Click a neighbour to open its page.'],
-          [b('Data model'), ': a UML class diagram of the resource\'s class from ERA\'s SHACL shapes: its superclasses, its attributes with their type and multiplicity, and the classes it links to and from. A filled dot or a solid line is something this resource has.']),
+          [b('Data model'), ': a UML class diagram of the resource\'s class from ERA\'s SHACL shapes: its superclasses, its attributes with their type and multiplicity, and the classes it links to and from. A filled dot or a solid line is something this resource has. "What this page shows" draws every class and property the page reads, however many links away; hover a property to see the rows that show it.']),
         section('Where the data comes from', false,
           ['Every page is read from ERA\'s SPARQL endpoint when you open it, in a fraction of a second, so it shows what ERA publishes today.'],
           ['The search box finds names through RINF Atlas; a pasted IRI opens directly.']),

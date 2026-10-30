@@ -224,6 +224,172 @@ export function drawModel(res: ModelResponse, all: boolean, onAll: () => void): 
   return svg;
 }
 
+/** One class (or an untyped hop) of the page view, with the properties the page reads on it. */
+interface PageNode { iri: string; hop: number; side: number; members: (ModelMember & { rows: string[]; missing?: boolean })[]; untyped?: boolean; narrowedFrom?: string; label?: string; comment?: string }
+interface PageEdge extends ModelMember { from: string; to: string; rows: string[]; missing?: boolean }
+
+const rowsTip = (rows: string[]) => (rows.length ? `\nShown in: ${rows.slice(0, 6).join('; ')}${rows.length > 6 ? ` and ${rows.length - 6} more` : ''}` : '');
+const untypedName = (iri: string) => localName(iri.replace(/^untyped:\^?/, ''));
+
+/** The page view: every class the page's rows pass through, in columns by the number of hops
+ * from the resource's class (links followed forwards on the right, backwards on the left),
+ * each with the properties the page reads on it. Steps ERA's shapes do not define are marked. */
+export function drawPage(res: ModelResponse): SVGSVGElement | null {
+  const pm = res.model?.page;
+  if (!pm?.nodes.length) return null;
+  const env = res.env;
+  const nodes = pm.nodes as PageNode[];
+  const edges = (pm.edges as PageEdge[]).filter((e) => e.from !== e.to);
+  const col = (n: PageNode) => n.side * n.hop;
+  const byIri = new Map(nodes.map((n) => [n.iri, n]));
+  const memberText = (m: PageNode['members'][number]) => (m.missing ? `${localName(m.p)}: ?` : attrText(m));
+
+  // Which end of an edge is the outer one (farther from the resource's class): its label goes there.
+  const outer = (e: PageEdge) => {
+    const a = byIri.get(e.from)!, b = byIri.get(e.to)!;
+    return Math.abs(col(b)) >= Math.abs(col(a)) ? e.to : e.from;
+  };
+  const sideOf = (iri: string, other: string): 'l' | 'r' => {
+    const a = col(byIri.get(iri)!), b = col(byIri.get(other)!);
+    // Two boxes in one column link on the side facing the middle.
+    return b > a || (b === a && a <= 0) ? 'r' : 'l';
+  };
+  const degree = new Map<string, number>();
+  for (const e of edges) for (const [x, y] of [[e.from, e.to], [e.to, e.from]]) {
+    const k = `${x}|${sideOf(x, y)}`;
+    degree.set(k, (degree.get(k) ?? 0) + 1);
+  }
+  const size = (n: PageNode) => {
+    const name = n.untyped ? untypedName(n.iri) : className(n.iri);
+    const w = Math.max(150, textWidth(name, HEAD_FONT) + 2 * PAD, ...n.members.map((m) => textWidth(memberText(m)) + 2 * PAD));
+    const content = HEAD + Math.max(0, n.members.length) * LINE + (n.members.length ? PAD : -6);
+    const ports = Math.max(degree.get(`${n.iri}|l`) ?? 0, degree.get(`${n.iri}|r`) ?? 0) * LINE + 16;
+    return { w: Math.ceil(w), hgt: Math.max(content, ports) };
+  };
+  const sizes = new Map(nodes.map((n) => [n.iri, size(n)]));
+  const cols = [...new Set(nodes.map(col))].sort((a, b) => a - b);
+
+  // Order each column by where its neighbours nearer the middle sit, working outwards.
+  const yOf = new Map<string, number>();
+  const columns = new Map<number, PageNode[]>();
+  const place = (c: number) => {
+    const list = nodes.filter((n) => col(n) === c);
+    const inner = (n: PageNode) => {
+      const ys = edges.flatMap((e) => (e.from === n.iri ? [e.to] : e.to === n.iri ? [e.from] : []))
+        .filter((o) => Math.abs(col(byIri.get(o)!)) < Math.abs(c) && yOf.has(o)).map((o) => yOf.get(o)!);
+      return ys.length ? ys.reduce((a, b) => a + b, 0) / ys.length : 0;
+    };
+    list.sort((a, b) => inner(a) - inner(b) || className(a.iri).localeCompare(className(b.iri)));
+    let y = 0;
+    for (const n of list) { yOf.set(n.iri, y); y += sizes.get(n.iri)!.hgt + SLOT_GAP; }
+    columns.set(c, list);
+  };
+  place(0);
+  for (let d = 1; d <= Math.max(...cols.map(Math.abs)); d++) { if (cols.includes(d)) place(d); if (cols.includes(-d)) place(-d); }
+  const colH = (c: number) => (columns.get(c) ?? []).reduce((t, n) => t + sizes.get(n.iri)!.hgt, 0) + Math.max(0, (columns.get(c)?.length ?? 1) - 1) * SLOT_GAP;
+  const H0 = Math.max(...cols.map(colH));
+
+  // Column x positions: a gap before each outer column wide enough for the labels ending there.
+  const colW = (c: number) => Math.max(...(columns.get(c) ?? []).map((n) => sizes.get(n.iri)!.w));
+  const gapFor = (c: number) => Math.max(40, ...edges.filter((e) => col(byIri.get(outer(e))!) === c).map((e) => textWidth(roleText(e)))) + EDGE_ROOM;
+  const xs = new Map<number, number>();
+  let x = 16;
+  for (const c of cols) {
+    if (c > 0) x += gapFor(c);   // the labels of a column sit on its side facing the middle
+    xs.set(c, x);
+    x += colW(c) + (c < 0 ? gapFor(c) : 0);
+  }
+  const W = Math.ceil(x + 16), H = Math.ceil(H0 + 32);
+  const placed = new Map<string, Placed>();
+  for (const c of cols) {
+    let y = 16 + (H0 - colH(c)) / 2;
+    for (const n of columns.get(c)!) {
+      const sz = sizes.get(n.iri)!;
+      const cx = xs.get(c)! + (colW(c) - sz.w) / 2;
+      placed.set(n.iri, { iri: n.iri, x: cx, y, ...sz });
+      y += sz.hgt + SLOT_GAP;
+    }
+  }
+
+  const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, width: W, height: H, class: 'uml-svg', role: 'img',
+    'aria-label': `What the page of this ${className(res.model!.focus)} shows, as a UML class diagram` }) as SVGSVGElement;
+  svg.append(s('defs', {}, s('marker', { id: 'uml-nav-p', viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 9, markerHeight: 9, orient: 'auto' },
+    s('path', { d: 'M1 1L9 5L1 9', class: 'uml-nav-head' }))));
+  const edgeLayer = s('g', { class: 'uml-edges' });
+  svg.append(edgeLayer);
+
+  // Ports: the edges on each side of a box, spread over its height in the order of their other ends.
+  const ports = new Map<string, string[]>();
+  edges.forEach((e, i) => {
+    for (const [a, b] of [[e.from, e.to], [e.to, e.from]]) {
+      const k = `${a}|${sideOf(a, b)}`;
+      if (!ports.has(k)) ports.set(k, []);
+      ports.get(k)!.push(`${i}|${b}`);
+    }
+  });
+  for (const list of ports.values()) list.sort((p, q) => placed.get(p.split('|').slice(1).join('|'))!.y - placed.get(q.split('|').slice(1).join('|'))!.y);
+  const port = (a: string, b: string, i: number) => {
+    const sd = sideOf(a, b), p = placed.get(a)!, list = ports.get(`${a}|${sd}`)!;
+    const k = list.indexOf(`${i}|${b}`);
+    const y = p.y + 8 + (p.hgt - 16) * ((k + 0.5) / list.length);
+    return { x: sd === 'r' ? p.x + p.w : p.x, y, sd };
+  };
+
+  edges.forEach((e, i) => {
+    const a = port(e.from, e.to, i), b = port(e.to, e.from, i);
+    const out = outer(e), o = out === e.to ? b : a, n = out === e.to ? a : b;
+    const label = roleText(e);
+    const run = Math.min(textWidth(label) + 14, Math.max(0, Math.abs(o.x - n.x) - 30));
+    const kx = o.sd === 'l' ? o.x - run : o.x + run;
+    const mx = (kx + n.x) / 2;
+    // Drawn from the inner end to the outer one, then reversed when the edge points inwards.
+    const fwd = out === e.to;
+    let d = fwd ? `M${n.x} ${n.y}C${mx} ${n.y} ${mx} ${o.y} ${kx} ${o.y}H${o.x}` : `M${o.x} ${o.y}H${kx}C${mx} ${o.y} ${mx} ${n.y} ${n.x} ${n.y}`;
+    if (a.sd === b.sd && Math.abs(a.x - b.x) < 2) {   // same column: a loop out into the gap
+      const bx = a.sd === 'r' ? Math.max(a.x, b.x) + 50 : Math.min(a.x, b.x) - 50;
+      d = `M${a.x} ${a.y}C${bx} ${a.y} ${bx} ${b.y} ${b.x} ${b.y}`;
+    }
+    const path = s('path', { d, class: `uml-assoc used${e.missing ? ' missing' : ''}`, 'marker-end': 'url(#uml-nav-p)' });
+    path.append(s('title', {}, tip(e) + (e.missing ? '\nNot in ERA’s SHACL shapes' : '') + rowsTip(e.rows)));
+    edgeLayer.append(path);
+    const t = s('text', { x: o.sd === 'l' ? o.x - 8 : o.x + 8, y: o.y - 4, class: `uml-role used${e.missing ? ' missing' : ''}`, 'text-anchor': o.sd === 'l' ? 'end' : 'start' }, label);
+    t.append(s('title', {}, tip(e) + rowsTip(e.rows)));
+    svg.append(t);
+  });
+
+  for (const n of nodes) {
+    const p = placed.get(n.iri)!;
+    const g = s('g', { class: 'uml-box' });
+    const focus = n.hop === 0;
+    g.append(s('rect', { x: p.x, y: p.y, width: p.w, height: p.hgt, rx: 4, class: `uml-rect${focus ? ' focus' : ''}${n.untyped ? ' untyped' : ''}` }));
+    if (n.untyped) {
+      g.append(s('text', { x: p.x + p.w / 2, y: p.y + 15, class: 'uml-sub', 'text-anchor': 'middle' }, '«untyped»'));
+      const name = s('text', { x: p.x + p.w / 2, y: p.y + 30, class: 'uml-name untyped', 'text-anchor': 'middle' }, untypedName(n.iri));
+      name.append(s('title', {}, 'ERA’s SHACL shapes give this link no class, so the page’s path cannot be followed further in the model.'));
+      g.append(name);
+    } else {
+      const a = s('a', { href: describeHref(n.iri, env) });
+      a.append(s('title', {}, [n.label, n.comment, prefixed(n.iri), n.narrowedFrom ? `A ${className(n.narrowedFrom)} that is a ${className(n.iri)}` : null].filter(Boolean).join('\n')));
+      a.append(s('text', { x: p.x + p.w / 2, y: p.y + 17, class: `uml-name${focus ? ' focus' : ''}`, 'text-anchor': 'middle' }, className(n.iri)));
+      const sub = n.narrowedFrom ? `a ${className(n.narrowedFrom)}` : n.label && n.label.toLowerCase().replace(/\s+/g, '') !== className(n.iri).toLowerCase() ? n.label : null;
+      if (sub) a.append(s('text', { x: p.x + p.w / 2, y: p.y + 31, class: 'uml-sub', 'text-anchor': 'middle' }, sub.length > 40 ? sub.slice(0, 39) + '…' : sub));
+      g.append(a);
+    }
+    if (n.members.length) {
+      g.append(s('path', { d: `M${p.x} ${p.y + HEAD - 4}H${p.x + p.w}`, class: 'uml-rule' }));
+      let ly = p.y + HEAD - 4 + LINE - 3;
+      for (const m of n.members) {
+        const line = s('text', { x: p.x + PAD, y: ly, class: `uml-attr page${m.missing ? ' missing' : ''}` }, memberText(m));
+        line.append(s('title', {}, tip(m) + (m.missing ? `\nNot in ERA’s SHACL shapes for ${className(n.iri)}` : '') + rowsTip(m.rows)));
+        g.append(line);
+        ly += LINE;
+      }
+    }
+    svg.append(g);
+  }
+  return svg;
+}
+
 /** The SVG with its computed colours and fonts written in, for a download that looks the same. */
 function standalone(svg: SVGSVGElement): string {
   const clone = svg.cloneNode(true) as SVGSVGElement;
@@ -247,35 +413,66 @@ export function dataModelView(iri: string, env: string): HTMLElement {
   api.model(iri, env).then((res) => {
     if (disposed) return;
     if (!res.model) { note.textContent = 'ERA’s SHACL shapes say nothing about the classes of this resource.'; return; }
-    // Fitted on a wide screen; on a phone the diagram keeps its size and scrolls.
-    let all = false, fit = window.innerWidth >= 700;
+    // Fitted when that keeps the text legible; otherwise the diagram keeps its size and scrolls.
+    const hasPage = !!res.model.page?.nodes.length;
+    let all = false, fit = window.innerWidth >= 700, view: 'page' | 'class' = hasPage ? 'page' : 'class';
+    let chosenFit: boolean | null = null;
     const canvas = h('div', { class: `uml-canvas${fit ? ' fit' : ''}` });
+    const pageBtn = h('button', { class: 'seg-btn', type: 'button' }, 'What this page shows');
+    const classBtn = h('button', { class: 'seg-btn', type: 'button' }, `${className(res.model.focus)} in ERA’s model`);
     const allBtn = h('button', { class: 'btn ghost small', type: 'button', 'aria-pressed': 'false' }, 'Show all attributes');
     const fitBtn = h('button', { class: 'btn ghost small', type: 'button', 'aria-pressed': String(fit) }, 'Fit to width');
     const dl = h('button', { class: 'btn ghost small', type: 'button' }, 'Download SVG');
+    const counts = res.model.boxes.reduce((t, b) => t + b.attributes.length + b.associations.length, 0);
+    const pageNodes = (res.model.page?.nodes ?? []) as PageNode[];
+    const missing = pageNodes.reduce((t, n) => t + n.members.filter((m) => m.missing).length + (n.untyped ? 1 : 0), 0);
+    const about = h('p', { class: 'muted small' });
     const draw = () => {
-      canvas.replaceChildren(drawModel(res, all, () => { all = true; draw(); }) ?? '');
+      const svg = (view === 'page' ? drawPage(res) : drawModel(res, all, () => { all = true; draw(); }));
+      canvas.replaceChildren(svg ?? '');
+      // Unless chosen, a diagram is fitted to the width when that keeps its text legible.
+      if (chosenFit === null && svg) {
+        fit = Number(svg.getAttribute('width')) <= Math.max(canvas.clientWidth, 320) * 1.35;
+        canvas.classList.toggle('fit', fit);
+        fitBtn.setAttribute('aria-pressed', String(fit));
+      }
+      // Scrolled to the resource's class when the diagram is larger than its frame.
+      const focus = svg?.querySelector('.uml-rect.focus');
+      if (focus && !fit) {
+        const fx = Number(focus.getAttribute('x')), fy = Number(focus.getAttribute('y'));
+        canvas.scrollLeft = Math.max(0, fx + Number(focus.getAttribute('width')) / 2 - canvas.clientWidth / 2);
+        canvas.scrollTop = Math.max(0, fy + Number(focus.getAttribute('height')) / 2 - canvas.clientHeight / 2);
+      }
       allBtn.textContent = all ? 'Filled and mandatory only' : 'Show all attributes';
       allBtn.setAttribute('aria-pressed', String(all));
+      allBtn.hidden = view === 'page';
+      pageBtn.setAttribute('aria-pressed', String(view === 'page'));
+      classBtn.setAttribute('aria-pressed', String(view === 'class'));
+      about.replaceChildren(...(view === 'page'
+        ? [`Every class and property this page reads, ${pageNodes.length - 1} classes away from ${className(res.model!.focus)} at most ${Math.max(...pageNodes.map((n) => n.hop))} links. Links followed forwards are on the right, backwards on the left. Hover a property for the rows that show it.`,
+          missing ? h('span', { class: 'uml-warn' }, ` ${missing} step${missing === 1 ? '' : 's'} not in ERA’s SHACL shapes, marked with ?.`) : '']
+        : [`${className(res.model!.focus)} and its superclasses in ERA’s SHACL shapes: ${counts} properties. `,
+          h('span', { class: 'uml-key' }, h('span', { class: 'uml-key-dot on' }), ' filled on this resource ',
+            Object.keys(res.used.via ?? {}).length ? [h('span', { class: 'uml-key-dot via' }), ' on its common characteristics subset '] : null,
+            h('span', { class: 'uml-key-dot' }), ' not filled')]));
     };
+    pageBtn.addEventListener('click', () => { view = 'page'; draw(); });
+    classBtn.addEventListener('click', () => { view = 'class'; draw(); });
     allBtn.addEventListener('click', () => { all = !all; draw(); });
-    fitBtn.addEventListener('click', () => { fit = !fit; canvas.classList.toggle('fit', fit); fitBtn.setAttribute('aria-pressed', String(fit)); });
+    fitBtn.addEventListener('click', () => { fit = !fit; chosenFit = fit; canvas.classList.toggle('fit', fit); fitBtn.setAttribute('aria-pressed', String(fit)); });
     dl.addEventListener('click', () => {
       const svg = canvas.querySelector('svg');
       if (!svg) return;
       const url = URL.createObjectURL(new Blob([standalone(svg as SVGSVGElement)], { type: 'image/svg+xml' }));
-      const a = h('a', { href: url, download: `${localName(res.model!.focus)}-data-model.svg` });
+      const a = h('a', { href: url, download: `${localName(res.model!.focus)}-${view === 'page' ? 'page' : 'data'}-model.svg` });
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     });
-    const counts = res.model.boxes.reduce((t, b) => t + b.attributes.length + b.associations.length, 0);
     note.replaceWith(
       h('div', { class: 'uml-head' },
-        h('p', { class: 'muted small' }, `${className(res.model.focus)} and its superclasses in ERA’s SHACL shapes: ${counts} properties. `,
-          h('span', { class: 'uml-key' }, h('span', { class: 'uml-key-dot on' }), ' filled on this resource ',
-            Object.keys(res.used.via ?? {}).length ? [h('span', { class: 'uml-key-dot via' }), ' on its common characteristics subset '] : null,
-            h('span', { class: 'uml-key-dot' }), ' not filled')),
-        h('div', { class: 'uml-tools' }, allBtn, fitBtn, dl)));
+        hasPage ? h('div', { class: 'seg', role: 'group', 'aria-label': 'Diagram' }, pageBtn, classBtn) : null,
+        h('div', { class: 'uml-tools' }, allBtn, fitBtn, dl)),
+      about);
     wrap.append(canvas);
     draw();
   }).catch((e: Error) => { if (!disposed) note.textContent = `The data model could not be loaded: ${e.message}`; });
