@@ -19,7 +19,15 @@
       "Reference border points show the two countries and the operational points on either side, on the map too.",
       "Kilometric posts, hot axle box detectors, bridges, TEN-T classifications, documents and linear elements (with the elements they connect to) have pages of their own.",
       "Every signal, switch, level crossing and other point asset shows the national line and km it is at.",
-      "A Data model tab draws UML class diagrams from ERA's own SHACL shapes. \"What this page shows\" follows every value on the page back through the model, however many links away, and names the rows that show each property; the class view lists all attributes of the class and its superclasses and marks what this resource has. Both download as SVG."
+      "A Data model tab draws UML class diagrams from ERA's own SHACL shapes. \"What this page shows\" follows every value on the page back through the model, however many links away, and names the rows that show each property; the class view lists all attributes of the class and its superclasses and marks what this resource has.",
+      "RINF code lists have pages: a concept scheme shows its concepts as a tree with a filter and the ERA properties that use it; a concept shows its branch of the scheme, marked, with its broader, narrower, related and matching concepts.",
+      "Linear elements show their net relations two steps out as a graph, placed as on the map, with arrows the way a train can pass, and what is positioned on them along their length and by type.",
+      "Kilometric posts show their linear element and offset, and their place on the line between its operational points and the next posts.",
+      "Reference border points list the operational points that name them or are placed on them, their primary locations and the sections of line at the border.",
+      "An RDF tab shows a resource's triples as Turtle, RDF/XML, JSON-LD or N-Triples, highlighted, with every IRI linking to its page; copy or download them. The exports add RDF/XML and JSON-LD.",
+      "The data model diagram zooms (Ctrl+scroll, pinch or buttons), pans by dragging and opens full screen. A content tree shows either view as a tree whose links open into the class they point at, and the diagram exports as SVG, PlantUML or Mermaid.",
+      "National line profiles add lanes for class B, gauging profile, axle load and gradient (the steepest gradient per km).",
+      "Infrastructure managers' shares are by track-km of their sections of line rather than by number of tracks, and add track gauge and gauging profile. Infrabel's electrified share now reads 91% of line track-km."
     ],
     "improved": [
       "Every page is now built on the spot from ERA's SPARQL endpoint, so it always shows what ERA publishes today. The notes about the describe index are gone.",
@@ -31,7 +39,15 @@
       "Documents without a name are named after their document id instead of 'download'.",
       "Pages of national lines are kept for a day, since they sum up all their sections and tracks.",
       "A resource published by several providers opens in the provider whose code it carries.",
-      "Map layers can hold points as well as lines: click a dot to open it."
+      "Map layers can hold points as well as lines: click a dot to open it.",
+      "Operational point connections point each spoke to the far end of its section; a spoke opens its section, and a table lists the sections.",
+      "A section of line's route diagram runs from hub to hub.",
+      "An open-ended validity period puts today in the middle of its time axis.",
+      "Incoming links show \"Linked from\" before the property.",
+      "A resource typed in several graphs is read from the graph that says most about it after the provider's own, so SKOS concepts copied into provider graphs show in full."
+    ],
+    "fixed": [
+      "The tab bar no longer shows a small vertical scroll bar."
     ]
   },
   {
