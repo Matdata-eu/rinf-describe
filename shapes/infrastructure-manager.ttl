@@ -16,6 +16,10 @@ shape:im-figures a sh:PropertyGroup ; rdfs:label "Key figures" ; sh:order 10 .
 shape:im-identification a sh:PropertyGroup ; rdfs:label "Organisation" ; sh:order 20 .
 
 shape:managed sh:inversePath era:infrastructureManager .
+# The tracks of its sections of line (not those of its operational points), and the length
+# of the section a track runs along.
+shape:line-tracks rdf:first shape:managed ; rdf:rest ( shape:parts ) .
+shape:track-km rdf:first shape:part-of ; rdf:rest ( era:lengthOfSectionOfLine ) .
 
 shape:infrastructure-manager
     a sh:NodeShape ;
@@ -46,7 +50,7 @@ shape:infrastructure-manager
         sh:name "Key figures" ; rd:key "figures" ;
         sh:group shape:im-figures ; sh:order 10 ;
         dash:viewer rd:KeyFiguresViewer ;
-        rd:figures "im-ops im-sections im-km im-tracks im-energy im-etcs" ;
+        rd:figures "im-ops im-sections im-km im-tracks im-energy im-etcs im-gauge im-gauging" ;
     ] ;
     sh:property [
         # Operational points do not name their manager: those at the ends of its sections.
@@ -66,11 +70,25 @@ shape:infrastructure-manager
         sh:path rdf:type ; sh:name "Running tracks" ; rd:key "im-tracks" ; rd:hidden "true" ;
         rd:over shape:managed ; rd:class era:RunningTrack ; rd:aggregate "count" ; rd:scope "all" ;
     ] ;
+    # Shares over the tracks of its sections of line, by track-km: station tracks often carry
+    # no contact line or ETCS data, and a 100 m siding track would count as much as 20 km of line.
     sh:property [
-        sh:path ( era:contactLineSystem era:energySupplySystem ) ; sh:name "Energy supply of the tracks" ; rd:key "im-energy" ; rd:hidden "true" ;
-        rd:over shape:managed ; rd:class era:RunningTrack ; rd:aggregate "distinct-count" ; rd:scope "all" ;
+        sh:path ( era:contactLineSystem era:energySupplySystem ) ; sh:name "Energy supply of the line tracks" ; rd:key "im-energy" ; rd:hidden "true" ;
+        rd:over shape:line-tracks ; rd:class era:RunningTrack ; rd:aggregate "distinct-count" ; rd:scope "all" ;
+        rd:weight shape:track-km ; rd:weightUnit "track-km" ;
     ] ;
     sh:property [
-        sh:path ( shape:own-or-subset era:etcs era:etcsLevelType ) ; sh:name "ETCS level of the tracks" ; rd:key "im-etcs" ; rd:hidden "true" ;
-        rd:over shape:managed ; rd:class era:RunningTrack ; rd:aggregate "distinct-count" ; rd:scope "all" ;
+        sh:path ( shape:own-or-subset era:etcs era:etcsLevelType ) ; sh:name "ETCS level of the line tracks" ; rd:key "im-etcs" ; rd:hidden "true" ;
+        rd:over shape:line-tracks ; rd:class era:RunningTrack ; rd:aggregate "distinct-count" ; rd:scope "all" ;
+        rd:weight shape:track-km ; rd:weightUnit "track-km" ;
+    ] ;
+    sh:property [
+        sh:path era:gaugingProfile ; sh:name "Gauging profile of the line tracks" ; rd:key "im-gauging" ; rd:hidden "true" ;
+        rd:over shape:line-tracks ; rd:class era:RunningTrack ; rd:aggregate "distinct-count" ; rd:scope "all" ;
+        rd:weight shape:track-km ; rd:weightUnit "track-km" ;
+    ] ;
+    sh:property [
+        sh:path era:wheelSetGauge ; sh:name "Track gauge of the line tracks" ; rd:key "im-gauge" ; rd:hidden "true" ;
+        rd:over shape:line-tracks ; rd:class era:RunningTrack ; rd:aggregate "distinct-count" ; rd:scope "all" ;
+        rd:weight shape:track-km ; rd:weightUnit "track-km" ;
     ] .

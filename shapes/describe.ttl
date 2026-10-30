@@ -153,6 +153,15 @@ rd:table a owl:DatatypeProperty ;
 rd:lanes a owl:DatatypeProperty ;
     rdfs:label "lanes" ;
     rdfs:comment "Columns of the rd:table row drawn as lanes by rd:LineProfileViewer." .
+rd:profiles a owl:DatatypeProperty ;
+    rdfs:label "profiles" ;
+    rdfs:comment "Lanes of rd:LineProfileViewer holding gradient profiles (gradient(km) per change), drawn as the steepest gradient along the km." .
+rd:weight a owl:ObjectProperty ;
+    rdfs:label "weight" ;
+    rdfs:comment "Path from each resource reached by rd:over to the number it counts for in a distinct count (track-km), so shares are by weight." .
+rd:weightUnit a owl:DatatypeProperty ;
+    rdfs:label "weight unit" ;
+    rdfs:comment "Unit of rd:weight, shown with the shares (track-km)." .
 rd:markers a owl:DatatypeProperty ;
     rdfs:label "markers" ;
     rdfs:comment "Keys of the rows whose resources rd:AlongLineViewer places along the line." .

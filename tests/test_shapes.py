@@ -201,3 +201,14 @@ def test_shared_systems_and_primary_location(docs):
     assert by[(ERA + "trainDetectionSystem/ec667c8d88", "train-detection-system")]["rows"]["use-table"]["items"]
     pl = [d for (i, s), d in by.items() if s == "primary-location" and d["rows"].get("linked")]
     assert pl and all(d["rows"]["code"]["values"] for d in pl)
+
+
+def test_weighted_shares():
+    """rd:weight: a distinct count also sums each value's weight (track-km), one weight per
+    child however many ways the path reaches it."""
+    per_child = {"t1": [{"iri": "e:DC"}], "t2": [{"iri": "e:DC"}], "t3": [{"iri": "e:AC"}], "t4": []}
+    a = livepage.aggregate("distinct-count", per_child, {"t1": 1.0, "t2": 2.0, "t3": 10.0, "t4": 0.5})
+    assert [(v["iri"], v["count"], v["weight"]) for v in a["values"]] == [("e:AC", 1, 10.0), ("e:DC", 2, 3.0)]
+    assert a["weight"] == 13.5 and a["withoutValueWeight"] == 0.5 and a["withoutValue"] == 1
+    # Without weights, as before: by count.
+    assert [v["iri"] for v in livepage.aggregate("distinct-count", per_child)["values"]] == ["e:DC", "e:AC"]

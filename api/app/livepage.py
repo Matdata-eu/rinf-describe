@@ -64,8 +64,10 @@ def _add(lst: list, v: dict | None) -> None:
         lst.append(v)
 
 
-def aggregate(kind: str, per_child: dict[str, list]) -> dict:
-    """Sum up the values of a row over child resources ({child: [values]})."""
+def aggregate(kind: str, per_child: dict[str, list], weights: dict[str, float] | None = None) -> dict:
+    """Sum up the values of a row over child resources ({child: [values]}). With weights
+    ({child: number}, rd:weight) a distinct count also gives each value's share of the total
+    weight: track-km rather than tracks."""
     n = len(per_child)
     if kind == "count":
         return {"count": n}
@@ -81,13 +83,21 @@ def aggregate(kind: str, per_child: dict[str, list]) -> dict:
         lo, hi = min(nums), max(nums)
         return {"min": int(lo) if lo.is_integer() else lo, "max": int(hi) if hi.is_integer() else hi,
                 "children": n, "withValue": with_value}
-    counts: dict[str, tuple[dict, int]] = {}
-    for vs in per_child.values():
+    counts: dict[str, list] = {}  # value -> [value, children with it, their weight]
+    for c, vs in per_child.items():
         for v in vs:
-            k = json.dumps(v, sort_keys=True)
-            counts[k] = (v, counts.get(k, (v, 0))[1] + 1)
-    values = sorted(({**v, "count": c} for v, c in counts.values()), key=lambda d: (-d["count"], json.dumps(d)))
-    return {"values": values, "children": n, "withoutValue": sum(1 for vs in per_child.values() if not vs)}
+            e = counts.setdefault(json.dumps(v, sort_keys=True), [v, 0, 0.0])
+            e[1] += 1
+            e[2] += (weights or {}).get(c, 0.0)
+    out: dict = {"children": n, "withoutValue": sum(1 for vs in per_child.values() if not vs)}
+    if weights is None:
+        out["values"] = sorted(({**v, "count": k} for v, k, _ in counts.values()), key=lambda d: (-d["count"], json.dumps(d)))
+        return out
+    out["values"] = sorted(({**v, "count": k, "weight": round(w, 3)} for v, k, w in counts.values()),
+                           key=lambda d: (-d["weight"], -d["count"], json.dumps(d)))
+    out["weight"] = round(sum(weights.get(c, 0.0) for c in per_child), 3)
+    out["withoutValueWeight"] = round(sum(weights.get(c, 0.0) for c, vs in per_child.items() if not vs), 3)
+    return out
 
 
 def _lit(s: str) -> str:
@@ -121,6 +131,8 @@ def branches(iri: str, ds: DocShape, rows=None, status: bool = True, offset: int
                        f"BIND(CONCAT({_lit('y|' + row.key + '|')}, STR(?q)) AS ?k) }}")
         elif row.over:
             out.append(f"{{ {s} {row.over} ?c .{cls} OPTIONAL {{ ?c {row.path} ?v }} BIND({_lit('o|' + row.key)} AS ?k) }}")
+            if row.weight:
+                out.append(f"{{ {s} {row.over} ?c .{cls} ?c {row.weight} ?v BIND({_lit('w|' + row.key)} AS ?k) }}")
         elif row.columns:
             out.append(f"{{ {_linked(s, row, '?v', offset)} BIND({_lit('i|' + row.key)} AS ?k) }}")
             for col in row.columns:
@@ -157,6 +169,7 @@ def assemble(ds: DocShape, bindings: list[dict]) -> dict:
     kids: dict[str, dict[str, list]] = defaultdict(dict)  # o|row, c|row|col -> child -> values
     props: dict[str, dict[tuple, list]] = defaultdict(dict)  # x|row, y|row -> (p, via, of) -> values
     deep: dict[str, dict[str, dict[str, list]]] = defaultdict(lambda: defaultdict(dict))  # a|row|col -> item -> child -> values
+    weights: dict[str, dict[str, float]] = defaultdict(dict)  # w|row -> child -> weight
     for b in bindings:
         k = b["k"]["value"]
         v = term(b.get("v"))
@@ -177,6 +190,12 @@ def assemble(ds: DocShape, bindings: list[dict]) -> dict:
                 key, where = "x|" + row_key, (b["c"]["value"], via, b.get("x", {}).get("value"))
             _add(props[key].setdefault(where, []), v)
             continue
+        if k[0] == "w":
+            c = b.get("c")
+            x = _num(v.get("value")) if c and c["type"] == "uri" and v else None
+            if x is not None:  # one weight per child, however many ways the path reaches it
+                weights[k].setdefault(c["value"], x)
+            continue
         if k[0] in "oc":
             c = b.get("c")
             if not c or c["type"] != "uri":
@@ -196,7 +215,8 @@ def assemble(ds: DocShape, bindings: list[dict]) -> dict:
                                    for (p, via, of), vs in sorted(found.items(), key=lambda kv: tuple(x or "" for x in kv[0]))]
         elif row.over:
             if f"o|{row.key}" in kids:
-                e["aggregate"] = aggregate(row.aggregate or "distinct-count", kids[f"o|{row.key}"])
+                e["aggregate"] = aggregate(row.aggregate or "distinct-count", kids[f"o|{row.key}"],
+                                           weights.get(f"w|{row.key}", {}) if row.weight else None)
         elif row.columns:
             linked = [v["iri"] for v in vals.get(f"i|{row.key}", []) if "iri" in v]
             if linked:

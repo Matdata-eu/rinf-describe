@@ -123,12 +123,16 @@ function triplesTable(res: TriplesResponse, env: string): Node {
   const term = (t: Triple) => res.dir === 'in'
     ? valueNode({ iri: t.s }, env, res.labels)
     : valueNode(t.o_iri ? { iri: t.o } : { value: t.o, datatype: t.datatype ?? undefined, lang: t.lang ?? undefined }, env, res.labels);
+  const prop = (p: string) => h('th', { scope: 'row' }, h('span', { class: 'prop' }, propertyName(p, res.labels)), h('span', { class: 'mono small muted curie' }, prefixed(p)));
+  const values = (p: string) => h('td', null, h('ul', { class: 'plain' }, by.get(p)!.map((t) => h('li', null, term(t)))));
+  // Incoming links read as triples: the resources linking here, then the property.
+  const incoming = res.dir === 'in';
   return h('div', { class: 'table-wrap' },
-    h('table', { class: 'triples' },
-      h('thead', null, h('tr', null, h('th', { scope: 'col' }, 'Property'), h('th', { scope: 'col' }, res.dir === 'in' ? 'Linked from' : 'Value'))),
-      h('tbody', null, order.map((p) => h('tr', null,
-        h('th', { scope: 'row' }, h('span', { class: 'prop' }, propertyName(p, res.labels)), h('span', { class: 'mono small muted curie' }, prefixed(p))),
-        h('td', null, h('ul', { class: 'plain' }, by.get(p)!.map((t) => h('li', null, term(t))))))))));
+    h('table', { class: `triples${incoming ? ' incoming' : ''}` },
+      h('thead', null, h('tr', null, incoming
+        ? [h('th', { scope: 'col' }, 'Linked from'), h('th', { scope: 'col' }, 'Property')]
+        : [h('th', { scope: 'col' }, 'Property'), h('th', { scope: 'col' }, 'Value')])),
+      h('tbody', null, order.map((p) => h('tr', null, incoming ? [values(p), prop(p)] : [prop(p), values(p)])))));
 }
 
 function lazyTriples(iri: string, env: string, dir: 'out' | 'in'): Node {
