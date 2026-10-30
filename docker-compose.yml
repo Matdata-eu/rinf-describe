@@ -25,12 +25,16 @@ services:
   describe-api:
     image: ${DESCRIBE_IMAGE:-ghcr.io/matdata-eu/rinf-describe}-api:${DESCRIBE_VERSION:-latest}
     build:
-      context: ./api
+      # The repository: the image carries shapes/ for the pages it builds live.
+      context: .
+      dockerfile: api/Dockerfile
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://describe_ro:${DESCRIBE_DB_PASSWORD:-describe}@${ATLAS_DB_HOST:-db}:5432/${ATLAS_DB_NAME:-atlas}
       DESCRIBE_ENVS: ${DESCRIBE_ENVS:-prod=PROD,uat=UAT}
       DESCRIBE_LIVE: ${DESCRIBE_LIVE:-1}
+      DESCRIBE_LIVE_BATCH: ${DESCRIBE_LIVE_BATCH:-12}
+      DESCRIBE_LIVE_WORKERS: ${DESCRIBE_LIVE_WORKERS:-8}
       DESCRIBE_ATLAS_URL: ${DESCRIBE_ATLAS_URL-https://rinf-atlas.matdata.eu}
       # With a public address the API serves the sitemaps of the describe pages (docs/seo.md).
       DESCRIBE_PUBLIC_URL: ${DESCRIBE_PUBLIC_URL:-}

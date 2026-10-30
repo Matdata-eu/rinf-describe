@@ -1,0 +1,236 @@
+"""Class pages built live from a SPARQL endpoint, for resources the describe index lacks.
+
+The describe shapes are evaluated on the resource the way RINF Atlas's describe indexer
+evaluates them on its mirror (worker/atlas/describe.py, build_docs), so a live page
+holds the same document as an indexed one: each row's values, summaries over child
+resources (rd:over + rd:aggregate), linked resources as tables (sh:node), the rd: paths
+of the viewers and the data status. Paths are evaluated inside the resource's own named
+graph, like the indexer does.
+
+A page takes three rounds of queries, each run in parallel:
+  1. the resource's named graph and classes, and its triple counts;
+  2. the rows of its shapes, a few rows per query (UNION of one branch per row);
+  3. the labels of every IRI on the page.
+"""
+from __future__ import annotations
+
+import json
+import time
+from collections import defaultdict
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+
+from .shapes import DescribeSet, DocShape
+
+ERA = "http://data.europa.eu/949/"
+XSD = "http://www.w3.org/2001/XMLSchema#"
+RDF_LANG = "http://www.w3.org/1999/02/22-rdf-syntax-ns#langString"
+RDF_TYPE = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+RDFS_LABEL = "http://www.w3.org/2000/01/rdf-schema#label"
+SKOS_PREF = "http://www.w3.org/2004/02/skos/core#prefLabel"
+STATUS = (("notApplicable", ERA + "notApplicable"), ("notYetAvailable", ERA + "notYetAvailable"))
+
+Sparql = Callable[[str], list[dict]]  # query -> SPARQL JSON result bindings
+
+
+def term(b: dict | None) -> dict | None:
+    """A SPARQL JSON binding as a value of a describe document (None for blank nodes)."""
+    if not b:
+        return None
+    if b["type"] == "uri":
+        return {"iri": b["value"]}
+    if b["type"] not in ("literal", "typed-literal"):
+        return None
+    out = {"value": b["value"]}
+    if b.get("xml:lang"):
+        out["lang"] = b["xml:lang"]
+    elif b.get("datatype") not in (None, XSD + "string", RDF_LANG):
+        out["datatype"] = b["datatype"]
+    return out
+
+
+def _num(v: str | None) -> float | None:
+    if v is None:
+        return None
+    try:
+        f = float(v)
+    except ValueError:
+        return None
+    return f if f == f and f not in (float("inf"), float("-inf")) else None
+
+
+def _add(lst: list, v: dict | None) -> None:
+    if v is not None and v not in lst:
+        lst.append(v)
+
+
+def aggregate(kind: str, per_child: dict[str, list]) -> dict:
+    """Sum up the values of a row over child resources ({child: [values]}), as the indexer does."""
+    n = len(per_child)
+    if kind == "count":
+        return {"count": n}
+    if kind == "range":
+        nums = [x for vs in per_child.values() for v in vs for x in [_num(v.get("value"))] if x is not None]
+        with_value = sum(1 for vs in per_child.values() if vs)
+        if not nums:
+            return {"children": n, "withValue": with_value}
+        lo, hi = min(nums), max(nums)
+        return {"min": int(lo) if lo.is_integer() else lo, "max": int(hi) if hi.is_integer() else hi,
+                "children": n, "withValue": with_value}
+    counts: dict[str, tuple[dict, int]] = {}
+    for vs in per_child.values():
+        for v in vs:
+            k = json.dumps(v, sort_keys=True)
+            counts[k] = (v, counts.get(k, (v, 0))[1] + 1)
+    values = sorted(({**v, "count": c} for v, c in counts.values()), key=lambda d: (-d["count"], json.dumps(d)))
+    return {"values": values, "children": n, "withoutValue": sum(1 for vs in per_child.values() if not vs)}
+
+
+def _lit(s: str) -> str:
+    return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def branches(iri: str, ds: DocShape) -> list[str]:
+    """One UNION branch per value set of the page. ?k says what a binding is for:
+    v|row (values), o|row (children via rd:over, ?c), i|row (linked resources of a table),
+    c|row|col (a column on each of them), p|row|name (viewer path), s|name (data status)."""
+    s = f"<{iri}>"
+    out = []
+    for row in ds.rows:
+        if row.over:
+            out.append(f"{{ {s} {row.over} ?c . OPTIONAL {{ ?c {row.path} ?v }} BIND({_lit('o|' + row.key)} AS ?k) }}")
+        elif row.columns:
+            out.append(f"{{ {s} {row.path} ?v BIND({_lit('i|' + row.key)} AS ?k) }}")
+            for col in row.columns:
+                out.append(f"{{ {s} {row.path} ?c . OPTIONAL {{ ?c {col.path} ?v }} "
+                           f"BIND({_lit('c|' + row.key + '|' + col.key)} AS ?k) }}")
+        elif row.path:
+            out.append(f"{{ {s} {row.path} ?v BIND({_lit('v|' + row.key)} AS ?k) }}")
+        for name, path in row.params.items():
+            out.append(f"{{ {s} {path} ?v BIND({_lit('p|' + row.key + '|' + name)} AS ?k) }}")
+    for name, pred in STATUS:
+        out.append(f"{{ {s} <{pred}> ?v BIND({_lit('s|' + name)} AS ?k) }}")
+    return out
+
+
+def query(graph: str, parts: list[str]) -> str:
+    return f"SELECT ?k ?c ?v WHERE {{ GRAPH <{graph}> {{ {' UNION '.join(parts)} }} }}"
+
+
+def assemble(ds: DocShape, bindings: list[dict]) -> dict:
+    """The describe document of one resource from the bindings of its branches."""
+    vals: dict[str, list] = {}                            # v|row, i|row, p|row|name, s|name
+    kids: dict[str, dict[str, list]] = defaultdict(dict)  # o|row, c|row|col -> child -> values
+    for b in bindings:
+        k = b["k"]["value"]
+        v = term(b.get("v"))
+        if k[0] in "oc":
+            c = b.get("c")
+            if not c or c["type"] != "uri":
+                continue
+            lst = kids[k].setdefault(c["value"], [])
+            if v is not None:
+                _add(lst, v)
+        else:
+            _add(vals.setdefault(k, []), v)
+    rows: dict[str, dict] = {}
+    for row in ds.rows:
+        e: dict = {}
+        if row.over:
+            if f"o|{row.key}" in kids:
+                e["aggregate"] = aggregate(row.aggregate or "distinct-count", kids[f"o|{row.key}"])
+        elif row.columns:
+            linked = [v["iri"] for v in vals.get(f"i|{row.key}", []) if "iri" in v]
+            if linked:
+                items = {i: {"iri": i, "cells": {}} for i in linked}
+                for col in row.columns:
+                    for c, vs in kids.get(f"c|{row.key}|{col.key}", {}).items():
+                        if c in items:
+                            items[c]["cells"][col.key] = vs
+                e["items"] = sorted(items.values(), key=lambda i: i["iri"])
+        elif row.path and f"v|{row.key}" in vals:
+            e["values"] = vals[f"v|{row.key}"]
+        for name in row.params:
+            if f"p|{row.key}|{name}" in vals:
+                e.setdefault("params", {})[name] = vals[f"p|{row.key}|{name}"]
+        if e:
+            rows[row.key] = e
+    doc: dict = {"class": ds.class_iri, "rows": rows}
+    for name, _ in STATUS:
+        if f"s|{name}" in vals:
+            doc.setdefault("dataStatus", {})[name] = sorted(v["iri"] for v in vals[f"s|{name}"] if "iri" in v)
+    return doc
+
+
+def labels(sparql: Sparql, iris: set[str], pool: ThreadPoolExecutor, chunk: int = 200) -> dict[str, str]:
+    """skos:prefLabel before rdfs:label, English or untagged first: the order of Atlas's term table."""
+    todo = sorted(i for i in iris if i.startswith("http") and not any(c in i for c in '<> "{}|^`\\'))
+    queries = [f"""SELECT ?i ?p ?l WHERE {{ VALUES ?i {{ {' '.join(f'<{x}>' for x in todo[n:n + chunk])} }}
+                   VALUES ?p {{ <{SKOS_PREF}> <{RDFS_LABEL}> }} ?i ?p ?l }}""" for n in range(0, len(todo), chunk)]
+    found: dict[str, tuple[int, str]] = {}
+    for res in pool.map(sparql, queries):
+        for b in res:
+            lit = b["l"]
+            if lit["type"] not in ("literal", "typed-literal"):
+                continue
+            lang = lit.get("xml:lang")
+            rank = (0 if b["p"]["value"] == SKOS_PREF else 2) + (0 if lang in ("en", None, "") else 1)
+            i = b["i"]["value"]
+            if i not in found or rank < found[i][0]:
+                found[i] = (rank, lit["value"])
+    return {k: v[1] for k, v in found.items()}
+
+
+def _collect(node, out: set[str]) -> None:
+    if isinstance(node, dict):
+        if isinstance(node.get("iri"), str):
+            out.add(node["iri"])
+        for x in node.values():
+            _collect(x, out)
+    elif isinstance(node, list):
+        for x in node:
+            if isinstance(x, str) and x.startswith("http"):
+                out.add(x)
+            else:
+                _collect(x, out)
+
+
+def page(sparql: Sparql, iri: str, dset: DescribeSet, batch: int = 12, workers: int = 8) -> dict:
+    """Everything /api/describe needs about one resource, read from the endpoint:
+    graph, classes, counts, pages [(shape, doc)], labels and timings in ms."""
+    t0 = time.perf_counter()
+    timing: dict[str, float] = {}
+    with ThreadPoolExecutor(workers) as pool:
+        head = pool.submit(sparql, f"SELECT ?g ?t WHERE {{ GRAPH ?g {{ <{iri}> a ?t }} }}")
+        n_out = pool.submit(sparql, f"SELECT (COUNT(*) AS ?n) WHERE {{ <{iri}> ?p ?o }}")
+        n_in = pool.submit(sparql, f"SELECT (COUNT(*) AS ?n) WHERE {{ ?s ?p <{iri}> FILTER(isIRI(?s)) }}")
+        by_graph: dict[str, list[str]] = defaultdict(list)
+        for b in head.result():
+            if b["t"]["type"] == "uri":
+                by_graph[b["g"]["value"]].append(b["t"]["value"])
+        classes = sorted({c for cs in by_graph.values() for c in cs})
+        # The graph that types the resource with a class page, else any graph that types it.
+        graph = next((g for g, cs in sorted(by_graph.items()) if dset.for_classes(cs)), min(by_graph, default=None))
+        timing["head"] = (time.perf_counter() - t0) * 1000
+        shapes = dset.for_classes(by_graph.get(graph, [])) if graph else []
+        jobs = []
+        for ds in shapes:
+            parts = branches(iri, ds)
+            for n in range(0, len(parts), batch):
+                jobs.append((ds, pool.submit(sparql, query(graph, parts[n:n + batch]))))
+        found: dict[str, list[dict]] = defaultdict(list)
+        for ds, f in jobs:
+            found[ds.iri].extend(f.result())
+        pages = [(ds, assemble(ds, found[ds.iri])) for ds in shapes]
+        timing["rows"] = (time.perf_counter() - t0) * 1000 - timing["head"]
+        iris: set[str] = {iri, *classes} | ({graph} if graph else set())
+        for ds, doc in pages:
+            iris.add(ds.class_iri)
+            _collect(doc, iris)
+        t1 = time.perf_counter()
+        labs = labels(sparql, iris, pool)
+        timing["labels"] = (time.perf_counter() - t1) * 1000
+        counts = {"out": int(n_out.result()[0]["n"]["value"]), "in": int(n_in.result()[0]["n"]["value"])}
+    timing["total"] = (time.perf_counter() - t0) * 1000
+    return {"graph": graph, "classes": classes, "pages": pages, "labels": labs, "counts": counts,
+            "queries": 3 + len(jobs) + max(1, -(-len(iris) // 200)), "timing": {k: round(v) for k, v in timing.items()}}

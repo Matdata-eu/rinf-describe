@@ -62,8 +62,15 @@ and get its sitemaps ([seo.md](seo.md)), and add a privacy statement in `site/`
 ## Without the describe index
 
 The app also runs against an Atlas database without the describe tables, or for IRIs the
-index does not hold: it then reads the triples live from ERA's SPARQL endpoint
-(`DESCRIBE_LIVE=1`, the default) and shows the generic tabs only.
+index does not hold (`DESCRIBE_LIVE=1`, the default): it then builds the class page live
+from ERA's SPARQL endpoint with the same shapes (the image carries `shapes/`), and reads
+the triples of the generic tabs live too. A live page is the same document as an indexed
+one; it takes a few SPARQL queries instead of a database lookup. `DESCRIBE_LIVE_BATCH`
+(shape rows per query, default 12) and `DESCRIBE_LIVE_WORKERS` (queries in flight per
+page, default 8) tune it, and live pages are cached for ten minutes.
+
+`/api/describe?source=live` builds a page live even when the index holds it, and
+`source=index` never asks ERA; `scripts/bench_live.py` compares the two.
 
 ## Development
 

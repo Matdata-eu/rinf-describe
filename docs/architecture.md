@@ -36,7 +36,7 @@ flowchart LR
 
 | Part | Technology | Role |
 |---|---|---|
-| `shapes/` | SHACL, DASH, `rd:` terms | What each class page shows: groups, tabs, order, and the widget of each row ([shapes.md](shapes.md)). Read by Atlas's worker, not by the app. |
+| `shapes/` | SHACL, DASH, `rd:` terms | What each class page shows: groups, tabs, order, and the widget of each row ([shapes.md](shapes.md)). Read by Atlas's worker for the index, and by the API for pages built live. |
 | Atlas `worker` | Python, pyoxigraph | With `ATLAS_DESCRIBE=1`, compiles the shapes and stores one evaluated document per resource and shape (`describe_doc`), the compiled layouts (`describe_def`) and a copy of every triple (`describe_triple`). Labels go to Atlas's `term` table. See Atlas's [docs/describe.md](https://github.com/Matdata-eu/rinf-atlas/blob/main/docs/describe.md). |
 | `db-role` | `postgres` image, `db/readonly.sql` | Creates or updates the `describe_ro` role with `SELECT` on the tables the API reads, then exits. Runs on every `docker compose up`. |
 | `describe-api` | Python, FastAPI, psycopg | Pages, triples, graph, exports, search, examples and sitemaps, all read from Atlas's database as `describe_ro`. A resource the index does not hold is read live from ERA's SPARQL endpoint. Contract: `/api/docs` on a running instance. |
@@ -56,15 +56,18 @@ flowchart LR
 4. All properties, Incoming links and Graph load on demand from `/api/triples` and
    `/api/graph`, which read `describe_triple`.
 
-If the index holds nothing about the IRI and `DESCRIBE_LIVE=1`, the API asks ERA's SPARQL
-endpoint for its triples (cached for ten minutes) and the page shows the generic tabs only.
+If the index holds nothing about the IRI and `DESCRIBE_LIVE=1`, the API builds the page live
+(`api/app/livepage.py`): it finds the resource's named graph and classes on ERA's SPARQL
+endpoint, evaluates the rows of the matching shapes in that graph with a few batched
+queries run in parallel, labels the IRIs on the page, and returns the same response with
+`source: "live"` (cached for ten minutes). The tabs read the triples live as well.
 
 ## Key design choices
 
-- **Pages are evaluated ahead of time.** Composing a section of line page live means
-  dozens of SPARQL queries over its tracks, operational points and kilometric posts.
-  Atlas's worker already keeps a local mirror and re-indexes a graph when ERA
-  publishes it, so it evaluates the shapes there and a page is one lookup.
+- **Pages are evaluated ahead of time, or live.** Atlas's worker already keeps a local
+  mirror and re-indexes a graph when ERA publishes it, so it evaluates the shapes there and
+  a page is one lookup. A resource outside the index gets the same page built live, with
+  the rows of its shapes batched into a few parallel SPARQL queries.
 - **Layout is data.** The shapes are the only place a class page is defined. The worker
   compiles them to plain JSON rows; the API passes them through; the UI only knows
   viewers. Adding a class is a Turtle file and a re-index, not a release.
@@ -88,7 +91,8 @@ endpoint for its triples (cached for ten minutes) and the page shows the generic
 |---|---|
 | `shapes/` | Describe shapes, mounted into Atlas's worker |
 | `api/app/main.py` | HTTP API |
-| `api/app/live.py` | Live fallback to ERA's SPARQL endpoint |
+| `api/app/live.py` | Live triples from ERA's SPARQL endpoint |
+| `api/app/shapes.py`, `livepage.py` | The shapes compiled in the API, and class pages built live from them |
 | `api/app/rdf.py` | Turtle, N-Triples and CSV writers |
 | `web/src/page.ts`, `layout.ts` | The describe page and its layout from the compiled shapes |
 | `web/src/widgets/` | One module per viewer |

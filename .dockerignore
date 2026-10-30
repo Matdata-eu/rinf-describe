@@ -1,0 +1,11 @@
+# The API image is built from the repository root and takes api/ and shapes/ only.
+.git
+.github
+.cache
+web
+site
+docs
+tests
+**/__pycache__
+**/.pytest_cache
+.env
