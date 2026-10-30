@@ -1,7 +1,7 @@
 """Fallback for resources the describe index does not hold: ask ERA's SPARQL endpoint.
 
-Only the plain triples (outgoing and incoming) and their labels come back this way;
-class pages built from shapes exist for indexed resources only.
+The plain triples (outgoing and incoming) and their labels; the class pages of such a
+resource are built in livepage.py, through sparql() below.
 """
 from __future__ import annotations
 
@@ -15,10 +15,14 @@ _cache: dict[tuple, tuple[float, list[dict], dict[str, str]]] = {}
 CACHE_SECONDS = 600
 
 
-def _sparql(endpoint: str, query: str, timeout: float) -> list[dict]:
-    r = httpx.post(endpoint, data={"query": query}, timeout=timeout,
-                   headers={"Accept": "application/sparql-results+json",
-                            "User-Agent": "rinf-describe (+https://github.com/Matdata-eu/rinf-describe)"})
+# One client for every query: keeps the connections to the endpoint open between them.
+_client = httpx.Client(headers={"Accept": "application/sparql-results+json",
+                                "User-Agent": "rinf-describe (+https://github.com/Matdata-eu/rinf-describe)"},
+                       limits=httpx.Limits(max_connections=32, max_keepalive_connections=16))
+
+
+def sparql(endpoint: str, query: str, timeout: float = 30.0) -> list[dict]:
+    r = _client.post(endpoint, data={"query": query}, timeout=timeout)
     r.raise_for_status()
     return r.json()["results"]["bindings"]
 
@@ -39,11 +43,11 @@ def triples(endpoint: str, iri: str, direction: str, limit: int, timeout: float 
         return hit[1], hit[2]
     if direction == "out":
         rows = [_row(iri, b["p"]["value"], b["o"])
-                for b in _sparql(endpoint, f"SELECT ?p ?o WHERE {{ <{iri}> ?p ?o }} LIMIT {limit}", timeout)
+                for b in sparql(endpoint, f"SELECT ?p ?o WHERE {{ <{iri}> ?p ?o }} LIMIT {limit}", timeout)
                 if b["o"]["type"] in ("uri", "literal", "typed-literal")]
     else:
         rows = [_row(b["s"]["value"], b["p"]["value"], {"type": "uri", "value": iri})
-                for b in _sparql(endpoint, f"SELECT ?s ?p WHERE {{ ?s ?p <{iri}> }} LIMIT {limit}", timeout)
+                for b in sparql(endpoint, f"SELECT ?s ?p WHERE {{ ?s ?p <{iri}> }} LIMIT {limit}", timeout)
                 if b["s"]["type"] == "uri"]
     iris = {iri} | {t["p"] for t in rows} | {t["s"] for t in rows} | {t["o"] for t in rows if t["o_iri"]}
     labels: dict[str, str] = {}
@@ -53,7 +57,7 @@ def triples(endpoint: str, iri: str, direction: str, limit: int, timeout: float 
         q = f"""SELECT ?x ?l WHERE {{ VALUES ?x {{ {vals} }} ?x <{RDFS_LABEL}>|<{SKOS_PREF}> ?l
                 FILTER(lang(?l) = 'en' || lang(?l) = '') }}"""
         try:
-            for b in _sparql(endpoint, q, timeout):
+            for b in sparql(endpoint, q, timeout):
                 labels.setdefault(b["x"]["value"], b["l"]["value"])
         except httpx.HTTPError:
             pass  # labels are a nicety; the triples are what was asked for

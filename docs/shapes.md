@@ -87,4 +87,6 @@ shape:section-of-line a sh:NodeShape ;
 - Paths are evaluated on the resource itself; a widget that needs values of a linked resource reaches them with a sequence path (`( era:netReference era:startsAt era:hasLrsCoordinate era:kmPost era:kilometer )`).
 
 `tests/test_shapes.py` compiles the shapes with Atlas's indexer and checks the pages on
-Atlas's Luxembourg sample; run it after editing.
+Atlas's Luxembourg sample; run it after editing. `tests/test_live.py` checks that the
+API's own compiler and live evaluation give the same pages (the API builds pages live for
+resources outside the index). Restart the API after editing the shapes.
