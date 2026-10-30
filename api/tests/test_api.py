@@ -41,6 +41,18 @@ def test_triples_and_graph(client):
     assert g["types"][SOL]
 
 
+def test_labels_beyond_page_values(client):
+    """Operational points, the national line and the tracks get a label wherever they show up,
+    although the worker only labels the values on a page."""
+    out = client.get("/api/triples", params={"uri": SOL, "env": "prod"}).json()
+    linked = {t["p"].rsplit("/", 1)[-1]: t["o"] for t in out["triples"] if t["o_iri"]}
+    for p in ("opStart", "opEnd", "nationalLine", "hasPart"):
+        assert out["labels"].get(linked[p]), p
+    r = client.get("/api/describe", params={"uri": SOL, "env": "prod"}).json()
+    for i in r["pages"][0]["doc"]["rows"]["track-table"]["items"]:
+        assert r["labels"].get(i["iri"])
+
+
 def test_exports(client):
     ttl = client.get("/api/export", params={"uri": SOL, "env": "prod", "format": "ttl"})
     assert ttl.status_code == 200 and "a era:InfrastructureElement, era:SectionOfLine" in ttl.text

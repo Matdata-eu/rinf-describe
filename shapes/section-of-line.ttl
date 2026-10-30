@@ -73,7 +73,7 @@ shape:section-of-line
         dash:propertyRole dash:KeyInfoRole ; rd:badge "{value} km" ;
     ] ;
     sh:property [
-        sh:path ( era:nationalLine era:lineId ) ; sh:name "National line" ;
+        sh:path era:nationalLine ; sh:name "National line" ;
         sh:group shape:sol-route ; sh:order 40 ;
     ] ;
     sh:property [
@@ -121,17 +121,24 @@ shape:section-of-line
         dash:viewer rd:AggregateViewer ;
     ] ;
     sh:property [
-        sh:path ( era:etcs era:etcsLevelType ) ; sh:name "ETCS level" ;
+        sh:path ( _:own-or-subset era:etcs era:etcsLevelType ) ; sh:name "ETCS level" ;
         rd:over [ sh:alternativePath ( era:hasPart [ sh:inversePath era:isPartOf ] ) ] ;
         rd:aggregate "distinct-count" ;
         sh:group shape:sol-tracks ; sh:order 60 ;
         dash:viewer rd:AggregateViewer ;
     ] ;
     sh:property [
-        sh:path ( era:etcs era:etcsBaseline ) ; sh:name "ETCS baseline" ;
+        sh:path ( _:own-or-subset era:etcs era:etcsBaseline ) ; sh:name "ETCS baseline" ;
         rd:over [ sh:alternativePath ( era:hasPart [ sh:inversePath era:isPartOf ] ) ] ;
         rd:aggregate "distinct-count" ;
         sh:group shape:sol-tracks ; sh:order 70 ;
+        dash:viewer rd:AggregateViewer ;
+    ] ;
+    sh:property [
+        sh:path ( _:own-or-subset era:protectionLegacySystem ) ; sh:name "Train protection legacy system" ;
+        rd:over [ sh:alternativePath ( era:hasPart [ sh:inversePath era:isPartOf ] ) ] ;
+        rd:aggregate "distinct-count" ;
+        sh:group shape:sol-tracks ; sh:order 75 ;
         dash:viewer rd:AggregateViewer ;
     ] ;
     sh:property [
@@ -196,5 +203,14 @@ shape:sol-track-row
     sh:property [ sh:path era:maximumPermittedSpeed ; sh:name "Max speed" ; rd:unit "km/h" ; sh:order 30 ] ;
     sh:property [ sh:path era:wheelSetGauge ; sh:name "Gauge" ; sh:order 40 ] ;
     sh:property [ sh:path ( era:contactLineSystem era:contactLineSystemType ) ; sh:name "Contact line" ; sh:order 50 ] ;
-    sh:property [ sh:path ( era:etcs era:etcsLevelType ) ; sh:name "ETCS" ; sh:order 60 ] ;
+    sh:property [ sh:path ( _:own-or-subset era:etcs era:etcsLevelType ) ; sh:name "ETCS" ; sh:order 60 ] ;
     sh:property [ sh:path era:lineCategory ; sh:name "Line category" ; sh:order 70 ] .
+
+# A track's own parameters, or those of the common characteristics subsets it belongs to
+# (era:belongsTo, or era:contains from the subset) and the subsets those are part of
+# (era:subsetOf). Infrastructure managers often state ETCS and the legacy train protection
+# on a subset rather than on each track.
+_:own-or-subset sh:zeroOrOnePath (
+    [ sh:alternativePath ( era:belongsTo [ sh:inversePath era:contains ] ) ]
+    [ sh:zeroOrMorePath era:subsetOf ]
+) .
