@@ -37,6 +37,14 @@ shape:infrastructure-element
         sh:path shape:part-of ; sh:name "Part of" ; rd:key "part-of" ;
         sh:group shape:ie-identification ; sh:order 10 ;
     ] ;
+    # A point asset (signal, switch, level crossing...): the national line and km it is at.
+    sh:property [
+        sh:path ( era:netReference era:hasLrsCoordinate era:kmPost era:hasLRS ) ; sh:name "Location on line" ; rd:key "line-location" ;
+        sh:group shape:ie-identification ; sh:order 15 ;
+        dash:viewer rd:LrsLocationViewer ;
+        rd:km ( era:netReference era:hasLrsCoordinate era:kmPost era:kilometer ) ;
+        rd:offset ( era:netReference era:hasLrsCoordinate era:offsetFromKilometricPost ) ;
+    ] ;
     sh:property [
         sh:path era:infrastructureManager ; sh:name "Infrastructure manager" ;
         sh:group shape:ie-identification ; sh:order 20 ;

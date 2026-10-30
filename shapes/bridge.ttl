@@ -1,0 +1,21 @@
+# Bridge page: the base page plus the bridge's restrictions.
+PREFIX rd:    <https://rinf-describe.matdata.eu/ns#>
+PREFIX shape: <https://rinf-describe.matdata.eu/shapes/>
+PREFIX dash:  <http://datashapes.org/dash#>
+PREFIX sh:    <http://www.w3.org/ns/shacl#>
+PREFIX era:   <http://data.europa.eu/949/>
+PREFIX gsp:   <http://www.opengis.net/ont/geosparql#>
+PREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
+
+shape:bridge-group a sh:PropertyGroup ; rdfs:label "Bridge" ; sh:order 10 .
+
+shape:bridge
+    a sh:NodeShape ;
+    rdfs:label "Bridge" ;
+    sh:targetClass era:Bridge ;
+
+    sh:property [ sh:path era:existOpeningHoursLimitation ; sh:name "Opening hours limitation" ; sh:group shape:bridge-group ; sh:order 10 ] ;
+    sh:property [ sh:path era:openingHoursLimitation ; sh:name "Opening hours" ; sh:group shape:bridge-group ; sh:order 20 ] ;
+    sh:property [ sh:path era:existBridgeWindRestriction ; sh:name "Wind restriction" ; sh:group shape:bridge-group ; sh:order 30 ] ;
+    sh:property [ sh:path era:maxWindSpeed ; sh:name "Maximum wind speed" ; sh:group shape:bridge-group ; sh:order 40 ] .

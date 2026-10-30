@@ -1,0 +1,36 @@
+# Signal page: the base page (map, location on line, identification) plus the signal's own values.
+PREFIX rd:    <https://rinf-describe.matdata.eu/ns#>
+PREFIX shape: <https://rinf-describe.matdata.eu/shapes/>
+PREFIX dash:  <http://datashapes.org/dash#>
+PREFIX sh:    <http://www.w3.org/ns/shacl#>
+PREFIX era:   <http://data.europa.eu/949/>
+PREFIX gsp:   <http://www.opengis.net/ont/geosparql#>
+PREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
+
+shape:signal-group a sh:PropertyGroup ; rdfs:label "Signal" ; sh:order 10 .
+
+shape:signal
+    a sh:NodeShape ;
+    rdfs:label "Signal" ;
+    sh:targetClass era:Signal ;
+
+    sh:property [
+        sh:path era:signalType ; sh:name "Type" ; rd:key "type" ;
+        sh:group shape:signal-group ; sh:order 10 ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "{value}" ;
+    ] ;
+    sh:property [
+        sh:path era:signalId ; sh:name "Signal ID" ; rd:key "signal-id" ;
+        sh:group shape:signal-group ; sh:order 20 ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "{value}" ;
+    ] ;
+    sh:property [
+        sh:path era:signalOrientation ; sh:name "Orientation" ;
+        sh:group shape:signal-group ; sh:order 30 ;
+        dash:viewer rd:SymbolViewer ; rd:symbol "direction" ;
+    ] ;
+    sh:property [ sh:path era:relativeDistanceDangerPoint ; sh:name "Distance to the danger point" ; sh:group shape:signal-group ; sh:order 40 ] ;
+    sh:property [ sh:path era:distanceToDangerPoint ; sh:name "Distance to the danger point" ; rd:key "distance-danger" ; sh:group shape:signal-group ; sh:order 41 ] ;
+    sh:property [ sh:path era:lengthOfNonStoppingArea ; sh:name "Length of the non-stopping area" ; sh:group shape:signal-group ; sh:order 50 ] ;
+    sh:property [ sh:path era:kilometer ; sh:name "Kilometre" ; sh:group shape:signal-group ; sh:order 60 ] .

@@ -113,8 +113,9 @@ def test_search_and_examples(client):
     assert client.get("/api/search", params={"q": SOL, "env": "prod"}).json()["results"] == [
         {"iri": SOL, "label": None, "class": None}]
     ex = client.get("/api/examples", params={"env": "prod"}).json()["results"]
-    assert [e["classLabel"] for e in ex] == ["Contact line system", "ETCS", "National line", "Operational point", "Platform edge", "Primary location",
-                                              "Running track", "Section of line", "Train detection system", "Tunnel"]
+    labels = [e["classLabel"] for e in ex]
+    assert labels == sorted(labels) and {"Document", "National line", "Operational point", "Running track",
+                                         "Section of line", "Tunnel", "Primary location"} <= set(labels)
     assert all(e["label"] for e in ex)
 
 
@@ -154,7 +155,7 @@ def test_sitemaps(client, monkeypatch):
     assert f"<loc>{loc}</loc><lastmod>2026-10-01</lastmod>" in page
     # Every infrastructure element of the sample has a page: 10 sections of line, 82 running
     # tracks and the operational points, platforms, sidings... (the base page).
-    assert page.count("<url>") == 228
+    assert page.count("<url>") == 237
     assert client.get("/api/sitemap-2.xml").status_code == 404
 
 

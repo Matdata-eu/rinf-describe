@@ -101,6 +101,7 @@ test('the running direction of a track', () => {
   assert.equal(directionOf({ iri: D + '10' }, {}), 'normal');
   assert.equal(directionOf({ iri: D + 'TrackRunningDirections/20' }, {}), 'opposite');
   assert.equal(directionOf({ iri: 'x' }, { x: 'B' }), 'both');
+  assert.equal(directionOf({ iri: 'http://data.europa.eu/949/concepts/orientations/01' }, {}), 'opposite');
 });
 
 test('energy supply systems: current, voltage, frequency and map colour', () => {
