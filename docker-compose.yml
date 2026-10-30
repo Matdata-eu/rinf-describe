@@ -32,6 +32,8 @@ services:
       DESCRIBE_ENVS: ${DESCRIBE_ENVS:-prod=PROD,uat=UAT}
       DESCRIBE_LIVE: ${DESCRIBE_LIVE:-1}
       DESCRIBE_ATLAS_URL: ${DESCRIBE_ATLAS_URL-https://rinf-atlas.matdata.eu}
+      # With a public address the API serves the sitemaps of the describe pages (docs/seo.md).
+      DESCRIBE_PUBLIC_URL: ${DESCRIBE_PUBLIC_URL:-}
     depends_on:
       db-role:
         condition: service_completed_successfully
@@ -42,8 +44,15 @@ services:
     build:
       context: ./web
     restart: unless-stopped
+    environment:
+      # Search engines: empty asks them not to index; see docs/seo.md.
+      DESCRIBE_PUBLIC_URL: ${DESCRIBE_PUBLIC_URL:-}
+      DESCRIBE_INDEXING: ${DESCRIBE_INDEXING:-}
     ports:
       - "${DESCRIBE_PORT:-8090}:80"
+    volumes:
+      # Pages of your own, such as site/privacy.html (docs/privacy.md), served at /site/.
+      - ./site:/usr/share/nginx/html/site:ro
     depends_on:
       - describe-api
     networks: [default]

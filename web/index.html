@@ -4,9 +4,25 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="color-scheme" content="light dark" />
-    <meta name="description" content="Readable pages for every resource of the EU Register of Railway Infrastructure (ERA RINF): sections of line, tracks and their parameters, laid out by SHACL shapes." />
+    <meta name="description" content="Readable pages for every resource of the EU Register of Railway Infrastructure (ERA RINF): sections of line with their route, map and tracks summed up, tracks with their gradient profile, contact line and ETCS." />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="RINF Describe" />
+    <meta property="og:title" content="RINF Describe: readable pages for the EU railway infrastructure register" />
+    <meta property="og:description" content="Readable pages for every resource of the EU Register of Railway Infrastructure (ERA RINF): sections of line with their route, map and tracks summed up, tracks with their gradient profile, contact line and ETCS." />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="RINF Describe page of a section of line, with its route diagram and map" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <!-- Filled in when the web container starts, from DESCRIBE_PUBLIC_URL and DESCRIBE_INDEXING
+         (web/docker-entrypoint.d/40-describe-seo.sh, docs/seo.md): canonical link, absolute
+         og:url and og:image, JSON-LD, or a noindex robots tag. -->
+    <!-- describe:seo -->
     <meta name="robots" content="noindex, nofollow" />
+    <!-- /describe:seo -->
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
     <meta name="theme-color" content="#10273F" />
     <title>RINF Describe</title>
     <script>
@@ -16,8 +32,16 @@
   </head>
   <body>
     <noscript>
-      <div class="noscript"><p><b>RINF Describe needs JavaScript.</b> It shows the resources of ERA's Register of
-        Infrastructure (RINF) as readable pages. Source: <a href="https://github.com/Matdata-eu/rinf-describe">github.com/Matdata-eu/rinf-describe</a>.</p></div>
+      <div class="noscript">
+        <p><b>RINF Describe needs JavaScript</b> to show its pages.</p>
+        <p>RINF Describe shows the resources of the
+          <a href="https://www.era.europa.eu/domains/registers/rinf_en">Register of Infrastructure (RINF)</a>
+          of the European Union Agency for Railways as readable pages: a section of line with its route,
+          its map and the parameters of its tracks summed up; a running track with its gradient profile,
+          contact line, ETCS and route compatibility parameters; and every other resource with all its
+          properties, the resources that link to it and a graph.</p>
+        <p>It is open source: <a href="https://github.com/Matdata-eu/rinf-describe">github.com/Matdata-eu/rinf-describe</a>.</p>
+      </div>
     </noscript>
     <header class="topbar">
       <a class="brand" href="/" data-nav><span class="logo" aria-hidden="true"></span><span><b>RINF</b> Describe</span></a>
@@ -29,9 +53,27 @@
         <span class="sr-only">Environment</span>
         <select id="env-select" aria-label="Environment"></select>
       </label>
-      <button id="theme-btn" class="icon-btn" type="button"></button>
+      <div class="top-actions">
+        <button id="share-btn" class="btn share-btn" type="button" title="Share a link to this page" aria-label="Share a link to this page"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="12" cy="3.5" r="2" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="4" cy="8" r="2" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12.5" r="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m5.8 7 4.4-2.5M5.8 9l4.4 2.5" stroke="currentColor" stroke-width="1.5"/></svg><span class="share-label">Share</span></button>
+        <button id="theme-btn" class="icon-btn" type="button"></button>
+        <button id="help-btn" class="icon-btn" type="button" title="Help: how to use RINF Describe" aria-label="Help"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6.1 6.2a1.95 1.95 0 1 1 2.7 1.8c-.5.2-.8.6-.8 1.1v.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="11.6" r="1" fill="currentColor"/></svg></button>
+        <button id="about-btn" class="icon-btn" type="button" title="About, credits and feedback" aria-label="About, credits and feedback"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 7.2v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="4.9" r="1" fill="currentColor"/></svg></button>
+      </div>
     </header>
     <main id="app" tabindex="-1"></main>
+    <footer class="site-foot">
+      <p>
+        <span>Data: <a href="https://www.era.europa.eu/domains/registers/rinf_en" target="_blank" rel="noopener">ERA, Register of Infrastructure</a></span>
+        <span class="sep" aria-hidden="true">·</span>
+        <button id="foot-help" class="link" type="button">Help</button>
+        <span class="sep" aria-hidden="true">·</span>
+        <button id="foot-about" class="link" type="button">About</button>
+        <span id="foot-privacy" hidden><span class="sep" aria-hidden="true">·</span> <a href="/site/privacy.html" target="_blank" rel="noopener">Privacy</a></span>
+        <span class="sep" aria-hidden="true">·</span>
+        <a href="https://github.com/Matdata-eu/rinf-describe" target="_blank" rel="noopener">Source</a>
+      </p>
+    </footer>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

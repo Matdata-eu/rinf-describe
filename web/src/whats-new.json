@@ -1,0 +1,14 @@
+[
+  {
+    "version": "0.1.0",
+    "date": "2026-10-30",
+    "new": [
+      "Pages for sections of line: route diagram with km positions, map, the parameters of their tracks summed up, a table of the tracks and the validity period.",
+      "Pages for running tracks: an Overview with the gradient profile, contact line and ETCS, and a Route compatibility tab.",
+      "All properties, Incoming links and Graph for every resource, and exports as Turtle, N-Triples or CSV.",
+      "Resources outside the index are read live from ERA.",
+      "Share copies a link to the page you are on, including its tab; on a phone it opens the share sheet.",
+      "Help, a short tour on the first visit, an About dialog and this list of changes."
+    ]
+  }
+]

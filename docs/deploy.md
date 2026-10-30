@@ -31,7 +31,18 @@ holds a copy of every provider triple, so try it on one country first with
 
 ```sh
 cp .env.example .env     # port, Atlas's network name, the read-only role's password
-docker compose up -d --build
+docker compose pull      # the published images (or: docker compose up -d --build)
+docker compose up -d
+```
+
+The images are published to GitHub Container Registry by
+`.github/workflows/docker-publish.yml`: `ghcr.io/matdata-eu/rinf-describe-api` and
+`-web`, tagged `latest` and `sha-…` on every push to `main`, and `X.Y.Z` and `X.Y` for a
+version tag `vX.Y.Z`. `DESCRIBE_VERSION` in `.env` picks the tag. To release, add the
+release to `web/src/whats-new.json`, set the version in `web/package.json`, and push a tag:
+
+```sh
+git tag v0.1.0 && git push origin v0.1.0
 ```
 
 `db-role` creates the role `describe_ro` with `SELECT` on the tables the API reads, then
@@ -41,6 +52,12 @@ named otherwise) to reach its database; the web container serves the UI and prox
 `/api/` to the API.
 
 Open `http://<host>:8090/describe?uri=<IRI>&env=prod`.
+
+## 3. A public instance
+
+Set `DESCRIBE_PUBLIC_URL` to the instance's HTTPS address so search engines may index it
+and get its sitemaps ([seo.md](seo.md)), and add a privacy statement in `site/`
+([privacy.md](privacy.md)).
 
 ## Without the describe index
 

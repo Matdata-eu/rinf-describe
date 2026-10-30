@@ -7,10 +7,13 @@ is described live from ERA's SPARQL endpoint (plain triples, no class page).
 """
 from __future__ import annotations
 
+import math
 import os
 import re
 from contextlib import asynccontextmanager
 from typing import Any
+from urllib.parse import quote_plus
+from xml.sax.saxutils import escape
 
 import httpx
 import psycopg
@@ -35,6 +38,10 @@ for _k, _v in os.environ.items():  # DESCRIBE_SPARQL_PROD=https://... overrides 
         ENDPOINTS[_k[len("DESCRIBE_SPARQL_"):].lower()] = _v.strip()
 LIVE = os.environ.get("DESCRIBE_LIVE", "1") not in ("0", "false", "no", "off")
 ATLAS_URL = os.environ.get("DESCRIBE_ATLAS_URL", "https://rinf-atlas.matdata.eu").rstrip("/")
+# Public address of the instance; with it the API serves the sitemaps of the describe pages
+# (docs/seo.md). Without it there are none.
+PUBLIC_URL = os.environ.get("DESCRIBE_PUBLIC_URL", "").strip().rstrip("/")
+SITEMAP_SIZE = 40000  # URLs per sitemap file (the protocol allows 50,000)
 TRIPLES_MAX = 5000
 GRAPH_MAX = 200
 
@@ -284,3 +291,56 @@ def examples(env: str | None = None):
         for r in _q("SELECT iri, label FROM feature WHERE env=%s AND iri = ANY(%s) AND label IS NOT NULL", (env, missing)):
             labels[r["iri"]] = r["label"]
     return {"results": [{**r, "label": labels.get(r["iri"])} for r in rows]}
+
+
+# ---------- sitemaps: one URL per resource with a class page, default environment only ----------
+_XML = "application/xml; charset=utf-8"
+_SITEMAP_HEADERS = {"Cache-Control": "public, max-age=3600"}
+
+
+def _form(v: str) -> str:
+    """Form encoding as the browser's URLSearchParams writes it (which also escapes ~)."""
+    return quote_plus(v, safe="*").replace("~", "%7E")
+
+
+def _sitemap_env() -> str:
+    if not PUBLIC_URL:
+        raise HTTPException(404, "no sitemap: DESCRIBE_PUBLIC_URL is not set")
+    return ENVS[0][0]
+
+
+@app.get("/api/sitemap.xml")
+def sitemap_index():
+    """Sitemap index: the static pages (sitemap-site.xml, written by the web container) and
+    one file per SITEMAP_SIZE describe pages. nginx serves it at /sitemap.xml."""
+    env = _sitemap_env()
+    rows = _q("SELECT count(DISTINCT iri) AS n FROM describe_doc WHERE env=%s", (env,))
+    files = math.ceil((rows[0]["n"] if rows else 0) / SITEMAP_SIZE)
+    locs = [f"{PUBLIC_URL}/sitemap-site.xml"] + [f"{PUBLIC_URL}/sitemap-{i}.xml" for i in range(1, files + 1)]
+    body = "".join(f"  <sitemap><loc>{escape(u)}</loc></sitemap>\n" for u in locs)
+    return Response('<?xml version="1.0" encoding="UTF-8"?>\n'
+                    '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+                    f"{body}</sitemapindex>\n", media_type=_XML, headers=_SITEMAP_HEADERS)
+
+
+@app.get("/api/sitemap-{n:int}.xml")
+def sitemap_page(n: int):
+    """The n-th file of describe pages (from 1), with the publication date of their dataset."""
+    env = _sitemap_env()
+    if n < 1:
+        raise HTTPException(404, "no such sitemap")
+    rows = _q("""SELECT d.iri, max(ds.modified) AS modified FROM describe_doc d
+                 LEFT JOIN dataset ds ON ds.env = d.env AND ds.graph_iri = d.graph_iri
+                 WHERE d.env=%s GROUP BY d.iri ORDER BY d.iri OFFSET %s LIMIT %s""",
+              (env, (n - 1) * SITEMAP_SIZE, SITEMAP_SIZE))
+    if not rows:
+        raise HTTPException(404, "no such sitemap")
+    out = []
+    for r in rows:
+        # The same address the pages give as canonical (web/src/seo.ts): uri, then env.
+        loc = f"{PUBLIC_URL}/describe?uri={_form(r['iri'])}&env={_form(env)}"
+        mod = f"<lastmod>{r['modified'].date().isoformat()}</lastmod>" if r["modified"] else ""
+        out.append(f"  <url><loc>{escape(loc)}</loc>{mod}</url>\n")
+    return Response('<?xml version="1.0" encoding="UTF-8"?>\n'
+                    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+                    f"{''.join(out)}</urlset>\n", media_type=_XML, headers=_SITEMAP_HEADERS)

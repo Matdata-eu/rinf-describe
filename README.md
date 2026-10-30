@@ -15,7 +15,9 @@ resource with all its properties, incoming links and a graph.
 - **One family with RINF Atlas.** Same type (IBM Plex), colours, light and dark themes,
   MapLibre maps and vis-network graphs, with the MatData design system's graph grammar.
 
-Pages: `/describe?uri=<IRI>&env=prod`.
+Pages: `/describe?uri=<IRI>&env=prod`. Each has its own title, description and canonical
+address, and the class pages are listed in sitemaps ([docs/seo.md](docs/seo.md)). Help, a
+first-visit tour, What's new and Share work as in RINF Atlas.
 
 ## Widgets
 
@@ -31,8 +33,11 @@ Next to a running RINF Atlas with its describe index on: [docs/deploy.md](docs/d
 
 ```sh
 cp .env.example .env
-docker compose up -d --build     # http://<host>:8090
+docker compose pull && docker compose up -d     # http://<host>:8090
 ```
+
+How it fits together: [docs/architecture.md](docs/architecture.md). Search engines:
+[docs/seo.md](docs/seo.md). Privacy statement: [docs/privacy.md](docs/privacy.md).
 
 ## Layout
 
@@ -42,6 +47,7 @@ docker compose up -d --build     # http://<host>:8090
 | `api/` | FastAPI service, read-only on Atlas's database |
 | `web/` | TypeScript + Vite UI |
 | `db/readonly.sql` | The read-only role the API uses |
+| `site/` | Your own pages, such as `privacy.html` |
 | `scripts/` | Development database and seed from Atlas's sample |
 | `tests/` | The shapes, evaluated with Atlas's indexer on Atlas's sample |
 
