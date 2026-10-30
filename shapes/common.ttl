@@ -55,3 +55,9 @@ shape:along-separation
     a sh:NodeShape ;
     sh:property [ sh:path era:phaseInfoKm ; rd:key "km" ] ;
     sh:property [ sh:path era:phaseInfoLength ; rd:key "length" ] .
+
+# The tracks that use a shared system (contact line, ETCS, train detection): where they are.
+shape:used-by-row
+    a sh:NodeShape ;
+    sh:property [ sh:path shape:part-of ; sh:name "In" ; sh:order 10 ] ;
+    sh:property [ sh:path era:maximumPermittedSpeed ; sh:name "Max speed" ; rd:unit "km/h" ; sh:order 20 ] .

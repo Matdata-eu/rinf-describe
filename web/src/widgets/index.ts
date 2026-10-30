@@ -3,10 +3,12 @@
 import { DASH, RD } from '../rdf.ts';
 import { AggregateViewer, DetailsViewer, LabelViewer, LrsLocationViewer, URIViewer, ValueTableViewer } from './basic.ts';
 import { AlongLineViewer } from './alongline.ts';
+import { ChangesViewer } from './changes.ts';
 import { ConnectionsViewer } from './connections.ts';
 import { CrossSectionViewer } from './crosssection.ts';
 import { DocumentViewer } from './document.ts';
 import { FacilitiesViewer } from './facilities.ts';
+import { KeyFiguresViewer } from './keyfigures.ts';
 import { LineProfileViewer, LineStopsViewer } from './lineprofile.ts';
 import { MapViewer } from './map.ts';
 import { ParameterIndexViewer } from './parameters.ts';
@@ -43,6 +45,8 @@ export const WIDGETS: Record<string, Widget> = {
   [RD + 'LineStopsViewer']: LineStopsViewer,
   [RD + 'AlongLineViewer']: AlongLineViewer,
   [RD + 'CrossSectionViewer']: CrossSectionViewer,
+  [RD + 'KeyFiguresViewer']: KeyFiguresViewer,
+  [RD + 'ChangesViewer']: ChangesViewer,
 };
 
 export function widgetFor(ctx: Pick<Ctx, 'row' | 'entry'>): Widget {

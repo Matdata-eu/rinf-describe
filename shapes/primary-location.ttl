@@ -1,0 +1,103 @@
+# Primary location page (era:PrimaryLocation): the location code of a station or yard, the
+# operational points and sections that carry it, its subsidiary locations, and the flags
+# that apply from a date (era:parameterApplicability, German data). A location can be
+# typed in several providers' graphs, so the links to it are looked for in all of them.
+PREFIX rd:    <https://rinf-describe.matdata.eu/ns#>
+PREFIX shape: <https://rinf-describe.matdata.eu/shapes/>
+PREFIX dash:  <http://datashapes.org/dash#>
+PREFIX sh:    <http://www.w3.org/ns/shacl#>
+PREFIX era:   <http://data.europa.eu/949/>
+PREFIX gsp:   <http://www.opengis.net/ont/geosparql#>
+PREFIX time:  <http://www.w3.org/2006/time#>
+PREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
+
+shape:pl-location a sh:PropertyGroup ; rdfs:label "Primary location" ; sh:order 10 .
+shape:pl-use a sh:PropertyGroup ; rdfs:label "Use" ; sh:order 20 .
+shape:pl-linked a sh:PropertyGroup ; rdfs:label "Operational points and sections" ; sh:order 30 .
+shape:pl-subsidiary a sh:PropertyGroup ; rdfs:label "Subsidiary locations" ; sh:order 40 .
+
+shape:primary-location
+    a sh:NodeShape ;
+    rdfs:label "Primary location" ;
+    sh:targetClass era:PrimaryLocation ;
+
+    sh:property [ sh:path rdfs:label ; rd:key "title" ; dash:propertyRole dash:LabelRole ] ;
+
+    sh:property [
+        sh:path ( [ sh:inversePath era:primaryLocation ] [ sh:alternativePath ( ( era:netReference gsp:hasGeometry gsp:asWKT ) ( gsp:hasGeometry gsp:asWKT ) ) ] ) ;
+        sh:name "Map" ; rd:key "map" ; sh:order 2 ; rd:scope "all" ;
+        dash:viewer rd:MapViewer ;
+        rd:context ( [ sh:inversePath era:linkedToPrimaryLocation ] gsp:hasGeometry gsp:asWKT ) ;
+    ] ;
+
+    sh:property [
+        sh:path era:primaryLocationCode ; sh:name "Location code" ; rd:key "code" ;
+        sh:group shape:pl-location ; sh:order 10 ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "{value}" ;
+    ] ;
+    sh:property [ sh:path era:primaryLocationName ; sh:name "Name" ; sh:group shape:pl-location ; sh:order 20 ] ;
+    sh:property [
+        sh:path era:inCountry ; sh:name "Country" ; rd:key "country" ;
+        sh:group shape:pl-location ; sh:order 30 ;
+        dash:viewer rd:SymbolViewer ; rd:symbol "country" ;
+    ] ;
+    sh:property [ sh:path era:inNUTS3 ; sh:name "NUTS-3 region" ; sh:group shape:pl-location ; sh:order 40 ] ;
+    sh:property [ sh:path era:infrastructureManager ; sh:name "Infrastructure manager" ; sh:group shape:pl-location ; sh:order 50 ] ;
+    sh:property [
+        sh:name "Validity" ; rd:key "validity" ;
+        sh:group shape:pl-location ; sh:order 60 ;
+        dash:viewer rd:ValidityViewer ;
+        rd:begin shape:validity-begin ;
+        rd:end shape:validity-end ;
+    ] ;
+
+    sh:property [
+        sh:name "Facilities" ; rd:key "use" ;
+        sh:group shape:pl-use ; sh:order 10 ;
+        dash:viewer rd:FacilitiesViewer ;
+        rd:facility era:passengerFlag, era:freightFlag, era:containerHandlingFlag, era:handoverPointFlag ;
+    ] ;
+    sh:property [
+        sh:path era:parameterApplicability ; sh:name "Changes over time" ; rd:key "changes" ;
+        sh:group shape:pl-use ; sh:order 20 ;
+        dash:viewer rd:ChangesViewer ;
+        sh:node shape:pl-change ;
+    ] ;
+
+    sh:property [
+        sh:path [ sh:inversePath era:primaryLocation ] ; sh:name "Operational points and sections" ; rd:key "linked" ; rd:scope "all" ;
+        sh:group shape:pl-linked ; sh:order 10 ;
+        dash:viewer dash:ValueTableViewer ;
+        sh:node shape:pl-linked-row ;
+    ] ;
+    sh:property [
+        sh:path [ sh:inversePath era:linkedToPrimaryLocation ] ; sh:name "Subsidiary locations" ; rd:key "subsidiary" ; rd:scope "all" ;
+        sh:group shape:pl-subsidiary ; sh:order 10 ;
+        dash:viewer dash:ValueTableViewer ;
+        sh:node shape:pl-subsidiary-row ;
+    ] ;
+
+    sh:property [
+        sh:name "RINF parameters" ; rd:key "rinf-parameters" ;
+        sh:group shape:ie-parameters ; sh:order 10 ;
+        dash:viewer rd:ParameterIndexViewer ;
+    ] .
+
+shape:pl-change
+    a sh:NodeShape ;
+    sh:property [ sh:path era:ofParameter ; rd:key "parameter" ] ;
+    sh:property [ sh:path era:parameterValue ; rd:key "value" ] ;
+    sh:property [ sh:path ( time:hasBeginning [ sh:alternativePath ( time:inXSDDate time:inXSDDateTimeStamp ) ] ) ; rd:key "begin" ] ;
+    sh:property [ sh:path ( time:hasEnd [ sh:alternativePath ( time:inXSDDate time:inXSDDateTimeStamp ) ] ) ; rd:key "end" ] .
+
+shape:pl-linked-row
+    a sh:NodeShape ;
+    sh:property [ sh:path era:opType ; sh:name "Type" ; sh:order 10 ] ;
+    sh:property [ sh:path era:uopid ; sh:name "OP ID" ; sh:order 20 ] .
+
+shape:pl-subsidiary-row
+    a sh:NodeShape ;
+    sh:property [ sh:path era:subsidiaryLocationCode ; sh:name "Code" ; sh:order 10 ] ;
+    sh:property [ sh:path era:subsidiaryLocationName ; sh:name "Name" ; sh:order 20 ] ;
+    sh:property [ sh:path era:allocationCompany ; sh:name "Allocation company" ; sh:order 30 ] .

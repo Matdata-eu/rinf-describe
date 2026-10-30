@@ -1,0 +1,79 @@
+# Contact line system page: shared by the tracks that name it (era:contactLineSystem), so
+# its values are stated once here. Not an infrastructure element: no base page.
+PREFIX rd:    <https://rinf-describe.matdata.eu/ns#>
+PREFIX shape: <https://rinf-describe.matdata.eu/shapes/>
+PREFIX dash:  <http://datashapes.org/dash#>
+PREFIX sh:    <http://www.w3.org/ns/shacl#>
+PREFIX era:   <http://data.europa.eu/949/>
+PREFIX gsp:   <http://www.opengis.net/ont/geosparql#>
+PREFIX time:  <http://www.w3.org/2006/time#>
+PREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
+
+shape:cls-supply a sh:PropertyGroup ; rdfs:label "Energy supply" ; sh:order 10 .
+shape:cls-wire a sh:PropertyGroup ; rdfs:label "Contact line" ; sh:order 20 .
+shape:cls-braking a sh:PropertyGroup ; rdfs:label "Regenerative braking" ; sh:order 30 .
+shape:cls-used a sh:PropertyGroup ; rdfs:label "Used by" ; sh:order 40 .
+
+shape:contact-line-system
+    a sh:NodeShape ;
+    rdfs:label "Contact line system" ;
+    sh:targetClass era:ContactLineSystem ;
+
+    sh:property [ sh:path rdfs:label ; rd:key "title" ; dash:propertyRole dash:LabelRole ] ;
+
+    sh:property [
+        sh:path era:contactLineSystemType ; sh:name "Type" ; rd:key "type" ;
+        sh:group shape:cls-supply ; sh:order 10 ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "{value}" ;
+    ] ;
+    sh:property [
+        sh:path era:energySupplySystem ; sh:name "Energy supply system" ; rd:key "energy" ;
+        sh:group shape:cls-supply ; sh:order 20 ;
+        dash:viewer rd:SymbolViewer ; rd:symbol "energy-supply" ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "{value}" ;
+    ] ;
+    sh:property [ sh:path era:energySupplySystemTSICompliant ; sh:name "Energy supply TSI compliant" ; sh:group shape:cls-supply ; sh:order 30 ] ;
+    sh:property [ sh:path era:maxTrainCurrent ; sh:name "Maximum train current" ; sh:group shape:cls-supply ; sh:order 40 ] ;
+    sh:property [ sh:path era:maxCurrentStandstillPantograph ; sh:name "Maximum current at standstill per pantograph" ; sh:group shape:cls-supply ; sh:order 50 ] ;
+    sh:property [ sh:path era:currentLimitationRequired ; sh:name "Current or power limitation on board required" ; sh:group shape:cls-supply ; sh:order 60 ] ;
+    sh:property [ sh:path era:umax2 ; sh:name "Umax2" ; sh:group shape:cls-supply ; sh:order 70 ] ;
+
+    sh:property [
+        sh:name "Contact wire height" ; rd:key "wire-height" ;
+        sh:group shape:cls-wire ; sh:order 10 ;
+        dash:viewer rd:ScaleBarViewer ;
+        rd:min era:minimumContactWireHeight ; rd:max era:maximumContactWireHeight ;
+        rd:scale "4 7" ; rd:unit "m" ;
+    ] ;
+
+    sh:property [ sh:path era:conditionalRegenerativeBrake ; sh:name "Regenerative braking" ; sh:group shape:cls-braking ; sh:order 10 ] ;
+    sh:property [
+        sh:path era:conditionsAppliedRegenerativeBraking ; sh:name "Conditions" ;
+        sh:group shape:cls-braking ; sh:order 20 ;
+        dash:viewer rd:DocumentViewer ; sh:node shape:document-card ;
+    ] ;
+
+    sh:property [
+        sh:path rdf:type ; sh:name "Tracks and sidings" ; rd:key "use-count" ;
+        rd:over [ sh:inversePath era:contactLineSystem ] ; rd:aggregate "count" ;
+        sh:group shape:cls-used ; sh:order 10 ; dash:viewer rd:AggregateViewer ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "Used by {count}" ;
+    ] ;
+    sh:property [
+        sh:path shape:part-of ; sh:name "In" ; rd:key "use-places" ;
+        rd:over [ sh:inversePath era:contactLineSystem ] ; rd:aggregate "distinct-count" ;
+        sh:group shape:cls-used ; sh:order 20 ; dash:viewer rd:AggregateViewer ;
+    ] ;
+    sh:property [
+        sh:path [ sh:inversePath era:contactLineSystem ] ; sh:name "Used by" ; rd:key "use-table" ;
+        sh:group shape:cls-used ; sh:order 30 ;
+        dash:viewer dash:ValueTableViewer ; rd:limit "100" ;
+        sh:node shape:used-by-row ;
+    ] ;
+
+    sh:property [
+        sh:name "RINF parameters" ; rd:key "rinf-parameters" ;
+        sh:group shape:ie-parameters ; sh:order 10 ;
+        dash:viewer rd:ParameterIndexViewer ;
+    ] .

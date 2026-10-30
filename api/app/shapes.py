@@ -250,8 +250,9 @@ def _row(r: _Reader, prop, where: str, nested: bool = False) -> Row | None:
     for name, vals in sorted(found.items()):
         for n, (lit, v) in enumerate(sorted(vals)):
             (row.settings if lit else row.params)[name if n == 0 else f"{name}.{n}"] = v
-    # rd:table "key": the row draws another row's linked resources (a profile of a table).
-    if not row.path and not row.params and row.viewer not in WHOLE_VIEWERS and "table" not in row.settings:
+    # rd:table "key" / rd:figures "k1 k2": the row draws other rows of the page (a profile
+    # of a table, key figures) and needs no path of its own.
+    if not row.path and not row.params and row.viewer not in WHOLE_VIEWERS and not {"table", "figures"} & set(row.settings):
         raise ShapeError(f"{where}.{key}: needs sh:path or rd: paths for its viewer")
     node = r.one(prop, SH + "node")
     if node is not None:

@@ -61,6 +61,7 @@ Namespace `https://rinf-describe.matdata.eu/ns#`, declared in
 | `rd:limit` | table row | At most this many linked resources at a time; the page shows the total and a **Show more** button (`/api/rows`) |
 | `rd:scope "all"` | row | Evaluated over every graph, not only the resource's own (sections of line of another provider that end at a border point) |
 | `rd:hidden "true"` | row, column | Read but not shown: a column for the map (`wkt`), or a row that is only data for another row's widget (the markers of `rd:AlongLineViewer`) |
+| `rd:figures` | row | Keys of the (hidden) summary rows `rd:KeyFiguresViewer` shows as tiles; the row needs no path |
 | `rd:table` | row | Key of another row whose values the widget draws (the sections of a line profile); the row needs no path |
 | `rd:sortBy` | table row | Column the table is sorted by, as numbers (`"start-km"`) |
 | `rd:cacheSeconds` | node shape | How long its pages are kept (86400 for national lines, which sum up thousands of tracks); default 10 minutes |
@@ -87,11 +88,13 @@ Namespace `https://rinf-describe.matdata.eu/ns#`, declared in
 | `rd:LineStopsViewer` | The operational points of a line in km order, with their type | `rd:table` (as above, plus `from-type`, `to-type`) |
 | `rd:AlongLineViewer` | A section of line as a strip between its operational points, with tunnels and phase separations as bands and kilometric posts as ticks at their km | `rd:table "route"` (the route diagram row), `rd:markers` (hidden rows with columns `km`/`offset`, `start-km`…`end-offset`, or `km` and `length` in m) |
 | `rd:CrossSectionViewer` | A track end-on, not to scale: gauge, gauging profile, contact wire heights, rail inclination | `rd:gauge`, `rd:loadingGauge`, `rd:wireMin`, `rd:wireMax`, `rd:inclination` |
+| `rd:KeyFiguresViewer` | Stat tiles: a number for a count, sum or range; shares as a bar for a distinct count | `rd:figures "im-ops im-km im-energy"` |
+| `rd:ChangesViewer` | Parameters that apply from or until a date (`era:parameterApplicability`) on a time axis with today marked | `sh:path`, `sh:node` with columns `parameter`, `value`, `begin`, `end` |
 | `rd:PlatformViewer` | Side view of a platform edge against the TSI heights of 550 and 760 mm, with its usable length and whether it is curved | `rd:height`, `rd:length`, `rd:curved` |
 | `rd:AggregateViewer` | `85–140 km/h`, `1435 (3) · 1668 (3)`, `6` | `sh:path`, `rd:over`, `rd:aggregate` |
 | `rd:LrsLocationViewer` | The value with its position, `km 53+240` | `sh:path`, `rd:km`, `rd:offset` (metres) |
 | `rd:StepChartViewer` | A `value(length),...` profile as a step chart: rising green, falling red | `sh:path`, `rd:unit`, `rd:lengthUnit` |
-| `rd:SymbolViewer` | An illustrative, non-dimensioned symbol per value | `sh:path`, `rd:symbol` (`loading-gauge`, `track-gauge`, `country`, `platform-height`, `direction`) |
+| `rd:SymbolViewer` | An illustrative, non-dimensioned symbol per value | `sh:path`, `rd:symbol` (`loading-gauge`, `track-gauge`, `country`, `platform-height`, `direction`, `energy-supply`) |
 | `rd:ValidityViewer` | Validity period on a time axis with today marked | `rd:begin`, `rd:end` (`era:validity` is an `era:TemporalFeature`, a `time:TemporalDuration`) |
 | `rd:ParameterIndexViewer` | Every RINF parameter of the resource (and of the non-infrastructure resources it links to: contact line system, ETCS...) by RINF index chapter, with a filter; parameters marked not applicable or not yet available too | No path; optional `rd:indexRoot "1.2.1"` (default: the root most parameters share) |
 | `rd:DocumentViewer` | `era:Document` resources as cards: file type, name, open link | `sh:path`, `sh:node shape:document-card` |

@@ -1,0 +1,76 @@
+# Infrastructure manager page (era:OrganisationRole: the IM role of a body): key figures over
+# everything that names it with era:infrastructureManager, in every provider's graph
+# (rd:scope "all": the role is typed in several graphs). They sum up tens of thousands of
+# resources, so the page is kept a day.
+PREFIX rd:    <https://rinf-describe.matdata.eu/ns#>
+PREFIX shape: <https://rinf-describe.matdata.eu/shapes/>
+PREFIX dash:  <http://datashapes.org/dash#>
+PREFIX sh:    <http://www.w3.org/ns/shacl#>
+PREFIX era:   <http://data.europa.eu/949/>
+PREFIX gsp:   <http://www.opengis.net/ont/geosparql#>
+PREFIX time:  <http://www.w3.org/2006/time#>
+PREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
+
+shape:im-figures a sh:PropertyGroup ; rdfs:label "Key figures" ; sh:order 10 .
+shape:im-identification a sh:PropertyGroup ; rdfs:label "Organisation" ; sh:order 20 .
+
+shape:managed sh:inversePath era:infrastructureManager .
+
+shape:infrastructure-manager
+    a sh:NodeShape ;
+    rdfs:label "Organisation role" ;
+    sh:targetClass era:OrganisationRole ;
+    rd:cacheSeconds 86400 ;
+
+    sh:property [ sh:path rdfs:label ; rd:key "title" ; dash:propertyRole dash:LabelRole ] ;
+
+    sh:property [
+        sh:path ( era:roleOf era:organisationCode ) ; sh:name "Organisation code" ; rd:key "code" ;
+        sh:group shape:im-identification ; sh:order 10 ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "Code {value}" ;
+    ] ;
+    sh:property [
+        sh:path era:hasOrganisationRole ; sh:name "Role" ; rd:key "role" ;
+        sh:group shape:im-identification ; sh:order 20 ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "{value}" ;
+    ] ;
+    sh:property [ sh:path era:roleOf ; sh:name "Organisation" ; sh:group shape:im-identification ; sh:order 30 ] ;
+    sh:property [
+        sh:path era:inCountry ; sh:name "Countries" ; rd:key "countries" ;
+        rd:over shape:managed ; rd:class era:SectionOfLine ; rd:aggregate "distinct-count" ; rd:scope "all" ;
+        sh:group shape:im-identification ; sh:order 40 ; dash:viewer rd:AggregateViewer ;
+    ] ;
+
+    sh:property [
+        sh:name "Key figures" ; rd:key "figures" ;
+        sh:group shape:im-figures ; sh:order 10 ;
+        dash:viewer rd:KeyFiguresViewer ;
+        rd:figures "im-ops im-sections im-km im-tracks im-energy im-etcs" ;
+    ] ;
+    sh:property [
+        # Operational points do not name their manager: those at the ends of its sections.
+        sh:path rdf:type ; sh:name "Operational points" ; rd:key "im-ops" ; rd:hidden "true" ;
+        rd:over ( shape:managed [ sh:alternativePath ( era:opStart era:opEnd ) ] ) ; rd:class era:OperationalPoint ;
+        rd:aggregate "count" ; rd:scope "all" ;
+    ] ;
+    sh:property [
+        sh:path rdf:type ; sh:name "Sections of line" ; rd:key "im-sections" ; rd:hidden "true" ;
+        rd:over shape:managed ; rd:class era:SectionOfLine ; rd:aggregate "count" ; rd:scope "all" ;
+    ] ;
+    sh:property [
+        sh:path era:lengthOfSectionOfLine ; sh:name "Line length" ; rd:key "im-km" ; rd:unit "km" ; rd:hidden "true" ;
+        rd:over shape:managed ; rd:class era:SectionOfLine ; rd:aggregate "sum" ; rd:scope "all" ;
+    ] ;
+    sh:property [
+        sh:path rdf:type ; sh:name "Running tracks" ; rd:key "im-tracks" ; rd:hidden "true" ;
+        rd:over shape:managed ; rd:class era:RunningTrack ; rd:aggregate "count" ; rd:scope "all" ;
+    ] ;
+    sh:property [
+        sh:path ( era:contactLineSystem era:energySupplySystem ) ; sh:name "Energy supply of the tracks" ; rd:key "im-energy" ; rd:hidden "true" ;
+        rd:over shape:managed ; rd:class era:RunningTrack ; rd:aggregate "distinct-count" ; rd:scope "all" ;
+    ] ;
+    sh:property [
+        sh:path ( shape:own-or-subset era:etcs era:etcsLevelType ) ; sh:name "ETCS level of the tracks" ; rd:key "im-etcs" ; rd:hidden "true" ;
+        rd:over shape:managed ; rd:class era:RunningTrack ; rd:aggregate "distinct-count" ; rd:scope "all" ;
+    ] .

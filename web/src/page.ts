@@ -42,7 +42,7 @@ function card(lg: LaidGroup, page: ClassPage, r: DescribeResponse, roots: string
     const entry = ctx.entry;
     const name = row.name ?? humanize(row.key);
     const tip = helpText(r.terms?.[helpPredicate(row.path) ?? ''], row.path, roots);
-    if (isEmpty(entry)) {
+    if (isEmpty(entry) && !row.settings?.figures) {
       const st = statusOf(row, page);
       if (st) parts.push(h('div', { class: 'row' }, h('dt', { title: tip }, name), h('dd', null, h('span', { class: 'chip status' }, STATUS_TEXT[st]))));
       continue;
@@ -66,7 +66,7 @@ function card(lg: LaidGroup, page: ClassPage, r: DescribeResponse, roots: string
 function hero(page: ClassPage, r: DescribeResponse, rows: ReturnType<typeof layout>['hero']): Node[] {
   return rows.map((row) => {
     const ctx = ctxFor(row, page, r);
-    const node = isEmpty(ctx.entry) ? null : widgetFor(ctx).render(ctx);
+    const node = isEmpty(ctx.entry) && !row.settings?.figures ? null : widgetFor(ctx).render(ctx);
     return node ? h('section', { class: `card wide hero hero-${row.key}`, 'aria-label': row.name ?? row.key }, node) : null;
   }).filter((n): n is HTMLElement => !!n);
 }
