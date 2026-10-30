@@ -113,7 +113,7 @@ def test_search_and_examples(client):
     assert client.get("/api/search", params={"q": SOL, "env": "prod"}).json()["results"] == [
         {"iri": SOL, "label": None, "class": None}]
     ex = client.get("/api/examples", params={"env": "prod"}).json()["results"]
-    assert [e["classLabel"] for e in ex] == ["Running track", "Section of line"]
+    assert [e["classLabel"] for e in ex] == ["Operational point", "Platform edge", "Running track", "Section of line", "Tunnel"]
     assert all(e["label"] for e in ex)
 
 
@@ -155,3 +155,10 @@ def test_sitemaps(client, monkeypatch):
     # tracks and the operational points, platforms, sidings... (the base page).
     assert page.count("<url>") == 218
     assert client.get("/api/sitemap-2.xml").status_code == 404
+
+
+def test_more_rows(client):
+    op = ERA + "operationalPoint/1f2dd3bd6f"
+    r = client.get("/api/rows", params={"uri": op, "key": "track-table", "offset": 1}).json()
+    assert r["total"] == 3 and len(r["items"]) == 2 and r["offset"] == 1
+    assert client.get("/api/rows", params={"uri": op, "key": "nothing"}).status_code == 404

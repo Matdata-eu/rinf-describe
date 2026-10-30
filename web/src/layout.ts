@@ -8,7 +8,7 @@ import { aggregateText } from './widgets/basic.ts';
 export const LABEL_ROLE = DASH + 'LabelRole';
 export const KEY_INFO_ROLE = DASH + 'KeyInfoRole';
 /** Viewers that take the top of the Overview tab when their row has no group. */
-const HERO = new Set(['RouteDiagramViewer', 'MapViewer'].map((v) => 'https://rinf-describe.matdata.eu/ns#' + v));
+const HERO = new Set(['RouteDiagramViewer', 'MapViewer', 'PlatformViewer'].map((v) => 'https://rinf-describe.matdata.eu/ns#' + v));
 export const OTHER_GROUP: GroupDef = { iri: '', label: 'Other', order: 10_000, tab: 'overview' };
 
 export interface LaidGroup { group: GroupDef; rows: RowDef[] }

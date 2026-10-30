@@ -18,7 +18,7 @@ DASH = "http://datashapes.org/dash#"
 RDF = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
 RDFS = "http://www.w3.org/2000/01/rdf-schema#"
 AGGREGATES = ("range", "distinct-count", "count")
-_KNOWN_RD = {RD + k for k in ("key", "tab", "over", "aggregate", "unit", "format", "enabled")}
+_KNOWN_RD = {RD + k for k in ("key", "tab", "over", "aggregate", "unit", "format", "enabled", "class")}
 # Viewers that read the resource as a whole rather than a path of it.
 WHOLE_VIEWERS = {RD + "ParameterIndexViewer"}
 _PREFIXES = {
@@ -59,6 +59,18 @@ class Row:
     settings: dict[str, str] = field(default_factory=dict)
     columns: list[Row] = field(default_factory=list)
     deactivated: bool = False
+    filter_class: str | None = None   # rd:class: only linked resources of this class
+
+    @property
+    def limit(self) -> int | None:
+        """rd:limit: at most this many linked resources at a time (a total and "show more")."""
+        v = self.settings.get("limit")
+        return int(v) if v and v.isdigit() and int(v) > 0 else None
+
+    @property
+    def scope_all(self) -> bool:
+        """rd:scope "all": evaluated over every graph, not only the resource's own."""
+        return self.settings.get("scope") == "all"
 
 
 @dataclass
@@ -214,6 +226,7 @@ def _row(r: _Reader, prop, where: str, nested: bool = False) -> Row | None:
               aggregate=r.lit(prop, RD + "aggregate"),
               unit=r.lit(prop, RD + "unit"),
               format=r.lit(prop, RD + "format"))
+    row.filter_class = _iri(r.one(prop, RD + "class"))
     over = r.one(prop, RD + "over")
     if over is not None:
         row.over = r.path(over)

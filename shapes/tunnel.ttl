@@ -1,0 +1,73 @@
+# Tunnel page: its line on the map within its track, key figures, safety installations as
+# tiles, restrictions and the IM's documents.
+# The base page (infrastructure-element.ttl) adds identification, validity and the RINF
+# parameters tab.
+PREFIX rd:    <https://rinf-describe.matdata.eu/ns#>
+PREFIX shape: <https://rinf-describe.matdata.eu/shapes/>
+PREFIX dash:  <http://datashapes.org/dash#>
+PREFIX sh:    <http://www.w3.org/ns/shacl#>
+PREFIX era:   <http://data.europa.eu/949/>
+PREFIX gsp:   <http://www.opengis.net/ont/geosparql#>
+PREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
+
+shape:tunnel-figures a sh:PropertyGroup ; rdfs:label "Tunnel" ; sh:order 10 .
+shape:tunnel-safety a sh:PropertyGroup ; rdfs:label "Safety" ; sh:order 20 .
+shape:tunnel-restrictions a sh:PropertyGroup ; rdfs:label "Restrictions" ; sh:order 30 .
+shape:tunnel-documents a sh:PropertyGroup ; rdfs:label "Documents and declarations" ; sh:order 40 .
+
+shape:tunnel
+    a sh:NodeShape ;
+    rdfs:label "Tunnel" ;
+    sh:targetClass era:Tunnel ;
+
+    sh:property [
+        sh:path rdfs:label ; rd:key "title" ;
+        dash:propertyRole dash:LabelRole ;
+    ] ;
+    sh:property [
+        sh:path era:lengthOfTunnel ; sh:name "Length" ; rd:key "length-badge" ; sh:order 1 ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "{value} m" ;
+    ] ;
+    sh:property [
+        sh:path era:rollingStockFireCategory ; sh:name "Fire category" ; rd:key "fire-badge" ; sh:order 2 ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "Fire category {value}" ;
+    ] ;
+
+    # --- top: the tunnel, with the track (or siding) it is part of ---
+    sh:property [
+        sh:path [ sh:alternativePath ( ( era:netReference gsp:hasGeometry gsp:asWKT ) ( gsp:hasGeometry gsp:asWKT ) ) ] ;
+        sh:name "Map" ; rd:key "map" ; sh:order 2 ;
+        dash:viewer rd:MapViewer ;
+        rd:context ( shape:part-of era:netReference gsp:hasGeometry gsp:asWKT ) ;
+    ] ;
+
+    # --- Tunnel ---
+    sh:property [ sh:path era:tunnelIdentification ; sh:name "Tunnel identification" ; sh:group shape:tunnel-figures ; sh:order 10 ] ;
+    sh:property [ sh:path shape:part-of ; sh:name "Part of" ; rd:key "part-of" ; sh:group shape:tunnel-figures ; sh:order 20 ] ;
+    sh:property [ sh:path era:lengthOfTunnel ; sh:name "Length" ; sh:group shape:tunnel-figures ; sh:order 30 ] ;
+    sh:property [ sh:path era:crossSectionArea ; sh:name "Cross section area" ; sh:group shape:tunnel-figures ; sh:order 40 ] ;
+    sh:property [ sh:path era:lineReferenceTunnelStart ; sh:name "Start" ; sh:group shape:tunnel-figures ; sh:order 50 ] ;
+    sh:property [ sh:path era:lineReferenceTunnelEnd ; sh:name "End" ; sh:group shape:tunnel-figures ; sh:order 60 ] ;
+
+    # --- Safety ---
+    sh:property [
+        sh:name "Safety installations" ; rd:key "safety" ;
+        sh:group shape:tunnel-safety ; sh:order 10 ;
+        dash:viewer rd:FacilitiesViewer ;
+        rd:facility era:hasWalkway, era:hasEvacuationAndRescuePoints, era:hasEmergencyPlan, era:complianceInfTsi ;
+    ] ;
+
+    # --- Restrictions ---
+    sh:property [ sh:path era:rollingStockFireCategory ; sh:name "Fire category of rolling stock required" ; sh:group shape:tunnel-restrictions ; sh:order 10 ] ;
+    sh:property [ sh:path era:nationalRollingStockFireCategory ; sh:name "National fire category required" ; sh:group shape:tunnel-restrictions ; sh:order 20 ] ;
+    sh:property [ sh:path era:dieselThermalAllowed ; sh:name "Diesel or other thermal traction allowed" ; sh:group shape:tunnel-restrictions ; sh:order 30 ] ;
+
+    # --- Documents and declarations ---
+    sh:property [
+        sh:path era:tunnelDocRef ; sh:name "Description of the tunnel" ;
+        sh:group shape:tunnel-documents ; sh:order 10 ;
+        dash:viewer rd:DocumentViewer ; sh:node shape:document-card ;
+    ] ;
+    sh:property [ sh:path era:verificationSRT ; sh:name "EC declaration of verification (SRT)" ; sh:group shape:tunnel-documents ; sh:order 20 ] ;
+    sh:property [ sh:path era:demonstrationSRT ; sh:name "EI declaration of demonstration (SRT)" ; sh:group shape:tunnel-documents ; sh:order 30 ] .

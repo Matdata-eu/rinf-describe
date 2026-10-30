@@ -1,0 +1,93 @@
+# Siding page: its operational point on the map, its usable length against a passenger and
+# a freight train, the servicing facilities as tiles, energy and tunnels.
+# The base page (infrastructure-element.ttl) adds identification, validity and the RINF
+# parameters tab.
+PREFIX rd:    <https://rinf-describe.matdata.eu/ns#>
+PREFIX shape: <https://rinf-describe.matdata.eu/shapes/>
+PREFIX dash:  <http://datashapes.org/dash#>
+PREFIX sh:    <http://www.w3.org/ns/shacl#>
+PREFIX era:   <http://data.europa.eu/949/>
+PREFIX gsp:   <http://www.opengis.net/ont/geosparql#>
+PREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
+
+shape:siding-characteristics a sh:PropertyGroup ; rdfs:label "Characteristics" ; sh:order 10 .
+shape:siding-servicing a sh:PropertyGroup ; rdfs:label "Fixed installations for servicing trains" ; sh:order 20 .
+shape:siding-energy a sh:PropertyGroup ; rdfs:label "Energy" ; sh:order 30 .
+shape:siding-tunnels a sh:PropertyGroup ; rdfs:label "Tunnels" ; sh:order 40 .
+shape:siding-declarations a sh:PropertyGroup ; rdfs:label "Declarations" ; sh:order 50 .
+
+shape:siding
+    a sh:NodeShape ;
+    rdfs:label "Siding" ;
+    sh:targetClass era:Siding ;
+
+    sh:property [
+        sh:path rdfs:label ; rd:key "title" ;
+        dash:propertyRole dash:LabelRole ;
+    ] ;
+    sh:property [
+        sh:path era:lengthOfSiding ; sh:name "Usable length" ; rd:key "length-badge" ; sh:order 1 ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "{value} m" ;
+    ] ;
+    sh:property [
+        sh:path shape:part-of ; sh:name "Operational point" ; rd:key "part-of" ;
+        sh:group shape:siding-characteristics ; sh:order 5 ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "In {value}" ;
+    ] ;
+
+    # --- top: the siding, or else its operational point ---
+    sh:property [
+        sh:path [ sh:alternativePath ( ( era:netReference gsp:hasGeometry gsp:asWKT ) ( gsp:hasGeometry gsp:asWKT ) ) ] ;
+        sh:name "Map" ; rd:key "map" ; sh:order 2 ;
+        dash:viewer rd:MapViewer ;
+        rd:context ( shape:part-of era:netReference gsp:hasGeometry gsp:asWKT ) ;
+    ] ;
+
+    # --- Characteristics ---
+    sh:property [ sh:path era:sidingId ; sh:name "Siding identification" ; sh:group shape:siding-characteristics ; sh:order 10 ] ;
+    sh:property [
+        sh:path era:lengthOfSiding ; sh:name "Usable length" ;
+        sh:group shape:siding-characteristics ; sh:order 20 ;
+        dash:viewer rd:ScaleBarViewer ; rd:marks "400 Passenger train; 740 Freight train" ;
+    ] ;
+    sh:property [ sh:path era:gradient ; sh:name "Gradient for stabling" ; sh:group shape:siding-characteristics ; sh:order 30 ] ;
+    sh:property [ sh:path era:minimumHorizontalRadius ; sh:name "Minimum horizontal radius" ; sh:group shape:siding-characteristics ; sh:order 40 ] ;
+    sh:property [ sh:path era:minimumVerticalRadius ; sh:name "Minimum vertical radius" ; sh:group shape:siding-characteristics ; sh:order 50 ] ;
+    sh:property [ sh:path era:tenClassification ; sh:name "TEN classification" ; sh:group shape:siding-characteristics ; sh:order 60 ] ;
+
+    # --- Servicing ---
+    sh:property [
+        sh:name "Servicing" ; rd:key "servicing" ;
+        sh:group shape:siding-servicing ; sh:order 10 ;
+        dash:viewer rd:FacilitiesViewer ;
+        rd:facility era:hasToiletDischarge, era:hasExternalCleaning, era:hasWaterRestocking,
+                    era:hasRefuelling, era:hasSandRestocking, era:hasElectricShoreSupply ;
+    ] ;
+
+    # --- Energy ---
+    sh:property [ sh:path era:maxCurrentStandstillPantograph ; sh:name "Maximum current at standstill per pantograph" ; sh:group shape:siding-energy ; sh:order 10 ] ;
+    sh:property [
+        sh:path era:contactLineSystem ; sh:name "Contact line system" ;
+        sh:group shape:siding-energy ; sh:order 20 ;
+        dash:viewer dash:DetailsViewer ; sh:node shape:rt-contact-line ;
+    ] ;
+
+    # --- Tunnels of the siding ---
+    sh:property [
+        sh:path shape:parts ; sh:name "Tunnels" ; rd:key "tunnel-table" ;
+        sh:group shape:siding-tunnels ; sh:order 10 ;
+        rd:class era:Tunnel ;
+        dash:viewer dash:ValueTableViewer ; sh:node shape:tunnel-row ;
+    ] ;
+    sh:property [ rd:key "parts" ; sh:deactivated true ] ;
+
+    # --- Declarations ---
+    sh:property [ sh:path era:verificationINF ; sh:name "EC declaration of verification (INF)" ; sh:group shape:siding-declarations ; sh:order 10 ] ;
+    sh:property [ sh:path era:demonstrationINF ; sh:name "EI declaration of demonstration (INF)" ; sh:group shape:siding-declarations ; sh:order 20 ] .
+
+shape:tunnel-row
+    a sh:NodeShape ;
+    sh:property [ sh:path era:tunnelIdentification ; sh:name "Tunnel" ; sh:order 10 ] ;
+    sh:property [ sh:path era:lengthOfTunnel ; sh:name "Length" ; sh:order 20 ] ;
+    sh:property [ sh:path era:rollingStockFireCategory ; sh:name "Fire category" ; sh:order 30 ] .

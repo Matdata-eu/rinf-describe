@@ -90,38 +90,55 @@ def _lit(s: str) -> str:
     return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
-def branches(iri: str, ds: DocShape) -> list[str]:
+def _linked(s: str, row, var: str = "?c", offset: int = 0) -> str:
+    """The pattern binding `var` to the resources a table row links to: of rd:class only, and
+    with rd:limit the first ones (from `offset`) in IRI order."""
+    pat = f"{s} {row.path} {var} ." + (f" {var} a <{row.filter_class}> ." if row.filter_class else "")
+    if row.limit:
+        return f"{{ SELECT DISTINCT {var} WHERE {{ {pat} }} ORDER BY {var} LIMIT {row.limit} OFFSET {offset} }}"
+    return pat
+
+
+def branches(iri: str, ds: DocShape, rows=None, status: bool = True, offset: int = 0) -> list[str]:
     """One UNION branch per value set of the page. ?k says what a binding is for:
     v|row (values), o|row (children via rd:over, ?c), i|row (linked resources of a table),
-    c|row|col (a column on each of them), p|row|name (viewer path), s|name (data status),
-    x|row (every property of the resource, ?c) and y|row|via (every property of a resource
-    ?x it links to with `via` that is not an infrastructure element itself: its contact line
-    system, ETCS...)."""
+    c|row|col (a column on each of them), n|row (how many a table links to, with rd:limit),
+    p|row|name (viewer path), s|name (data status), x|row (every property of the resource,
+    ?c) and y|row|via (every property of a resource ?x it links to with `via` that is not an
+    infrastructure element itself: its contact line system, ETCS...)."""
     s = f"<{iri}>"
     out = []
-    for row in ds.rows:
+    for row in ds.rows if rows is None else rows:
+        cls = f" ?c a <{row.filter_class}> ." if row.filter_class else ""
         if row.viewer in WHOLE_VIEWERS:
             out.append(f"{{ {s} ?c ?v BIND({_lit('x|' + row.key)} AS ?k) }}")
             out.append(f"{{ {s} ?q ?x FILTER(isIRI(?x)) FILTER NOT EXISTS {{ ?x a <{INFRA}> }} ?x ?c ?v "
                        f"BIND(CONCAT({_lit('y|' + row.key + '|')}, STR(?q)) AS ?k) }}")
         elif row.over:
-            out.append(f"{{ {s} {row.over} ?c . OPTIONAL {{ ?c {row.path} ?v }} BIND({_lit('o|' + row.key)} AS ?k) }}")
+            out.append(f"{{ {s} {row.over} ?c .{cls} OPTIONAL {{ ?c {row.path} ?v }} BIND({_lit('o|' + row.key)} AS ?k) }}")
         elif row.columns:
-            out.append(f"{{ {s} {row.path} ?v BIND({_lit('i|' + row.key)} AS ?k) }}")
+            out.append(f"{{ {_linked(s, row, '?v', offset)} BIND({_lit('i|' + row.key)} AS ?k) }}")
             for col in row.columns:
-                out.append(f"{{ {s} {row.path} ?c . OPTIONAL {{ ?c {col.path} ?v }} "
+                out.append(f"{{ {_linked(s, row, '?c', offset)} OPTIONAL {{ ?c {col.path} ?v }} "
                            f"BIND({_lit('c|' + row.key + '|' + col.key)} AS ?k) }}")
+            if row.limit:
+                plain = f"{s} {row.path} ?n ." + (f" ?n a <{row.filter_class}> ." if row.filter_class else "")
+                out.append(f"{{ {{ SELECT (COUNT(DISTINCT ?n) AS ?v) WHERE {{ {plain} }} }} BIND({_lit('n|' + row.key)} AS ?k) }}")
         elif row.path:
-            out.append(f"{{ {s} {row.path} ?v BIND({_lit('v|' + row.key)} AS ?k) }}")
+            vcls = f" ?v a <{row.filter_class}> ." if row.filter_class else ""
+            out.append(f"{{ {s} {row.path} ?v .{vcls} BIND({_lit('v|' + row.key)} AS ?k) }}")
         for name, path in row.params.items():
             out.append(f"{{ {s} {path} ?v BIND({_lit('p|' + row.key + '|' + name)} AS ?k) }}")
-    for name, pred in STATUS:
-        out.append(f"{{ {s} <{pred}> ?v BIND({_lit('s|' + name)} AS ?k) }}")
+    if status:
+        for name, pred in STATUS:
+            out.append(f"{{ {s} <{pred}> ?v BIND({_lit('s|' + name)} AS ?k) }}")
     return out
 
 
-def query(graph: str, parts: list[str]) -> str:
-    return f"SELECT ?k ?c ?v ?x WHERE {{ GRAPH <{graph}> {{ {' UNION '.join(parts)} }} }}"
+def query(graph: str | None, parts: list[str]) -> str:
+    """The branches over the resource's graph, or over every graph (rd:scope "all")."""
+    body = " UNION ".join(parts)
+    return f"SELECT ?k ?c ?v ?x WHERE {{ {f'GRAPH <{graph}> {{ {body} }}' if graph else body} }}"
 
 
 def assemble(ds: DocShape, bindings: list[dict]) -> dict:
@@ -171,6 +188,8 @@ def assemble(ds: DocShape, bindings: list[dict]) -> dict:
                         if c in items:
                             items[c]["cells"][col.key] = vs
                 e["items"] = sorted(items.values(), key=lambda i: i["iri"])
+            if row.limit and f"n|{row.key}" in vals:
+                e["total"] = int(vals[f"n|{row.key}"][0]["value"])
         elif row.path and f"v|{row.key}" in vals:
             e["values"] = vals[f"v|{row.key}"]
         for name in row.params:
@@ -255,7 +274,11 @@ def page(sparql: Sparql, iri: str, dset: DescribeSet, batch: int = 12, workers: 
         shapes = shapes_for(by_graph.get(graph, [])) if graph else []
         jobs = []
         for ds in shapes:
-            parts = branches(iri, ds)
+            wide = [r for r in ds.rows if r.scope_all]
+            if wide:  # rows over every graph: queries of their own, without GRAPH
+                for p in branches(iri, ds, wide, status=False):
+                    jobs.append((ds, pool.submit(sparql, query(None, [p]))))
+            parts = branches(iri, ds, [r for r in ds.rows if not r.scope_all])
             # The whole-resource branches (x|, y|) return many rows: a query of their own each.
             alone = [p for p in parts if 'AS ?k' in p and ('"x|' in p or '"y|' in p)]
             parts = [p for p in parts if p not in alone]

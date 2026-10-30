@@ -2,7 +2,8 @@
 // that are text: aggregates over linked resources and railway locations.
 import type { Aggregate, CountedTerm, Item, RowDef, Term } from '../api.ts';
 import { h, joined } from '../dom.ts';
-import { boolValue, formatKm, formatRange, isBoolean, termText, withUnit } from '../format.ts';
+import { api } from '../api.ts';
+import { boolValue, formatKm, formatNumber, formatRange, isBoolean, termText, withUnit } from '../format.ts';
 import { describeHref } from '../nav.ts';
 import { iriLabel, pathText } from '../rdf.ts';
 import type { Ctx, Widget } from './types.ts';
@@ -82,18 +83,46 @@ function cellNode(values: Term[] | undefined, col: RowDef, env: string, labels: 
 /** Linked resources as a table, columns from the row's sh:node. */
 export const ValueTableViewer: Widget = {
   wide: true,
-  render: ({ entry, env, labels, row }) => {
+  render: ({ entry, env, labels, row, iri }) => {
     const items = entry.items ?? [];
     if (!items.length) return null;
-    const cols = row.columns;
-    const sorted = [...items].sort((a, b) => sortKey(a, cols, labels).localeCompare(sortKey(b, cols, labels), 'en', { numeric: true }));
+    const cols = row.columns.filter((c) => c.settings?.hidden !== 'true');
+    const total = entry.total ?? items.length;
+    const line = (it: Item) => h('tr', null,
+      h('td', null, h('a', { class: 'iri-link', href: describeHref(it.iri, env), title: it.iri }, iriLabel(it.iri, labels))),
+      cols.map((c) => h('td', null, cellNode(it.cells[c.key], c, env, labels))));
+    // A paged table keeps the endpoint's order, so the next page follows on; a whole one is sorted.
+    const shown = entry.total !== undefined ? items : [...items].sort((a, b) => sortKey(a, cols, labels).localeCompare(sortKey(b, cols, labels), 'en', { numeric: true }));
+    const body = h('tbody', null, shown.map(line));
+    const note = h('p', { class: 'table-note muted small' });
+    let count = items.length;
+    const more = h('button', { type: 'button', class: 'btn small show-more' }, 'Show more');
+    const update = () => {
+      note.textContent = count < total ? `${formatNumber(count)} of ${formatNumber(total)} resources` : `${formatNumber(total)} ${total === 1 ? 'resource' : 'resources'}`;
+      more.hidden = count >= total;
+    };
+    more.addEventListener('click', async () => {
+      more.disabled = true;
+      more.textContent = 'Loading…';
+      try {
+        const r = await api.rows(iri, env, row.key, count);
+        Object.assign(labels, r.labels);
+        body.append(...r.items.map(line));
+        count += r.items.length;
+        if (!r.items.length) count = total;
+        more.textContent = 'Show more';
+      } catch (e) {
+        more.textContent = `Could not load more: ${e instanceof Error ? e.message : e}`;
+      }
+      more.disabled = false;
+      update();
+    });
+    update();
     return h('div', { class: 'table-wrap' },
       h('table', { class: 'value-table' },
         h('thead', null, h('tr', null, h('th', { scope: 'col' }, ''), cols.map((c) => h('th', { scope: 'col' }, c.name ?? c.key)))),
-        h('tbody', null, sorted.map((it) => h('tr', null,
-          h('td', null, h('a', { class: 'iri-link', href: describeHref(it.iri, env), title: it.iri }, iriLabel(it.iri, labels))),
-          cols.map((c) => h('td', null, cellNode(it.cells[c.key], c, env, labels))))))),
-      h('p', { class: 'table-note muted small' }, `${items.length} ${items.length === 1 ? 'resource' : 'resources'}`));
+        body),
+      h('div', { class: 'table-foot' }, note, total > items.length ? more : null));
   },
 };
 

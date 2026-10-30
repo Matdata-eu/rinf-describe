@@ -70,7 +70,7 @@ def test_shapes_merge_over_the_base_page(sparql):
     assert {"route", "track-table", "validity", "country", "rinf-parameters"} <= keys and "parts" not in keys
     assert next(r for r in ds.rows if r.key == "map").params  # the section's map (with context), not the base one
     # A class without a shape of its own gets the base page through the ontology.
-    (base,) = dset.for_resource([ERA + "Tunnel"], onto.ancestors, onto.depth)
+    (base,) = dset.for_resource([ERA + "Bridge"], onto.ancestors, onto.depth)
     assert base.class_iri == ERA + "InfrastructureElement"
     assert dset.for_resource([ERA + "Document"], onto.ancestors, onto.depth) == []
 
@@ -146,3 +146,32 @@ def test_page(sparql):
 def test_unknown_resource(sparql):
     p = livepage.page(sparql, "http://example.org/nothing", shapes.load(ROOT / "shapes"))
     assert p["graph"] is None and p["pages"] == [] and p["counts"] == {"out": 0, "in": 0}
+
+
+OP = ERA.replace("949/", "949/operationalPoint/1f2dd3bd6f")
+
+
+def test_operational_point(docs):
+    _, by = docs
+    rows = by[(OP, "operational-point")]["rows"]
+    # Its section of line is in another graph's reach only through ^opStart|^opEnd: rd:scope "all".
+    assert len(rows["connections"]["items"]) == 1
+    assert rows["track-count"]["aggregate"] == {"count": 3}
+    assert rows["track-table"]["total"] == 3 and len(rows["track-table"]["items"]) == 3
+    # rd:class: the tracks among the parts, not the platforms or sidings.
+    assert all(it["cells"]["track"] for it in rows["track-table"]["items"])
+    assert "parts" not in rows
+
+
+def test_limit_pages_a_table(sparql):
+    dset = shapes.load(ROOT / "shapes")
+    (ds,) = [d for d in dset.shapes if d.class_iri == ERA + "OperationalPoint"]
+    row = next(r for r in ds.rows if r.key == "track-table")
+    row.settings["limit"] = "2"
+    seen = []
+    for offset in (0, 2):
+        doc = livepage.assemble(ds, sparql(livepage.query(G, livepage.branches(OP, ds, [row], status=False, offset=offset))))
+        e = doc["rows"]["track-table"]
+        assert e["total"] == 3
+        seen += [it["iri"] for it in e["items"]]
+    assert len(seen) == 3 == len(set(seen))

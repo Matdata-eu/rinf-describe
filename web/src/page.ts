@@ -25,7 +25,7 @@ function withOntologyUnits(row: RowDef, r: DescribeResponse): RowDef {
 }
 
 function ctxFor(row: RowDef, page: ClassPage, r: DescribeResponse): Ctx {
-  return { env: r.env, labels: r.labels, row: withOntologyUnits(row, r), entry: page.doc.rows[row.key] ?? {}, page, terms: r.terms, chapters: r.chapters };
+  return { iri: r.iri, env: r.env, labels: r.labels, row: withOntologyUnits(row, r), entry: page.doc.rows[row.key] ?? {}, page, terms: r.terms, chapters: r.chapters };
 }
 
 /** The RINF index roots of the page, for the index shown in the row help. */
