@@ -129,11 +129,11 @@ def main() -> None:
         D.publish_defs(conn, dset)
         n = D.index_graph(conn, store, env, g, dset, triples=True)
         D.mark_done(conn, env, dset)
-        # Labels of the resources themselves, of predicates and classes (the worker labels page values).
+        # Labels of predicates and classes, as on a real index. Like the worker, leave the other
+        # resources to the labels of page values, so the API's own fallbacks are exercised.
         with conn.cursor() as cur:
-            cur.execute("SELECT DISTINCT s FROM describe_triple WHERE env=%s UNION SELECT DISTINCT p FROM "
-                        "describe_triple WHERE env=%s UNION SELECT DISTINCT o FROM describe_triple WHERE env=%s "
-                        "AND o_iri", (env, env, env))
+            cur.execute("SELECT DISTINCT p FROM describe_triple WHERE env=%s UNION SELECT DISTINCT o FROM "
+                        "describe_triple WHERE env=%s AND p=%s AND o_iri", (env, env, RDF_TYPE))
             iris = {r[0] for r in cur.fetchall()}
         update_term_labels(conn, store, env, iris, g)
     print(f"{n} describe pages, {len(rows)} features in {env}", file=sys.stderr)
