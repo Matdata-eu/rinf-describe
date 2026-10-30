@@ -213,7 +213,11 @@ def model(uri: str, env: str | None = None):
     how often the resource uses each property, out and in."""
     env, iri = _env(env), _iri(uri)
     p = _page(env, iri)
-    m = datamodel.model(_ontology(env), p["classes"])
+    onto = _ontology(env)
+    m = datamodel.model(onto, p["classes"])
+    if m and p["pages"]:
+        # What the page shows: its rows' paths walked from the class over ERA's model.
+        m["page"] = datamodel.page_model(onto, m["focus"], p["pages"][0][0].rows, dset.groups)
     if not m:
         return {"iri": iri, "env": env, "model": None, "used": {"out": {}, "in": {}, "via": {}}}
 

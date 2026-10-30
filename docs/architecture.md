@@ -55,7 +55,10 @@ flowchart LR
    `/api/graph`, which read the triples from the endpoint too. Data model loads from
    `/api/model`: the resource's class, its superclasses and their associations from ERA's
    SHACL shapes graph (`graph/rinf/shacl`, read with the ontology once a day), and which of
-   those properties the resource uses.
+   those properties the resource uses. Its "What this page shows" view walks every row path
+   of the page's shape (`rd:over`, `sh:path`, columns, `rd:` paths) over the same model, hop by
+   hop, and draws the classes and properties the page reads; a step ERA's shapes do not
+   define is marked.
 
 The start page's examples (one resource per class with a shape of its own) and the
 sitemaps (every resource of a class with a page, subclasses included) are SPARQL queries

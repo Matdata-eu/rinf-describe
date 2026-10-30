@@ -614,3 +614,14 @@ ul.changes-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8
 .uml-nav-head { fill: none; stroke: var(--line-strong); stroke-width: 1.4; }
 .uml-role { fill: var(--muted); font: 11px var(--mono); paint-order: stroke; stroke: var(--bg); stroke-width: 4px; stroke-linejoin: round; }
 .uml-role.used { fill: var(--text); font-weight: 600; }
+.uml-rect.untyped { stroke: var(--warn); stroke-dasharray: 4 3; }
+.uml-name.untyped { fill: var(--warn); font-style: italic; }
+.uml-attr.page { fill: var(--text); }
+.uml-attr.missing, .uml-role.missing { fill: var(--warn); }
+.uml-assoc.missing { stroke: var(--warn); stroke-dasharray: 4 3; }
+.uml-warn { color: var(--warn); }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; padding: 2px; background: var(--surface); }
+.seg-btn { border: 0; background: none; color: var(--muted); font: 500 13px var(--font); padding: 4px 12px; border-radius: 999px; cursor: pointer; }
+.seg-btn[aria-pressed="true"] { background: var(--accent-strong); color: var(--on-accent); }
+.seg-btn:focus-visible { outline: 2px solid var(--signal); outline-offset: 1px; }
+.uml-card > p.muted { margin: 0 4px 10px; }
