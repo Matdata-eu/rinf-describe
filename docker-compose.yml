@@ -1,0 +1,55 @@
+# RINF Describe, joined to a running RINF Atlas: it reads the describe index that
+# Atlas's worker builds (ATLAS_DESCRIBE=1, see docs/deploy.md) from Atlas's database.
+#
+#   docker compose up -d --build        then open http://<host>:${DESCRIBE_PORT:-8090}
+#
+# Copy .env.example to .env to change the port, passwords or Atlas's network name.
+name: rinf-describe
+
+services:
+  # Creates (or updates) the read-only database role the API connects with. Runs and exits.
+  db-role:
+    image: postgres:16-alpine
+    environment:
+      PGHOST: ${ATLAS_DB_HOST:-db}
+      PGUSER: ${ATLAS_DB_USER:-atlas}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-atlas}
+      PGDATABASE: ${ATLAS_DB_NAME:-atlas}
+      DESCRIBE_DB_PASSWORD: ${DESCRIBE_DB_PASSWORD:-describe}
+    command: ["sh", "-c", "psql -v ON_ERROR_STOP=1 -v pw=\"$$DESCRIBE_DB_PASSWORD\" -f /readonly.sql"]
+    volumes:
+      - ./db/readonly.sql:/readonly.sql:ro
+    networks: [atlas]
+    restart: "no"
+
+  describe-api:
+    image: ${DESCRIBE_IMAGE:-ghcr.io/matdata-eu/rinf-describe}-api:${DESCRIBE_VERSION:-latest}
+    build:
+      context: ./api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://describe_ro:${DESCRIBE_DB_PASSWORD:-describe}@${ATLAS_DB_HOST:-db}:5432/${ATLAS_DB_NAME:-atlas}
+      DESCRIBE_ENVS: ${DESCRIBE_ENVS:-prod=PROD,uat=UAT}
+      DESCRIBE_LIVE: ${DESCRIBE_LIVE:-1}
+      DESCRIBE_ATLAS_URL: ${DESCRIBE_ATLAS_URL-https://rinf-atlas.matdata.eu}
+    depends_on:
+      db-role:
+        condition: service_completed_successfully
+    networks: [default, atlas]
+
+  describe-web:
+    image: ${DESCRIBE_IMAGE:-ghcr.io/matdata-eu/rinf-describe}-web:${DESCRIBE_VERSION:-latest}
+    build:
+      context: ./web
+    restart: unless-stopped
+    ports:
+      - "${DESCRIBE_PORT:-8090}:80"
+    depends_on:
+      - describe-api
+    networks: [default]
+
+networks:
+  # The network of the RINF Atlas stack (`docker network ls`; rinf-atlas_default by default).
+  atlas:
+    external: true
+    name: ${ATLAS_NETWORK:-rinf-atlas_default}
