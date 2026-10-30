@@ -1,0 +1,22 @@
+# Document page: the document as a card to open. Who refers to it is on the Incoming links tab.
+PREFIX rd:    <https://rinf-describe.matdata.eu/ns#>
+PREFIX shape: <https://rinf-describe.matdata.eu/shapes/>
+PREFIX dash:  <http://datashapes.org/dash#>
+PREFIX sh:    <http://www.w3.org/ns/shacl#>
+PREFIX era:   <http://data.europa.eu/949/>
+PREFIX gsp:   <http://www.opengis.net/ont/geosparql#>
+PREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
+
+PREFIX foaf:  <http://xmlns.com/foaf/0.1/>
+
+shape:doc-group a sh:PropertyGroup ; rdfs:label "Document" ; sh:order 10 .
+
+shape:document
+    a sh:NodeShape ;
+    rdfs:label "Document" ;
+    sh:targetClass era:Document ;
+
+    sh:property [ sh:path rdfs:label ; rd:key "title" ; dash:propertyRole dash:LabelRole ] ;
+    sh:property [ sh:path era:documentUrl ; sh:name "URL" ; sh:group shape:doc-group ; sh:order 20 ; dash:viewer dash:URIViewer ] ;
+    sh:property [ sh:path foaf:name ; sh:name "Name" ; sh:group shape:doc-group ; sh:order 30 ] .

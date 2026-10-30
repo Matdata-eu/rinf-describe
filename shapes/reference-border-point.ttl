@@ -1,0 +1,45 @@
+# Reference border point page: where a line crosses a border, and the operational points
+# on both sides that name it (rd:scope "all": they are in the two countries' graphs).
+PREFIX rd:    <https://rinf-describe.matdata.eu/ns#>
+PREFIX shape: <https://rinf-describe.matdata.eu/shapes/>
+PREFIX dash:  <http://datashapes.org/dash#>
+PREFIX sh:    <http://www.w3.org/ns/shacl#>
+PREFIX era:   <http://data.europa.eu/949/>
+PREFIX gsp:   <http://www.opengis.net/ont/geosparql#>
+PREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
+
+shape:rbp-group a sh:PropertyGroup ; rdfs:label "Border point" ; sh:order 10 .
+
+shape:reference-border-point
+    a sh:NodeShape ;
+    rdfs:label "Reference border point" ;
+    sh:targetClass era:ReferenceBorderPoint ;
+
+    sh:property [ sh:path rdfs:label ; rd:key "title" ; dash:propertyRole dash:LabelRole ] ;
+    sh:property [
+        sh:path [ sh:alternativePath ( ( era:netReference gsp:hasGeometry gsp:asWKT ) ( gsp:hasGeometry gsp:asWKT ) ) ] ;
+        sh:name "Map" ; rd:key "map" ; sh:order 2 ;
+        dash:viewer rd:MapViewer ;
+        rd:layers "border-ops" ;
+    ] ;
+    sh:property [
+        sh:path era:borderPointId ; sh:name "Border point ID" ; rd:key "id" ;
+        sh:group shape:rbp-group ; sh:order 10 ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "{value}" ;
+    ] ;
+    sh:property [ sh:path era:inCountry ; sh:name "Countries" ; rd:key "country" ; sh:group shape:rbp-group ; sh:order 20 ; dash:viewer rd:SymbolViewer ; rd:symbol "country" ] ;
+    sh:property [
+        sh:path [ sh:inversePath era:referenceBorderPoint ] ; rd:class era:OperationalPoint ; rd:scope "all" ;
+        sh:name "Operational points at the border" ; rd:key "border-ops" ;
+        sh:group shape:rbp-group ; sh:order 30 ;
+        dash:viewer dash:ValueTableViewer ;
+        sh:node shape:rbp-op-row ;
+    ] .
+
+shape:rbp-op-row
+    a sh:NodeShape ;
+    sh:property [ sh:path era:inCountry ; sh:name "Country" ; sh:order 10 ] ;
+    sh:property [ sh:path era:infrastructureManager ; sh:name "Infrastructure manager" ; sh:order 20 ] ;
+    sh:property [ sh:path era:opType ; sh:name "Type" ; sh:order 30 ] ;
+    sh:property [ sh:path [ sh:alternativePath ( ( era:netReference gsp:hasGeometry gsp:asWKT ) ( gsp:hasGeometry gsp:asWKT ) ) ] ; rd:key "wkt" ; rd:hidden "true" ; sh:order 99 ] .

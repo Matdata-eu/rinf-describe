@@ -70,9 +70,9 @@ def test_shapes_merge_over_the_base_page(sparql):
     assert {"route", "track-table", "validity", "country", "rinf-parameters"} <= keys and "parts" not in keys
     assert next(r for r in ds.rows if r.key == "map").params  # the section's map (with context), not the base one
     # A class without a shape of its own gets the base page through the ontology.
-    (base,) = dset.for_resource([ERA + "Bridge"], onto.ancestors, onto.depth)
+    (base,) = dset.for_resource([ERA + "Switch"], onto.ancestors, onto.depth)
     assert base.class_iri == ERA + "InfrastructureElement"
-    assert dset.for_resource([ERA + "Document"], onto.ancestors, onto.depth) == []
+    assert dset.for_resource([ERA + "NetRelation"], onto.ancestors, onto.depth) == []
 
 
 def test_rinf_parameters(sparql):

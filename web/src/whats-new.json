@@ -1,5 +1,18 @@
 [
   {
+    "version": "1.7.0",
+    "date": "2026-10-30",
+    "new": [
+      "Signals show their type, ID, orientation as an arrow, distance to the danger point and km.",
+      "Reference border points show the two countries and the operational points on either side, on the map too.",
+      "Kilometric posts, hot axle box detectors, bridges, TEN-T classifications, documents and linear elements (with the elements they connect to) have pages of their own.",
+      "Every signal, switch, level crossing and other point asset shows the national line and km it is at."
+    ],
+    "improved": [
+      "Map layers can hold points as well as lines: click a dot to open it."
+    ]
+  },
+  {
     "version": "1.6.0",
     "date": "2026-10-30",
     "new": [

@@ -5,7 +5,7 @@
 // layer that can be switched off, and a click on one of its lines opens that resource.
 // MapLibre is loaded only when a page has a map.
 import type { Feature, FeatureCollection, Geometry } from 'geojson';
-import type { FilterSpecification, LineLayerSpecification } from 'maplibre-gl';
+import type { FilterSpecification, LayerSpecification } from 'maplibre-gl';
 import type { Item, RowDef, Term } from '../api.ts';
 import { onDispose } from '../cleanup.ts';
 import { h } from '../dom.ts';
@@ -63,7 +63,7 @@ export const MapViewer: Widget = {
         const box = h('input', { type: 'checkbox', checked: true });
         toggles.set(l.key, box);
         return h('label', null, box, h('span', { class: `swatch layer-${i % 4}`, 'aria-hidden': 'true' }), l.name);
-      }), h('span', { class: 'muted' }, 'Click a line to open it.')) : null;
+      }), h('span', { class: 'muted' }, 'Click a line or dot to open it.')) : null;
     mount(box, { type: 'FeatureCollection', features }, layers, toggles);
     return h('div', { class: 'map-widget' }, box, legend, wkt);
   },
@@ -71,14 +71,19 @@ export const MapViewer: Widget = {
 
 const LAYER_COLORS = ['--layer-0', '--layer-1', '--layer-2', '--layer-3'];
 
-function layerSpecs(layers: Layer[], quiet: string): LineLayerSpecification[] {
-  return layers.flatMap((l, i): LineLayerSpecification[] => {
-    const filter: FilterSpecification = ['all', ['==', ['get', 'layer'], l.key], ['!=', ['geometry-type'], 'Point']];
+function layerSpecs(layers: Layer[], quiet: string): LayerSpecification[] {
+  return layers.flatMap((l, i): LayerSpecification[] => {
+    const color = css(LAYER_COLORS[i % 4]) || quiet;
+    const lines: FilterSpecification = ['all', ['==', ['get', 'layer'], l.key], ['!=', ['geometry-type'], 'Point']];
+    const points: FilterSpecification = ['all', ['==', ['get', 'layer'], l.key], ['==', ['geometry-type'], 'Point']];
     return [
-      { id: `layer-${l.key}`, type: 'line', source: 'geom', filter, layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': css(LAYER_COLORS[i % 4]) || quiet, 'line-width': 3, 'line-opacity': 0.9 } },
-      // A wide invisible line under the pointer, so a thin line is easy to hit.
-      { id: `layer-${l.key}-hit`, type: 'line', source: 'geom', filter, paint: { 'line-color': '#000', 'line-width': 14, 'line-opacity': 0 } },
+      { id: `layer-${l.key}`, type: 'line', source: 'geom', filter: lines, layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': color, 'line-width': 3, 'line-opacity': 0.9 } },
+      { id: `layer-${l.key}-dots`, type: 'circle', source: 'geom', filter: points,
+        paint: { 'circle-radius': 5, 'circle-color': color, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.5 } },
+      // Wide invisible lines and dots under the pointer, so a thin line is easy to hit.
+      { id: `layer-${l.key}-hit`, type: 'line', source: 'geom', filter: lines, paint: { 'line-color': '#000', 'line-width': 14, 'line-opacity': 0 } },
+      { id: `layer-${l.key}-hit-dots`, type: 'circle', source: 'geom', filter: points, paint: { 'circle-radius': 12, 'circle-opacity': 0 } },
     ];
   });
 }
@@ -135,7 +140,7 @@ function mount(container: HTMLElement, data: FeatureCollection, layers: Layer[] 
             filter: ['all', ['==', ['get', 'role'], 'main'], ['!=', ['geometry-type'], 'Point']],
             layout: { 'line-cap': 'round', 'line-join': 'round' },
             paint: { 'line-color': accent, 'line-width': 4 } },
-          { id: 'points', type: 'circle', source: 'geom', filter: ['==', ['geometry-type'], 'Point'],
+          { id: 'points', type: 'circle', source: 'geom', filter: ['all', ['==', ['geometry-type'], 'Point'], ['!=', ['get', 'role'], 'layer']],
             paint: { 'circle-radius': ['case', ['==', ['get', 'role'], 'main'], 7, 6], 'circle-color': '#ffffff',
                      'circle-stroke-color': accent, 'circle-stroke-width': 3 } },
         ],
@@ -149,17 +154,19 @@ function mount(container: HTMLElement, data: FeatureCollection, layers: Layer[] 
     if (layers.length) {
       const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, className: 'map-tip' });
       for (const l of layers) {
-        const hit = `layer-${l.key}-hit`;
-        map.on('mousemove', hit, (e) => {
-          map.getCanvas().style.cursor = 'pointer';
-          const name = e.features?.[0]?.properties?.name;
-          if (name) popup.setLngLat(e.lngLat).setText(String(name)).addTo(map);
-        });
-        map.on('mouseleave', hit, () => { map.getCanvas().style.cursor = ''; popup.remove(); });
-        map.on('click', hit, (e) => { const href = e.features?.[0]?.properties?.href; if (href) navigate(String(href)); });
+        const ids = [`layer-${l.key}`, `layer-${l.key}-dots`, `layer-${l.key}-hit`, `layer-${l.key}-hit-dots`];
+        for (const hit of ids.slice(2)) {
+          map.on('mousemove', hit, (e) => {
+            map.getCanvas().style.cursor = 'pointer';
+            const name = e.features?.[0]?.properties?.name;
+            if (name) popup.setLngLat(e.lngLat).setText(String(name)).addTo(map);
+          });
+          map.on('mouseleave', hit, () => { map.getCanvas().style.cursor = ''; popup.remove(); });
+          map.on('click', hit, (e) => { const href = e.features?.[0]?.properties?.href; if (href) navigate(String(href)); });
+        }
         toggles.get(l.key)?.addEventListener('change', (ev) => {
           const v = (ev.target as HTMLInputElement).checked ? 'visible' : 'none';
-          for (const id of [`layer-${l.key}`, hit]) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', v);
+          for (const id of ids) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', v);
         });
       }
     }

@@ -1,0 +1,34 @@
+# Hot axle box detector page: the detector a track names with era:tracksideHabd.
+PREFIX rd:    <https://rinf-describe.matdata.eu/ns#>
+PREFIX shape: <https://rinf-describe.matdata.eu/shapes/>
+PREFIX dash:  <http://datashapes.org/dash#>
+PREFIX sh:    <http://www.w3.org/ns/shacl#>
+PREFIX era:   <http://data.europa.eu/949/>
+PREFIX gsp:   <http://www.opengis.net/ont/geosparql#>
+PREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
+
+shape:habd-group a sh:PropertyGroup ; rdfs:label "Hot axle box detector" ; sh:order 10 .
+
+shape:habd
+    a sh:NodeShape ;
+    rdfs:label "Hot axle box detector" ;
+    sh:targetClass era:HABD ;
+
+    sh:property [ sh:path era:hotAxleBoxDetectorIdentification ; sh:name "Identification" ; rd:key "title" ; dash:propertyRole dash:LabelRole ] ;
+    sh:property [ sh:path era:hotAxleBoxDetectorIdentification ; sh:name "Identification" ; rd:key "identification" ; sh:group shape:habd-group ; sh:order 10 ] ;
+    sh:property [ sh:path era:hotAxleBoxDetectorGeneration ; sh:name "Generation" ; sh:group shape:habd-group ; sh:order 20 ] ;
+    sh:property [
+        sh:path era:hotAxleBoxDetectorTSICompliant ; sh:name "TSI compliant" ; rd:key "tsi" ;
+        sh:group shape:habd-group ; sh:order 30 ;
+        dash:propertyRole dash:KeyInfoRole ;
+    ] ;
+    sh:property [ sh:path era:hotAxleBoxDetectorDirection ; sh:name "Direction of measurement" ; sh:group shape:habd-group ; sh:order 40 ] ;
+    sh:property [ sh:path era:hotAxleBoxDetectorLocation ; sh:name "Railway location (km)" ; sh:group shape:habd-group ; sh:order 50 ] ;
+    sh:property [ sh:path [ sh:inversePath era:tracksideHabd ] ; sh:name "Track" ; rd:key "track" ; sh:group shape:habd-group ; sh:order 60 ] ;
+
+    sh:property [
+        sh:name "RINF parameters" ; rd:key "rinf-parameters" ;
+        sh:group shape:ie-parameters ; sh:order 10 ;
+        dash:viewer rd:ParameterIndexViewer ;
+    ] .

@@ -63,11 +63,13 @@ function platformHeight(v: Term, labels: Record<string, string>): SVGElement {
 /** The way a track is normally run, against the direction of its kilometres: N(ormal),
  * O(pposite) or B(oth) (era:trackDirection, track-running-directions/10, 20, 30). */
 export function directionOf(v: Term, labels: Record<string, string>): 'normal' | 'opposite' | 'both' | null {
+  // Also a signal's orientation: orientations/00 Normal, 01 Opposite.
   const l = (v.iri ? labels[v.iri] ?? '' : v.value ?? '').trim().toUpperCase();
-  const code = v.iri?.match(/\/(10|20|30)$/)?.[1];
-  if (l === 'N' || code === '10') return 'normal';
-  if (l === 'O' || code === '20') return 'opposite';
-  if (l === 'B' || code === '30') return 'both';
+  const code = v.iri?.match(/\/(track-running-directions\/(?:TrackRunningDirections\/)?(10|20|30)|orientations\/(00|01))$/);
+  const c = code?.[2] ?? code?.[3];
+  if (l === 'N' || l === 'NORMAL' || c === '10' || c === '00') return 'normal';
+  if (l === 'O' || l === 'OPPOSITE' || c === '20' || c === '01') return 'opposite';
+  if (l === 'B' || l === 'BOTH' || c === '30') return 'both';
   return null;
 }
 

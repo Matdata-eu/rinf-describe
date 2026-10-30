@@ -1,0 +1,49 @@
+# Linear element page: a piece of the topology network, with the elements it connects to
+# through net relations (era:elementA / era:elementB).
+PREFIX rd:    <https://rinf-describe.matdata.eu/ns#>
+PREFIX shape: <https://rinf-describe.matdata.eu/shapes/>
+PREFIX dash:  <http://datashapes.org/dash#>
+PREFIX sh:    <http://www.w3.org/ns/shacl#>
+PREFIX era:   <http://data.europa.eu/949/>
+PREFIX gsp:   <http://www.opengis.net/ont/geosparql#>
+PREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
+
+shape:le-group a sh:PropertyGroup ; rdfs:label "Linear element" ; sh:order 10 .
+
+shape:linear-element
+    a sh:NodeShape ;
+    rdfs:label "Linear element" ;
+    sh:targetClass era:LinearElement ;
+
+    sh:property [ sh:path rdfs:label ; rd:key "title" ; dash:propertyRole dash:LabelRole ] ;
+    sh:property [
+        sh:path ( gsp:hasGeometry gsp:asWKT ) ;
+        sh:name "Map" ; rd:key "map" ; sh:order 2 ;
+        dash:viewer rd:MapViewer ;
+        rd:layers "connected" ;
+    ] ;
+    sh:property [
+        sh:path era:lengthOfNetLinearElement ; sh:name "Length" ; rd:key "length" ;
+        sh:group shape:le-group ; sh:order 10 ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "{value} m" ;
+    ] ;
+    sh:property [
+        sh:name "Validity" ; rd:key "validity" ;
+        sh:group shape:le-group ; sh:order 20 ;
+        dash:viewer rd:ValidityViewer ;
+        rd:begin shape:validity-begin ;
+        rd:end shape:validity-end ;
+    ] ;
+    sh:property [
+        sh:path [ sh:alternativePath ( ( [ sh:inversePath era:elementA ] era:elementB ) ( [ sh:inversePath era:elementB ] era:elementA ) ) ] ;
+        sh:name "Connected elements" ; rd:key "connected" ;
+        sh:group shape:le-group ; sh:order 30 ;
+        dash:viewer dash:ValueTableViewer ;
+        sh:node shape:le-row ;
+    ] .
+
+shape:le-row
+    a sh:NodeShape ;
+    sh:property [ sh:path era:lengthOfNetLinearElement ; sh:name "Length (m)" ; sh:order 10 ] ;
+    sh:property [ sh:path ( gsp:hasGeometry gsp:asWKT ) ; rd:key "wkt" ; rd:hidden "true" ; sh:order 99 ] .

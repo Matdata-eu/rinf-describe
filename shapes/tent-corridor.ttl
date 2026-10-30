@@ -1,0 +1,35 @@
+# TEN-T corridor page: the TEN-T classification of one track (ERA states one per track).
+PREFIX rd:    <https://rinf-describe.matdata.eu/ns#>
+PREFIX shape: <https://rinf-describe.matdata.eu/shapes/>
+PREFIX dash:  <http://datashapes.org/dash#>
+PREFIX sh:    <http://www.w3.org/ns/shacl#>
+PREFIX era:   <http://data.europa.eu/949/>
+PREFIX gsp:   <http://www.opengis.net/ont/geosparql#>
+PREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
+
+shape:tent-group a sh:PropertyGroup ; rdfs:label "TEN-T" ; sh:order 10 .
+
+shape:tent-corridor
+    a sh:NodeShape ;
+    rdfs:label "TEN-T corridor" ;
+    sh:targetClass era:TENTCorridor ;
+
+    sh:property [ sh:path rdfs:label ; rd:key "title" ; dash:propertyRole dash:LabelRole ] ;
+    sh:property [
+        sh:path era:tentNetworkLevel ; sh:name "Network level" ; rd:key "level" ;
+        sh:group shape:tent-group ; sh:order 10 ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "{value}" ;
+    ] ;
+    sh:property [
+        sh:path era:typeOfTraffic ; sh:name "Type of traffic" ; rd:key "traffic" ;
+        sh:group shape:tent-group ; sh:order 20 ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "{value}" ;
+    ] ;
+    sh:property [ sh:path era:corridor ; sh:name "Corridor" ; sh:group shape:tent-group ; sh:order 30 ] ;
+    sh:property [
+        sh:path [ sh:inversePath era:partOfTENT ] ; sh:name "Tracks" ; rd:key "tracks" ;
+        sh:group shape:tent-group ; sh:order 40 ;
+        dash:viewer dash:ValueTableViewer ; rd:limit "100" ;
+        sh:node shape:used-by-row ;
+    ] .

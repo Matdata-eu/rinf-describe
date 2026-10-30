@@ -1,0 +1,36 @@
+# Kilometric post page: its km on its national line. Not an infrastructure element.
+PREFIX rd:    <https://rinf-describe.matdata.eu/ns#>
+PREFIX shape: <https://rinf-describe.matdata.eu/shapes/>
+PREFIX dash:  <http://datashapes.org/dash#>
+PREFIX sh:    <http://www.w3.org/ns/shacl#>
+PREFIX era:   <http://data.europa.eu/949/>
+PREFIX gsp:   <http://www.opengis.net/ont/geosparql#>
+PREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
+
+shape:kp-group a sh:PropertyGroup ; rdfs:label "Kilometric post" ; sh:order 10 .
+
+shape:kilometric-post
+    a sh:NodeShape ;
+    rdfs:label "Kilometric post" ;
+    sh:targetClass era:KilometricPost ;
+
+    sh:property [ sh:path rdfs:label ; rd:key "title" ; dash:propertyRole dash:LabelRole ] ;
+    sh:property [
+        sh:path [ sh:alternativePath ( ( era:netReference gsp:hasGeometry gsp:asWKT ) ( gsp:hasGeometry gsp:asWKT ) ) ] ;
+        sh:name "Map" ; rd:key "map" ; sh:order 2 ;
+        dash:viewer rd:MapViewer ;
+    ] ;
+    sh:property [
+        sh:path era:kilometer ; sh:name "Kilometre" ; rd:key "km" ;
+        sh:group shape:kp-group ; sh:order 10 ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "km {value}" ;
+    ] ;
+    sh:property [ sh:path era:kmPostName ; sh:name "Name" ; sh:group shape:kp-group ; sh:order 20 ] ;
+    sh:property [
+        sh:path era:hasLRS ; sh:name "National line" ; rd:key "line" ;
+        sh:group shape:kp-group ; sh:order 30 ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "Line {value}" ;
+    ] ;
+    sh:property [ sh:path era:measuredDistance ; sh:name "Measured distance" ; sh:group shape:kp-group ; sh:order 40 ] ;
+    sh:property [ sh:path era:inCountry ; sh:name "Country" ; sh:group shape:kp-group ; sh:order 50 ; dash:viewer rd:SymbolViewer ; rd:symbol "country" ] .
