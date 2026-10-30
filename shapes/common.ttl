@@ -1,0 +1,38 @@
+# Shared pieces of the class pages: named paths and the document card. A blank node
+# cannot be shared between files, so these are named nodes (shape:own-or-subset); the
+# API reads a named node with path triples as that path, not as a predicate.
+PREFIX rd:    <https://rinf-describe.matdata.eu/ns#>
+PREFIX shape: <https://rinf-describe.matdata.eu/shapes/>
+PREFIX dash:  <http://datashapes.org/dash#>
+PREFIX sh:    <http://www.w3.org/ns/shacl#>
+PREFIX era:   <http://data.europa.eu/949/>
+PREFIX foaf:  <http://xmlns.com/foaf/0.1/>
+PREFIX time:  <http://www.w3.org/2006/time#>
+PREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
+
+# A track's own parameters, or those of the common characteristics subsets it belongs to
+# (era:belongsTo, or era:contains from the subset) and the subsets those are part of
+# (era:subsetOf). Infrastructure managers often state ETCS and the legacy train protection
+# on a subset rather than on each track.
+shape:own-or-subset sh:zeroOrOnePath (
+    [ sh:alternativePath ( era:belongsTo [ sh:inversePath era:contains ] ) ]
+    [ sh:zeroOrMorePath era:subsetOf ]
+) .
+
+# What a resource is part of, and what is part of it, whichever side states the link.
+shape:part-of sh:alternativePath ( era:isPartOf [ sh:inversePath era:hasPart ] ) .
+shape:parts sh:alternativePath ( era:hasPart [ sh:inversePath era:isPartOf ] ) .
+
+# Begin and end of era:validity (an era:TemporalFeature, a time:TemporalDuration); some
+# providers give dates, others date-time stamps.
+shape:validity-begin rdf:first era:validity ;
+    rdf:rest ( time:hasBeginning [ sh:alternativePath ( time:inXSDDate time:inXSDDateTimeStamp ) ] ) .
+shape:validity-end rdf:first era:validity ;
+    rdf:rest ( time:hasEnd [ sh:alternativePath ( time:inXSDDate time:inXSDDateTimeStamp ) ] ) .
+
+# The fields of an era:Document card (rd:DocumentViewer).
+shape:document-card
+    a sh:NodeShape ;
+    sh:property [ sh:path era:documentUrl ; sh:name "Address" ; rd:key "url" ; sh:order 10 ] ;
+    sh:property [ sh:path foaf:name ; sh:name "Name" ; rd:key "name" ; sh:order 20 ] .

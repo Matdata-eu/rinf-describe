@@ -1,5 +1,7 @@
 // rd:SymbolViewer: an illustrative, non-dimensioned symbol next to each value's label
-// (rd:symbol "loading-gauge" for gauging profiles, "track-gauge" for the track gauge).
+// (rd:symbol "loading-gauge" for gauging profiles, "track-gauge" for the track gauge,
+// "country" for a country's flag).
+import type { Term } from '../api.ts';
 import { h, s } from '../dom.ts';
 import { describeHref } from '../nav.ts';
 import { iriLabel } from '../rdf.ts';
@@ -23,7 +25,29 @@ function trackGauge(): SVGElement {
     s('path', { d: 'M20 24v16M44 24v16', class: 'tick-line' }));
 }
 
-const SYMBOLS: Record<string, () => SVGElement> = { 'loading-gauge': loadingGauge, 'track-gauge': trackGauge };
+// EU authority country codes (ISO 3166-1 alpha-3) of the RINF countries and their neighbours.
+const ISO2: Record<string, string> = {
+  AUT: 'AT', BEL: 'BE', BGR: 'BG', HRV: 'HR', CYP: 'CY', CZE: 'CZ', DNK: 'DK', EST: 'EE', FIN: 'FI', FRA: 'FR',
+  DEU: 'DE', GRC: 'GR', HUN: 'HU', IRL: 'IE', ITA: 'IT', LVA: 'LV', LTU: 'LT', LUX: 'LU', MLT: 'MT', NLD: 'NL',
+  POL: 'PL', PRT: 'PT', ROU: 'RO', SVK: 'SK', SVN: 'SI', ESP: 'ES', SWE: 'SE', NOR: 'NO', CHE: 'CH', LIE: 'LI',
+  ISL: 'IS', GBR: 'GB', MNE: 'ME', MKD: 'MK', SRB: 'RS', ALB: 'AL', BIH: 'BA', UKR: 'UA', MDA: 'MD', BLR: 'BY',
+  RUS: 'RU', TUR: 'TR', AND: 'AD', MCO: 'MC', SMR: 'SM', XKX: 'XK', GEO: 'GE', ARM: 'AM',
+};
+
+/** The country's two-letter code from its EU authority IRI (.../country/SWE). */
+export function countryCode(iri: string | undefined): string | null {
+  const m = iri ? /\/country\/([A-Z]{3})$/.exec(iri) : null;
+  return m ? ISO2[m[1]] ?? null : null;
+}
+
+function country(v: Term): Node {
+  const code = countryCode(v.iri);
+  // A flag emoji: two regional indicator letters (systems without flag emoji show the letters).
+  const flag = code ? [...code].map((c) => String.fromCodePoint(0x1f1e6 + c.charCodeAt(0) - 65)).join('') : '🏳';
+  return h('span', { class: 'symbol flag', 'aria-hidden': 'true' }, flag);
+}
+
+const SYMBOLS: Record<string, (v: Term) => Node> = { 'loading-gauge': loadingGauge, 'track-gauge': trackGauge, country };
 
 export const SymbolViewer: Widget = {
   render: ({ entry, env, labels, row }) => {
@@ -31,7 +55,7 @@ export const SymbolViewer: Widget = {
     if (!values.length) return null;
     const draw = SYMBOLS[row.settings.symbol ?? ''] ?? loadingGauge;
     return h('div', { class: 'symbols' }, values.map((v) => h('figure', { class: 'symbol-tile' },
-      draw(),
+      draw(v),
       h('figcaption', null, v.iri
         ? h('a', { class: 'iri-link', href: describeHref(v.iri, env), title: v.iri }, iriLabel(v.iri, labels))
         : termText(v, labels)))));

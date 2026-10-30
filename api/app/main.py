@@ -23,7 +23,7 @@ import httpx
 from fastapi import FastAPI, HTTPException, Query, Response
 from fastapi.middleware.gzip import GZipMiddleware
 
-from . import atlas, live, livepage, shapes
+from . import atlas, live, livepage, ontology, shapes
 from . import rdf as R
 
 log = logging.getLogger("describe")
@@ -60,6 +60,7 @@ GRAPH_MAX = 200
 
 dset: shapes.DescribeSet = shapes.DescribeSet([], {})
 _cache: dict[tuple, tuple[float, Any]] = {}
+ontologies = ontology.Cache()
 
 
 @asynccontextmanager
@@ -142,12 +143,36 @@ def config():
             "atlasUrl": ATLAS_URL or None}
 
 
+def _ontology(env: str) -> ontology.Ontology:
+    return ontologies.get(env, lambda q: live.sparql(ENDPOINTS[env], q, 60.0))
+
+
+_PATH_IRI = re.compile(r"<([^>]+)>")
+
+
+def _terms(ds: shapes.DocShape, doc: dict, onto: ontology.Ontology) -> dict[str, dict]:
+    """Label, definition, unit and RINF index of the properties on a page: in its rows' paths
+    and among its RINF parameters."""
+    iris: set[str] = set()
+    for row in ds.rows:
+        for p in [row.path, *row.params.values(), *(c.path for c in row.columns)]:
+            iris.update(_PATH_IRI.findall(p or ""))
+    for e in doc["rows"].values():
+        for x in e.get("parameters", []):
+            iris.add(x["p"])
+            if x.get("via"):
+                iris.add(x["via"])
+    for lst in doc.get("dataStatus", {}).values():
+        iris.update(lst)
+    return onto.subset(iris)
+
+
 def _page(env: str, iri: str) -> dict:
     """The class pages of a resource built from ERA's endpoint, kept for a few minutes."""
     def build():
         try:
             return livepage.page(lambda q: live.sparql(ENDPOINTS[env], q), iri, dset,
-                                 batch=LIVE_BATCH, workers=LIVE_WORKERS)
+                                 batch=LIVE_BATCH, workers=LIVE_WORKERS, onto=_ontology(env))
         except httpx.HTTPError as e:
             raise HTTPException(502, f"ERA's SPARQL endpoint did not answer: {e}") from e
     return _cached(("page", env, iri), PAGE_CACHE_SECONDS, build)
@@ -167,16 +192,18 @@ def describe(uri: str, env: str | None = None):
     """The page of one resource: its class pages (layout + evaluated values), classes, labels."""
     env, iri = _env(env), _iri(uri)
     p = _page(env, iri)
+    onto = _ontology(env)
     labels = dict(p["labels"])
-    pages = []
+    pages, terms = [], {}
     for ds, doc in p["pages"]:
         d = ds.definition(dset.groups)
         pages.append({"shape": ds.iri, "class": ds.class_iri, "label": d["label"], "rows": d["rows"],
                       "groups": d["groups"], "doc": doc})
+        terms.update(_terms(ds, doc, onto))
     return {"iri": iri, "env": env, "source": "live" if p["classes"] or p["counts"]["out"] else "missing",
             "title": labels.get(iri), "classes": p["classes"], "graph": p["graph"],
             "dataset": _dataset(env, p["graph"]), "pages": pages, "counts": p["counts"], "labels": labels,
-            "timing": p["timing"]}
+            "terms": terms, "chapters": onto.chapters if pages else {}, "timing": p["timing"]}
 
 
 @app.get("/api/triples")
@@ -228,9 +255,19 @@ def export(uri: str, env: str | None = None, format: str = Query("ttl", pattern=
                     headers={"Content-Disposition": f'attachment; filename="{name}.{format}"'})
 
 
-def _classes() -> list[str]:
-    """The classes that have a page layout of their own."""
-    return sorted({s.class_iri for s in dset.shapes})
+def _classes(env: str | None = None) -> list[str]:
+    """The classes that have a class page: those of the shapes and their subclasses (every
+    infrastructure class has the base page)."""
+    own = {s.class_iri for s in dset.shapes}
+    onto = _ontology(env or ENVS[0][0])
+    return sorted(own.union(*(onto.descendants(c) for c in own)))
+
+
+def _example_shapes() -> list[shapes.DocShape]:
+    """The shapes of a class of its own: not a base page under other class pages."""
+    onto = _ontology(ENVS[0][0])
+    own = {s.class_iri for s in dset.shapes}
+    return [s for s in dset.shapes if not (onto.descendants(s.class_iri) & own)]
 
 
 @app.get("/api/search")
@@ -243,7 +280,7 @@ def search(q: str = Query(..., min_length=2, max_length=200), env: str | None = 
     if not ATLAS_URL:
         return {"results": []}
     try:
-        return {"results": atlas.search(ATLAS_URL, env, q, _classes(), limit)}
+        return {"results": atlas.search(ATLAS_URL, env, q, _classes(env), limit)}
     except httpx.HTTPError as e:
         raise HTTPException(502, f"RINF Atlas's search did not answer: {e}") from e
 
@@ -255,7 +292,7 @@ def examples(env: str | None = None):
 
     def find():
         out = []
-        for ds in sorted(dset.shapes, key=lambda s: s.label):
+        for ds in sorted(_example_shapes(), key=lambda s: s.label):
             hit = _sparql(env, f"SELECT ?s WHERE {{ ?s a <{ds.class_iri}> FILTER(isIRI(?s)) }} LIMIT 1")
             if hit:
                 out.append({"class": ds.class_iri, "classLabel": ds.label, "iri": hit[0]["s"]["value"]})

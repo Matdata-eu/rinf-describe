@@ -1,30 +1,47 @@
 // The describe page: header with classes, title, IRI, badges and exports; tabs from the
 // class shapes (Overview, Route compatibility, ...) and the generic ones every resource
 // has (All properties, Incoming links, Graph).
-import { api, type ClassPage, type Config, type DescribeResponse, type Triple, type TriplesResponse } from './api.ts';
+import { api, type ClassPage, type Config, type DescribeResponse, type RowDef, type Triple, type TriplesResponse } from './api.ts';
 import { h, joined } from './dom.ts';
 import { formatDate } from './format.ts';
 import { badgeText, isEmpty, layout, statusOf, type LaidGroup } from './layout.ts';
 import { describeHref } from './nav.ts';
-import { RDF_TYPE, iriLabel, humanize, localName, pathText, prefixed } from './rdf.ts';
+import { RDF_TYPE, helpPredicate, helpText, iriLabel, humanize, localName, prefixed } from './rdf.ts';
 import { valueNode } from './widgets/basic.ts';
 import { dataStatus } from './widgets/datastatus.ts';
 import { graphView } from './widgets/graph.ts';
 import { widgetFor, type Ctx } from './widgets/index.ts';
+import { indexRoots } from './widgets/parameters.ts';
 
 const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
 const STATUS_TEXT = { notApplicable: 'Not applicable', notYetAvailable: 'Not yet available' } as const;
 
 interface Tab { key: string; label: string; count?: number; render: () => Node }
 
-function card(lg: LaidGroup, page: ClassPage, r: DescribeResponse): HTMLElement | null {
+/** The row with the ontology's unit where the shape gives none, for itself and its columns. */
+function withOntologyUnits(row: RowDef, r: DescribeResponse): RowDef {
+  const unit = (x: RowDef) => x.unit ?? (r.terms?.[helpPredicate(x.path) ?? '']?.unit ?? null);
+  return { ...row, unit: row.aggregate === 'count' ? row.unit : unit(row), columns: row.columns.map((c) => ({ ...c, unit: unit(c) })) };
+}
+
+function ctxFor(row: RowDef, page: ClassPage, r: DescribeResponse): Ctx {
+  return { env: r.env, labels: r.labels, row: withOntologyUnits(row, r), entry: page.doc.rows[row.key] ?? {}, page, terms: r.terms, chapters: r.chapters };
+}
+
+/** The RINF index roots of the page, for the index shown in the row help. */
+function pageRoots(page: ClassPage, r: DescribeResponse): string[] {
+  const ps = Object.values(page.doc.rows).flatMap((e) => (e.parameters ?? []).map((x) => x.p));
+  return indexRoots(ps, r.terms ?? {});
+}
+
+function card(lg: LaidGroup, page: ClassPage, r: DescribeResponse, roots: string[]): HTMLElement | null {
   const parts: Node[] = [];
   let wide = false;
   for (const row of lg.rows) {
-    const entry = page.doc.rows[row.key] ?? {};
-    const ctx: Ctx = { env: r.env, labels: r.labels, row, entry, page };
+    const ctx = ctxFor(row, page, r);
+    const entry = ctx.entry;
     const name = row.name ?? humanize(row.key);
-    const tip = row.path ? pathText(row.path) : null;
+    const tip = helpText(r.terms?.[helpPredicate(row.path) ?? ''], row.path, roots);
     if (isEmpty(entry)) {
       const st = statusOf(row, page);
       if (st) parts.push(h('div', { class: 'row' }, h('dt', { title: tip }, name), h('dd', null, h('span', { class: 'chip status' }, STATUS_TEXT[st]))));
@@ -48,7 +65,7 @@ function card(lg: LaidGroup, page: ClassPage, r: DescribeResponse): HTMLElement 
 
 function hero(page: ClassPage, r: DescribeResponse, rows: ReturnType<typeof layout>['hero']): Node[] {
   return rows.map((row) => {
-    const ctx: Ctx = { env: r.env, labels: r.labels, row, entry: page.doc.rows[row.key] ?? {}, page };
+    const ctx = ctxFor(row, page, r);
     const node = isEmpty(ctx.entry) ? null : widgetFor(ctx).render(ctx);
     return node ? h('section', { class: `card wide hero hero-${row.key}`, 'aria-label': row.name ?? row.key }, node) : null;
   }).filter((n): n is HTMLElement => !!n);
@@ -135,10 +152,11 @@ export function describePage(r: DescribeResponse, cfg: Config, wantTab: string |
       if (t && !badges.includes(t)) badges.push(t);
     }
     for (const t of lay.tabs) {
-      const cards = t.groups.map((g) => card(g, page, r)).filter((c): c is HTMLElement => !!c);
+      const roots = pageRoots(page, r);
+      const cards = t.groups.map((g) => card(g, page, r, roots)).filter((c): c is HTMLElement => !!c);
       if (t.key === 'overview') {
         overview.push(...hero(page, r, lay.hero), ...cards);
-        const st = dataStatus(page, r.labels);
+        const st = dataStatus(page, r.labels, r.terms);
         if (st) overview.push(st);
       } else if (cards.length) {
         const existing = tabs.find((x) => x.key === t.key);

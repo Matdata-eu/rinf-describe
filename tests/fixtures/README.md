@@ -9,3 +9,8 @@ geometries). The tests serve it as a SPARQL endpoint with pyoxigraph
 
 Source: European Union Agency for Railways (ERA), Register of Infrastructure
 (RINF), https://data-interop.era.europa.eu/. Extracted 2026-10-14.
+
+`era-ontology.nt.gz`: the labels, definitions (`rdfs:comment`), RINF indexes, units
+and `rdfs:subClassOf` statements of ERA's ontology graph
+`http://data.europa.eu/949/graph/rinf/ontology` on the same endpoint (about 2,400
+triples), as the API reads them (`api/app/ontology.py`). Extracted 2026-10-30.

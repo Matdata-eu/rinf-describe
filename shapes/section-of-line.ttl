@@ -3,22 +3,20 @@
 # Standard SHACL and DASH, plus the rd: terms of describe.ttl (docs/shapes.md).
 # The page shows: a route diagram and a map at the top, then the groups below
 # in sh:order. Rows with dash:KeyInfoRole also appear as badges in the header.
-# After editing, the worker of RINF Atlas rebuilds the pages on its next poll
-# (or run `atlas describe-reindex`).
+# The base page (infrastructure-element.ttl) adds identification, validity and the
+# RINF parameters tab.
 PREFIX rd:    <https://rinf-describe.matdata.eu/ns#>
 PREFIX shape: <https://rinf-describe.matdata.eu/shapes/>
 PREFIX dash:  <http://datashapes.org/dash#>
 PREFIX sh:    <http://www.w3.org/ns/shacl#>
 PREFIX era:   <http://data.europa.eu/949/>
 PREFIX gsp:   <http://www.opengis.net/ont/geosparql#>
-PREFIX time:  <http://www.w3.org/2006/time#>
 PREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
 
 shape:sol-route a sh:PropertyGroup ; rdfs:label "Route" ; sh:order 10 .
 shape:sol-tracks a sh:PropertyGroup ; rdfs:label "Track characteristics" ; sh:order 20 .
 shape:sol-track-list a sh:PropertyGroup ; rdfs:label "Tracks" ; sh:order 30 .
-shape:sol-identification a sh:PropertyGroup ; rdfs:label "Identification" ; sh:order 40 .
 
 shape:section-of-line
     a sh:NodeShape ;
@@ -121,21 +119,21 @@ shape:section-of-line
         dash:viewer rd:AggregateViewer ;
     ] ;
     sh:property [
-        sh:path ( _:own-or-subset era:etcs era:etcsLevelType ) ; sh:name "ETCS level" ;
+        sh:path ( shape:own-or-subset era:etcs era:etcsLevelType ) ; sh:name "ETCS level" ;
         rd:over [ sh:alternativePath ( era:hasPart [ sh:inversePath era:isPartOf ] ) ] ;
         rd:aggregate "distinct-count" ;
         sh:group shape:sol-tracks ; sh:order 60 ;
         dash:viewer rd:AggregateViewer ;
     ] ;
     sh:property [
-        sh:path ( _:own-or-subset era:etcs era:etcsBaseline ) ; sh:name "ETCS baseline" ;
+        sh:path ( shape:own-or-subset era:etcs era:etcsBaseline ) ; sh:name "ETCS baseline" ;
         rd:over [ sh:alternativePath ( era:hasPart [ sh:inversePath era:isPartOf ] ) ] ;
         rd:aggregate "distinct-count" ;
         sh:group shape:sol-tracks ; sh:order 70 ;
         dash:viewer rd:AggregateViewer ;
     ] ;
     sh:property [
-        sh:path ( _:own-or-subset era:protectionLegacySystem ) ; sh:name "Train protection legacy system" ;
+        sh:path ( shape:own-or-subset era:protectionLegacySystem ) ; sh:name "Train protection legacy system" ;
         rd:over [ sh:alternativePath ( era:hasPart [ sh:inversePath era:isPartOf ] ) ] ;
         rd:aggregate "distinct-count" ;
         sh:group shape:sol-tracks ; sh:order 75 ;
@@ -179,22 +177,8 @@ shape:section-of-line
         sh:node shape:sol-track-row ;
     ] ;
 
-    # --- Identification ---
-    sh:property [
-        sh:path era:infrastructureManager ; sh:name "Infrastructure manager" ;
-        sh:group shape:sol-identification ; sh:order 10 ;
-    ] ;
-    sh:property [
-        sh:path era:inCountry ; sh:name "Country" ;
-        sh:group shape:sol-identification ; sh:order 20 ;
-    ] ;
-    sh:property [
-        sh:name "Validity" ; rd:key "validity" ;
-        sh:group shape:sol-identification ; sh:order 30 ;
-        dash:viewer rd:ValidityViewer ;
-        rd:begin ( era:validity time:hasBeginning time:inXSDDate ) ;
-        rd:end ( era:validity time:hasEnd time:inXSDDate ) ;
-    ] .
+    # The tracks table lists the parts already.
+    sh:property [ rd:key "parts" ; sh:deactivated true ] .
 
 # Columns of the Tracks table.
 shape:sol-track-row
@@ -203,14 +187,5 @@ shape:sol-track-row
     sh:property [ sh:path era:maximumPermittedSpeed ; sh:name "Max speed" ; rd:unit "km/h" ; sh:order 30 ] ;
     sh:property [ sh:path era:wheelSetGauge ; sh:name "Gauge" ; sh:order 40 ] ;
     sh:property [ sh:path ( era:contactLineSystem era:contactLineSystemType ) ; sh:name "Contact line" ; sh:order 50 ] ;
-    sh:property [ sh:path ( _:own-or-subset era:etcs era:etcsLevelType ) ; sh:name "ETCS" ; sh:order 60 ] ;
+    sh:property [ sh:path ( shape:own-or-subset era:etcs era:etcsLevelType ) ; sh:name "ETCS" ; sh:order 60 ] ;
     sh:property [ sh:path era:lineCategory ; sh:name "Line category" ; sh:order 70 ] .
-
-# A track's own parameters, or those of the common characteristics subsets it belongs to
-# (era:belongsTo, or era:contains from the subset) and the subsets those are part of
-# (era:subsetOf). Infrastructure managers often state ETCS and the legacy train protection
-# on a subset rather than on each track.
-_:own-or-subset sh:zeroOrOnePath (
-    [ sh:alternativePath ( era:belongsTo [ sh:inversePath era:contains ] ) ]
-    [ sh:zeroOrMorePath era:subsetOf ]
-) .

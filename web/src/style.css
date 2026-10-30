@@ -414,3 +414,43 @@ ul.chips .chip { font-weight: 400; }
   .tour-art svg { width: 52px; height: 39px; }
   .tour-step { display: none; }
 }
+
+/* RINF parameters tab (rd:ParameterIndexViewer) */
+.param-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 0 0 10px; }
+.param-filter { height: 30px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); min-width: min(320px, 100%); }
+.params th[scope=row] { font-weight: 400; width: 38%; }
+.params .param-index { white-space: nowrap; width: 1%; }
+.params tr.param-chapter th { font-weight: 600; padding-top: 14px; }
+.params tr.param-chapter.level-0 th { font-size: 15px; }
+.params tr.param-chapter.level-1 th { font-size: 13px; color: var(--muted); }
+.params tr.param-chapter td, .params tr.param-chapter th { background: none; border-bottom-color: var(--line-strong); }
+.param-value + .param-value { margin-top: 2px; }
+.param-via { white-space: nowrap; }
+
+/* documents (rd:DocumentViewer) */
+ul.documents { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.doc-card { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: var(--radius-sm); background: var(--surface-2); min-width: 0; }
+.doc-type { flex: none; width: 40px; height: 48px; display: grid; place-items: end center; padding-bottom: 6px; border-radius: 4px 12px 4px 4px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--border); font: 600 10px/1 var(--mono); color: var(--accent-strong); }
+.doc-body { display: grid; min-width: 0; flex: 1; }
+.doc-title { font-weight: 600; overflow-wrap: anywhere; }
+.doc-url { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* facilities (rd:FacilitiesViewer) */
+ul.facilities { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+.facility { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--surface-2); color: var(--muted); }
+.facility-mark { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 12px; box-shadow: inset 0 0 0 1px var(--border); }
+.facility.yes { background: var(--ok-soft); color: var(--text); }
+.facility.yes .facility-mark { background: var(--ok); color: var(--surface); box-shadow: none; }
+.facility.na, .facility.nya { background: none; box-shadow: inset 0 0 0 1px var(--border); }
+
+/* scale bar (rd:ScaleBarViewer) */
+.scalebar { display: grid; gap: 4px; max-width: 420px; }
+.scale-track { position: relative; height: 10px; border-radius: 999px; background: var(--surface-2); margin-bottom: 18px; }
+.scale-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: var(--accent-strong); }
+.scale-fill.range { background: var(--signal); }
+.scale-mark { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--line-strong); }
+.scale-mark.reached { background: var(--ok); }
+.scale-mark-label { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); white-space: nowrap; color: var(--muted); }
+
+/* country flag (rd:SymbolViewer "country") */
+.symbol.flag { width: auto; height: auto; font-size: 28px; line-height: 1.1; font-family: "Twemoji Country Flags", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }

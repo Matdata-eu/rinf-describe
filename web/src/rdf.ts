@@ -1,5 +1,5 @@
 // IRIs, prefixes and the display text of RDF terms.
-import type { Term } from './api.ts';
+import type { Term, TermInfo } from './api.ts';
 
 export const XSD = 'http://www.w3.org/2001/XMLSchema#';
 export const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
@@ -79,4 +79,33 @@ export function pathText(p: string): string {
 export function simplePredicate(path: string | null): string | null {
   const m = path ? /^<([^>]+)>$/.exec(path.trim()) : null;
   return m ? m[1] : null;
+}
+
+/** The property a row is about, for its help text: the predicate of a one-step path, or the
+ * last one of a plain sequence (( era:contactLineSystem era:contactLineSystemType )). */
+export function helpPredicate(path: string | null): string | null {
+  if (!path) return null;
+  const p = path.trim().replace(/^\((.*)\)$/, '$1');
+  const m = /^(?:<[^>]+>\/)*<([^>]+)>$/.exec(p);
+  return m ? m[1] : null;
+}
+
+/** RINF index of a property under one of the roots ("1.1.1"), else its first. */
+export function indexUnder(index: string[] | undefined, roots: string[]): string | null {
+  if (!index?.length) return null;
+  for (const r of roots) {
+    const hit = index.find((ix) => ix.startsWith(r + '.'));
+    if (hit) return hit;
+  }
+  return index[0];
+}
+
+/** Tooltip of a row: the property's definition and RINF index, then its path. */
+export function helpText(info: TermInfo | undefined, path: string | null, roots: string[] = []): string | null {
+  const parts: string[] = [];
+  if (info?.comment) parts.push(info.comment);
+  const ix = indexUnder(info?.index, roots);
+  if (ix) parts.push(`RINF ${ix}`);
+  if (path) parts.push(pathText(path));
+  return parts.length ? parts.join('\n') : null;
 }

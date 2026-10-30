@@ -60,7 +60,7 @@ export function isEmpty(e: RowEntry | undefined): boolean {
   if (!e) return true;
   const params = Object.values(e.params ?? {}).some((v) => v.length);
   const agg = e.aggregate && (e.aggregate.count !== undefined || e.aggregate.min !== undefined || (e.aggregate.values?.length ?? 0) > 0);
-  return !(e.values?.length || e.items?.length || agg || params);
+  return !(e.values?.length || e.items?.length || e.parameters?.length || agg || params);
 }
 
 function aggFields(a: Aggregate): Record<string, number | undefined> {

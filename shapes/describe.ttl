@@ -36,11 +36,27 @@ rd:StepChartViewer a dash:SingleViewer ;
 
 rd:SymbolViewer a dash:MultiViewer ;
     rdfs:label "Symbol" ;
-    rdfs:comment "An illustrative, non-dimensioned symbol next to each value's label. rd:symbol: loading-gauge or track-gauge." .
+    rdfs:comment "An illustrative, non-dimensioned symbol next to each value's label. rd:symbol: loading-gauge, track-gauge or country." .
 
 rd:ValidityViewer a dash:SingleViewer ;
     rdfs:label "Validity" ;
     rdfs:comment "Validity period (an era:TemporalFeature, a time:TemporalDuration) as a bar on a time axis with today marked. Paths: rd:begin, rd:end (xsd:date)." .
+
+rd:ParameterIndexViewer a dash:MultiViewer ;
+    rdfs:label "RINF parameters" ;
+    rdfs:comment "Every parameter of the resource with a RINF index in the ERA ontology, grouped by RINF index chapter, with its unit and definition. Needs no sh:path. Optional rd:indexRoot." .
+
+rd:DocumentViewer a dash:MultiViewer ;
+    rdfs:label "Document" ;
+    rdfs:comment "era:Document resources of sh:path as cards with their file type and a link to open them. sh:node shape:document-card gives the address and name." .
+
+rd:FacilitiesViewer a dash:MultiViewer ;
+    rdfs:label "Facilities" ;
+    rdfs:comment "Boolean parameters as tiles: yes, no, not applicable, not yet available. rd:facility: one per property." .
+
+rd:ScaleBarViewer a dash:SingleViewer ;
+    rdfs:label "Scale bar" ;
+    rdfs:comment "A length as a bar against rd:marks (\"400 Passenger train; 740 Freight train\"), or the range rd:min to rd:max on a scale (rd:scale \"4 7\")." .
 
 rd:DataStatusViewer a dash:MultiViewer ;
     rdfs:label "Data status" ;
@@ -68,6 +84,15 @@ rd:badge a owl:DatatypeProperty ;
 rd:symbol a owl:DatatypeProperty ;
     rdfs:label "symbol" ;
     rdfs:comment "Symbol set of rd:SymbolViewer." .
+rd:indexRoot a owl:DatatypeProperty ;
+    rdfs:label "index root" ;
+    rdfs:comment "RINF index root(s) of rd:ParameterIndexViewer, e.g. 1.2.1 for a track of an operational point." .
+rd:facility a owl:ObjectProperty ;
+    rdfs:label "facility" ;
+    rdfs:comment "A boolean property shown as a tile by rd:FacilitiesViewer; repeat for each." .
+rd:marks a owl:DatatypeProperty ;
+    rdfs:label "marks" ;
+    rdfs:comment "Reference marks of rd:ScaleBarViewer: value label pairs separated by semicolons." .
 rd:key a owl:DatatypeProperty ;
     rdfs:label "key" ;
     rdfs:comment "Stable key of a property row; by default made from sh:name or the path." .

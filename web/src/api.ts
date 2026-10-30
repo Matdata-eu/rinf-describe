@@ -17,12 +17,20 @@ export interface Aggregate {
 
 export interface Item { iri: string; cells: Record<string, Term[]> }
 
+/** A RINF parameter of the resource (rd:ParameterIndexViewer): the property, its values, and
+ * when it sits on a linked resource (its contact line system...), the link and that resource. */
+export interface Parameter { p: string; values: Term[]; via?: string; of?: string }
+
+/** What the ontology says about a property. */
+export interface TermInfo { label?: string; comment?: string; index?: string[]; unit?: string | null }
+
 /** One evaluated row of a page (describe_doc.doc.rows[key]). */
 export interface RowEntry {
   values?: Term[];
   aggregate?: Aggregate;
   items?: Item[];
   params?: Record<string, Term[]>;
+  parameters?: Parameter[];
 }
 
 /** One property row of a describe shape, as compiled by the worker (describe_def). */
@@ -41,6 +49,7 @@ export interface RowDef {
   params: Record<string, string>;
   settings: Record<string, string>;
   columns: RowDef[];
+  deactivated?: boolean;
 }
 
 export interface GroupDef { iri: string; label: string; order: number; tab: string }
@@ -65,6 +74,10 @@ export interface DescribeResponse {
   pages: ClassPage[];
   counts: { out: number; in: number };
   labels: Record<string, string>;
+  /** The ontology's label, definition, unit and RINF index of each property on the page. */
+  terms?: Record<string, TermInfo>;
+  /** RINF index -> chapter name. */
+  chapters?: Record<string, string>;
   /** Milliseconds spent building the page, per round of queries. */
   timing?: Record<string, number>;
 }

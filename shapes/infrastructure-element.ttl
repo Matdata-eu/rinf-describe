@@ -1,0 +1,82 @@
+# Base page of every infrastructure element (era:InfrastructureElement and, through the
+# ontology's rdfs:subClassOf, all its subclasses: operational points, tracks, tunnels,
+# signals...). A class shape is merged over it: its rows win on the same rd:key, and a
+# row with sh:deactivated true hides a base row (docs/shapes.md).
+PREFIX rd:    <https://rinf-describe.matdata.eu/ns#>
+PREFIX shape: <https://rinf-describe.matdata.eu/shapes/>
+PREFIX dash:  <http://datashapes.org/dash#>
+PREFIX sh:    <http://www.w3.org/ns/shacl#>
+PREFIX era:   <http://data.europa.eu/949/>
+PREFIX gsp:   <http://www.opengis.net/ont/geosparql#>
+PREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
+
+shape:ie-identification a sh:PropertyGroup ; rdfs:label "Identification" ; sh:order 900 .
+shape:ie-structure a sh:PropertyGroup ; rdfs:label "Parts" ; sh:order 910 .
+shape:ie-parameters a sh:PropertyGroup ; rdfs:label "RINF parameters" ; sh:order 1000 ; rd:tab "RINF parameters" .
+
+shape:infrastructure-element
+    a sh:NodeShape ;
+    rdfs:label "Infrastructure element" ;
+    sh:targetClass era:InfrastructureElement ;
+
+    sh:property [
+        sh:path rdfs:label ; rd:key "title" ;
+        dash:propertyRole dash:LabelRole ;
+    ] ;
+
+    # --- top of the page: its own geometry or that of its net reference ---
+    sh:property [
+        sh:path [ sh:alternativePath ( ( era:netReference gsp:hasGeometry gsp:asWKT ) ( gsp:hasGeometry gsp:asWKT ) ) ] ;
+        sh:name "Map" ; rd:key "map" ; sh:order 2 ;
+        dash:viewer rd:MapViewer ;
+    ] ;
+
+    # --- Identification ---
+    sh:property [
+        sh:path shape:part-of ; sh:name "Part of" ; rd:key "part-of" ;
+        sh:group shape:ie-identification ; sh:order 10 ;
+    ] ;
+    sh:property [
+        sh:path era:infrastructureManager ; sh:name "Infrastructure manager" ;
+        sh:group shape:ie-identification ; sh:order 20 ;
+    ] ;
+    sh:property [
+        sh:path era:inCountry ; sh:name "Country" ;
+        sh:group shape:ie-identification ; sh:order 30 ;
+        dash:viewer rd:SymbolViewer ; rd:symbol "country" ;
+    ] ;
+    sh:property [
+        sh:path era:primaryLocation ; sh:name "Primary location" ;
+        sh:group shape:ie-identification ; sh:order 40 ;
+    ] ;
+    sh:property [
+        sh:path era:operatingLanguage ; sh:name "Operating language" ;
+        sh:group shape:ie-identification ; sh:order 50 ;
+    ] ;
+    sh:property [
+        sh:name "Validity" ; rd:key "validity" ;
+        sh:group shape:ie-identification ; sh:order 60 ;
+        dash:viewer rd:ValidityViewer ;
+        rd:begin shape:validity-begin ;
+        rd:end shape:validity-end ;
+    ] ;
+
+    # --- Parts: whatever is part of it, by type ---
+    sh:property [
+        sh:path shape:parts ; sh:name "Parts" ; rd:key "parts" ;
+        sh:group shape:ie-structure ; sh:order 10 ;
+        dash:viewer dash:ValueTableViewer ;
+        sh:node shape:ie-part-row ;
+    ] ;
+
+    # --- RINF parameters tab: every parameter, by RINF index chapter, from the ontology ---
+    sh:property [
+        sh:name "RINF parameters" ; rd:key "rinf-parameters" ;
+        sh:group shape:ie-parameters ; sh:order 10 ;
+        dash:viewer rd:ParameterIndexViewer ;
+    ] .
+
+shape:ie-part-row
+    a sh:NodeShape ;
+    sh:property [ sh:path rdf:type ; sh:name "Type" ; sh:order 10 ] .
