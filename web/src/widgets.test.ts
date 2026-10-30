@@ -3,14 +3,18 @@ import { test } from 'node:test';
 import { formatDate, parseSteps } from './format.ts';
 import { helpPredicate, helpText, indexUnder } from './rdf.ts';
 import { markOf } from './widgets/alongline.ts';
+import { buildTree } from './widgets/concepttree.ts';
 import { bearing, evenly } from './widgets/connections.ts';
 import { multiplicity, typeName } from './widgets/datamodel.ts';
 import { fileName, fileType } from './widgets/document.ts';
+import { around, stops } from './widgets/lineposition.ts';
 import { place } from './widgets/lineprofile.ts';
 import { chaptersOf, indexRoots } from './widgets/parameters.ts';
 import { heightMm } from './widgets/platform.ts';
+import { placed } from './widgets/positioned.ts';
 import { parseMarks } from './widgets/scalebar.ts';
 import { countryCode, directionOf, supplyColor, supplyOf } from './widgets/symbol.ts';
+import { depths, way } from './widgets/topology.ts';
 import { commonPrefix } from './widgets/tracklayout.ts';
 
 const ERA = 'http://data.europa.eu/949/';
@@ -121,4 +125,40 @@ test('the data model writes UML multiplicities and attribute types', () => {
   assert.equal(typeName({ p: 'x', min: 0, max: null, type: 'Concept', scheme: `${ERA}concepts/line-category/LineCategories` }), 'LineCategories');
   assert.equal(typeName({ p: 'x', min: 0, max: 1, type: 'boolean' }), 'boolean');
   assert.equal(typeName({ p: 'x', min: 0, max: 1 }), 'IRI');
+});
+
+test('concept tree: roots, nesting by notation, several broader concepts, cycles cut', () => {
+  const it = (iri: string, broader: string[] = [], notation?: string) => ({ iri, cells: { broader: broader.map((b) => ({ iri: b })), ...(notation ? { notation: [{ value: notation }] } : {}) } });
+  const roots = buildTree([it('a', [], '2'), it('b', [], '1'), it('c', ['a', 'b']), it('d', ['c']), it('x', ['y']), it('y', ['x'])], {});
+  assert.deepEqual(roots.map((r) => r.iri), ['b', 'a']);
+  assert.equal(roots[0].children[0].iri, 'c');
+  assert.equal(roots[1].children[0].children[0].iri, 'd');
+  assert.deepEqual(buildTree([it('x', ['y']), it('y', ['x'])], {}).map((r) => r.iri), ['x']);
+});
+
+test('topology: navigability and steps from the element', () => {
+  assert.equal(way('http://data.europa.eu/949/concepts/navigabilities/Both'), 'both');
+  assert.equal(way('http://data.europa.eu/949/concepts/navigabilities/None'), 'none');
+  assert.equal(way(undefined), 'unknown');
+  const rel = (a: string, b: string) => ({ iri: a + b, a, b, way: 'both' as const, endA: null, endB: null });
+  const d = depths('e', [rel('e', 'f'), rel('g', 'f'), rel('g', 'h')]);
+  assert.deepEqual([...d], [['e', 0], ['f', 1], ['g', 2], ['h', 3]]);
+});
+
+test('positioned objects: most specific type, offset only on this element', () => {
+  const ERA = 'http://data.europa.eu/949/';
+  const p = placed([
+    { iri: 's', cells: { type: [{ iri: ERA + 'InfrastructureElement' }, { iri: ERA + 'Signal' }], on: [{ iri: 'e' }], offset: [{ value: '12.5' }] } },
+    { iri: 't', cells: { type: [{ iri: ERA + 'Track' }, { iri: ERA + 'RunningTrack' }] } },
+    { iri: 'k', cells: { type: [{ iri: ERA + 'KilometricPost' }], on: [{ iri: 'other' }], offset: [{ value: '3' }] } },
+  ], 'e');
+  assert.deepEqual(p.map((x) => [x.kind.replace(ERA, ''), x.at]), [['Signal', 12.5], ['RunningTrack', null], ['KilometricPost', null]]);
+});
+
+test('line position: stops from section ends, neighbours either side', () => {
+  const sec = (from: string, to: string, a: string, b: string) => ({ iri: from + to, cells: { from: [{ iri: from }], to: [{ iri: to }], 'start-km': [{ value: a }], 'end-km': [{ value: b }] } });
+  const st = stops([sec('B', 'C', '10', '20'), sec('A', 'B', '0', '10')]);
+  assert.deepEqual(st.map((x) => [x.iri, x.km]), [['A', 0], ['B', 10], ['C', 20]]);
+  assert.deepEqual(around(st, 12).map((x) => x?.iri), ['B', 'C']);
+  assert.deepEqual(around(st, 25).map((x) => x?.iri ?? null), ['C', null]);
 });

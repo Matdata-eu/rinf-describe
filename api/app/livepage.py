@@ -284,6 +284,7 @@ def page(sparql: Sparql, iri: str, dset: DescribeSet, batch: int = 12, workers: 
     timing: dict[str, float] = {}
     with ThreadPoolExecutor(workers) as pool:
         head = pool.submit(sparql, f"SELECT ?g ?t WHERE {{ GRAPH ?g {{ <{iri}> a ?t }} }}")
+        sizes = pool.submit(sparql, f"SELECT ?g (COUNT(*) AS ?n) WHERE {{ GRAPH ?g {{ <{iri}> ?p ?o }} }} GROUP BY ?g")
         n_out = pool.submit(sparql, f"SELECT (COUNT(*) AS ?n) WHERE {{ <{iri}> ?p ?o }}")
         n_in = pool.submit(sparql, f"SELECT (COUNT(*) AS ?n) WHERE {{ ?s ?p <{iri}> FILTER(isIRI(?s)) }}")
         by_graph: dict[str, list[str]] = defaultdict(list)
@@ -293,8 +294,10 @@ def page(sparql: Sparql, iri: str, dset: DescribeSet, batch: int = 12, workers: 
         classes = sorted({c for cs in by_graph.values() for c in cs})
         # The graph that types the resource with a class page, else any graph that types it.
         # Typed in several graphs (an IM role, a primary location): first the provider whose
-        # code is in the IRI (.../organisationRole/0087_IM in graph/0087).
-        order = sorted(by_graph, key=lambda g: (g.rstrip("/").rsplit("/", 1)[-1] not in iri, g))
+        # code is in the IRI (.../organisationRole/0087_IM in graph/0087), then the graph that
+        # says most about it (a SKOS concept in graph/rinf/skos rather than a provider's copy).
+        size = {b["g"]["value"]: int(b["n"]["value"]) for b in sizes.result()}
+        order = sorted(by_graph, key=lambda g: (g.rstrip("/").rsplit("/", 1)[-1] not in iri, -size.get(g, 0), g))
         graph = next((g for g in order if shapes_for(by_graph[g])), order[0] if order else None)
         timing["head"] = (time.perf_counter() - t0) * 1000
         shapes = shapes_for(by_graph.get(graph, [])) if graph else []
@@ -328,4 +331,4 @@ def page(sparql: Sparql, iri: str, dset: DescribeSet, batch: int = 12, workers: 
     timing["total"] = (time.perf_counter() - t0) * 1000
     return {"graph": graph, "classes": classes, "pages": pages, "labels": labs, "counts": counts,
             "cacheSeconds": max((ds.cache_seconds or 0 for ds in shapes), default=0) or None,
-            "queries": 3 + len(jobs) + max(1, -(-len(iris) // 200)), "timing": {k: round(v) for k, v in timing.items()}}
+            "queries": 4 + len(jobs) + max(1, -(-len(iris) // 200)), "timing": {k: round(v) for k, v in timing.items()}}
