@@ -22,8 +22,9 @@ export function interceptLinks() {
   document.addEventListener('click', (e) => {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     const a = (e.target as Element | null)?.closest?.('a');
-    if (!a || a.target || a.hasAttribute('download')) return;
-    const url = new URL(a.href, location.href);
+    if (!a || a.getAttribute('target') || a.hasAttribute('download')) return;
+    // An SVG link (a class box of the data model) has no string href.
+    const url = new URL(a.getAttribute('href') ?? '', location.href);
     if (url.origin !== location.origin || !(a.hasAttribute('data-nav') || url.pathname === '/describe')) return;
     e.preventDefault();
     navigate(url.pathname + url.search + url.hash);

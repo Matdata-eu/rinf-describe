@@ -103,7 +103,8 @@ Namespace `https://rinf-describe.matdata.eu/ns#`, declared in
 
 Every class page also gets a **Data status** card (the parameters marked
 `era:notApplicable` or `era:notYetAvailable`), and every resource the **All properties**,
-**Incoming links** and **Graph** tabs. They need no shape.
+**Incoming links**, **Graph** and **Data model** tabs. They need no shape: the data model is
+a UML class diagram drawn from ERA's own SHACL shapes, not from these.
 
 ## Layout rules
 

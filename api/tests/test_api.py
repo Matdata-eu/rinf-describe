@@ -73,6 +73,19 @@ def test_triples_and_graph(client):
     assert g["types"][track] == [ERA + "RunningTrack"] or ERA + "RunningTrack" in g["types"][track]
 
 
+def test_data_model(client):
+    r = client.get("/api/model", params={"uri": SOL, "env": "prod"}).json()
+    m = r["model"]
+    assert m["focus"] == ERA + "SectionOfLine"
+    assert [b["iri"] for b in m["boxes"]][:2] == [ERA + "SectionOfLine", ERA + "InfrastructureElement"]
+    sol = m["boxes"][0]
+    assert any(a["p"] == ERA + "solNature" for a in sol["attributes"])
+    assert {a["class"] for a in sol["associations"]} >= {ERA + "OperationalPoint"}
+    assert r["used"]["out"][ERA + "solNature"] == 1 and set(r["used"]) == {"out", "in", "via"}
+    none = client.get("/api/model", params={"uri": ERA + "nothing/here", "env": "prod"}).json()
+    assert none["model"] is None
+
+
 def test_labels_beyond_page_values(client):
     """Operational points, the national line and the tracks get a label wherever they show up."""
     out = client.get("/api/triples", params={"uri": SOL, "env": "prod"}).json()
