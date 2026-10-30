@@ -8,6 +8,7 @@ import { badgeText, isEmpty, layout, statusOf, type LaidGroup } from './layout.t
 import { describeHref } from './nav.ts';
 import { RDF_TYPE, helpPredicate, helpText, iriLabel, humanize, localName, prefixed } from './rdf.ts';
 import { valueNode } from './widgets/basic.ts';
+import { rdfView, RDF_FORMATS } from './widgets/source.ts';
 import { dataStatus } from './widgets/datastatus.ts';
 import { dataModelView } from './widgets/datamodel.ts';
 import { graphView } from './widgets/graph.ts';
@@ -93,7 +94,7 @@ function header(r: DescribeResponse, cfg: Config, badges: string[]): HTMLElement
     ? h('details', { class: 'menu' },
       h('summary', { class: 'btn ghost small' }, 'Export'),
       h('div', { class: 'menu-items', role: 'menu' },
-        ([['ttl', 'Turtle'], ['nt', 'N-Triples'], ['csv', 'CSV']] as const).map(([f, label]) =>
+        RDF_FORMATS.concat([['csv', 'CSV', 'csv']]).map(([f, label]) =>
           h('a', { role: 'menuitem', href: api.exportUrl(r.iri, r.env, f), download: '' }, label))))
     : null;
   return h('header', { class: 'page-head' },
@@ -171,6 +172,7 @@ export function describePage(r: DescribeResponse, cfg: Config, wantTab: string |
   tabs.push({ key: 'incoming', label: 'Incoming links', count: r.source !== 'missing' ? r.counts.in : undefined, render: () => lazyTriples(r.iri, r.env, 'in') });
   tabs.push({ key: 'graph', label: 'Graph', render: () => graphView(r.iri, r.env) });
   if (r.classes.length) tabs.push({ key: 'model', label: 'Data model', render: () => dataModelView(r.iri, r.env) });
+  if (r.counts.out) tabs.push({ key: 'rdf', label: 'RDF', render: () => rdfView(r.iri, r.env) });
 
   let current = tabs.find((t) => t.key === wantTab) ?? tabs[0];
   const panel = h('div', { class: 'tab-panel', role: 'tabpanel' });

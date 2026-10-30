@@ -60,7 +60,11 @@ flowchart LR
    those properties the resource uses. Its "What this page shows" view walks every row path
    of the page's shape (`rd:over`, `sh:path`, columns, `rd:` paths) over the same model, hop by
    hop, and draws the classes and properties the page reads; a step ERA's shapes do not
-   define is marked.
+   define is marked. The content tree shows either view as a tree; opening a link in it
+   loads the class it points at from `/api/model/class`. The PlantUML and Mermaid exports
+   are written in the browser from the same model (`web/src/widgets/umltext.ts`).
+6. The RDF tab and the Export menu read `/api/export`: the resource's own triples as Turtle,
+   N-Triples, RDF/XML, JSON-LD or CSV.
 
 The start page's examples (one resource per class with a shape of its own) and the
 sitemaps (every resource of a class with a page, subclasses included) are SPARQL queries
@@ -100,7 +104,7 @@ to the classes with a page; a pasted IRI opens directly.
 | `api/app/shapes.py`, `livepage.py` | The shapes compiled and merged, and class pages evaluated from them |
 | `api/app/ontology.py` | The ERA ontology and SHACL shapes: property help, units, RINF index, class hierarchy, each class's properties |
 | `api/app/datamodel.py` | The Data model tab: a class in ERA's model, and the classes and properties a page's rows pass through |
-| `api/app/rdf.py` | Turtle, N-Triples and CSV writers |
+| `api/app/rdf.py` | Turtle, N-Triples, RDF/XML, JSON-LD and CSV writers |
 | `web/src/page.ts`, `layout.ts` | The describe page and its layout from the compiled shapes |
 | `web/src/widgets/` | One module per viewer |
 | `web/src/help.ts`, `tour.ts`, `about.ts`, `whats-new.ts` | Help, first-visit tour, About and release notes |

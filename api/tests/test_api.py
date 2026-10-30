@@ -99,11 +99,22 @@ def test_labels_beyond_page_values(client):
         assert r["labels"].get(i["iri"])
 
 
+def test_class_model(client):
+    r = client.get("/api/model/class", params={"class": ERA + "SectionOfLine", "env": "prod"}).json()
+    assert r["focus"] == ERA + "SectionOfLine"
+    assert any(a["p"] == ERA + "opStart" for b in r["boxes"] for a in b["associations"])
+    assert client.get("/api/model/class", params={"class": ERA + "Nothing", "env": "prod"}).status_code == 404
+
+
 def test_exports(client):
     ttl = client.get("/api/export", params={"uri": SOL, "env": "prod", "format": "ttl"})
     assert ttl.status_code == 200 and "a era:InfrastructureElement, era:SectionOfLine" in ttl.text
     assert 'filename="14fd15444d.ttl"' in ttl.headers["content-disposition"]
     assert client.get("/api/export", params={"uri": SOL, "env": "prod", "format": "csv"}).text.startswith("subject,")
+    xml = client.get("/api/export", params={"uri": SOL, "env": "prod", "format": "rdf"})
+    assert xml.headers["content-type"].startswith("application/rdf+xml") and "Michelau &lt;-&gt; Goebelsmuhle" in xml.text
+    js = client.get("/api/export", params={"uri": SOL, "env": "prod", "format": "jsonld"})
+    assert js.headers["content-type"].startswith("application/ld+json") and "era:SectionOfLine" in js.json()["@type"]
 
 
 def test_unknown_resource(client):

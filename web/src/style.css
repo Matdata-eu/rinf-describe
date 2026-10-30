@@ -587,10 +587,52 @@ ul.changes-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8
 .uml-key-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--accent-strong); margin-left: 8px; vertical-align: 0; }
 .uml-key-dot.on { background: var(--accent-strong); }
 .uml-key-dot.via { background: var(--accent-soft); border-width: 2px; }
-.uml-canvas { overflow: auto; max-height: 80vh; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); }
-.uml-canvas.fit { max-height: none; }
-.uml-canvas.fit .uml-svg { max-width: 100%; height: auto; }
+.uml-canvas { position: relative; overflow: hidden; height: 420px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); cursor: grab; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.uml-canvas.dragging { cursor: grabbing; }
+.uml-canvas:focus-visible { outline: 2px solid var(--signal); outline-offset: 1px; }
 .uml-svg { display: block; }
+.uml-zoom { position: absolute; right: 8px; bottom: 8px; display: flex; gap: 4px; }
+.uml-zoom .btn { background: var(--surface); min-width: 28px; justify-content: center; box-shadow: var(--shadow); }
+.uml-hint { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); padding: 4px 10px; border-radius: 999px; background: var(--text); color: var(--bg); font-size: 12px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+.uml-hint.show { opacity: .85; }
+.uml-segs { display: flex; flex-wrap: wrap; gap: 8px; }
+.uml-card.is-full { position: fixed; inset: 0; z-index: 1000; margin: 0; border-radius: 0; display: flex; flex-direction: column; background: var(--surface); }
+.uml-card.is-full .uml-canvas { flex: 1; height: auto !important; min-height: 0; touch-action: none; }
+body.uml-full-open { overflow: hidden; }
+.menu-items button { padding: 6px 10px; border: 0; border-radius: 4px; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.menu-items button:hover, .menu-items button:focus-visible { background: var(--accent-soft); }
+.uml-tools .menu-items { right: 0; left: auto; }
+.tn-box { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1.3; }
+.tn.on .tn-box, .tn.via .tn-box { stroke: var(--accent-strong); stroke-width: 1.6; }
+.tn.via .tn-box:not(.stack) { fill: var(--accent-soft); }
+.tn.missing .tn-box { stroke: var(--warn); }
+.tn.optional .tn-box { stroke-dasharray: 4 3; }
+.tn.root .tn-box { stroke-dasharray: none; }
+.tn-name { fill: var(--text); font: 600 13px var(--font); }
+.tn.off .tn-name { fill: var(--muted); font-weight: 500; }
+.tn.missing .tn-name, .tn.missing .tn-type { fill: var(--warn); }
+.tn-type { fill: var(--muted); font: 11px var(--mono); }
+.tn a:hover text, .tn a:focus text { text-decoration: underline; fill: var(--accent-strong); }
+.tn-occ, .tn-note { fill: var(--muted); font: 11px var(--font); }
+.tn-expander { cursor: pointer; }
+.tn-expander circle { fill: var(--surface); stroke: var(--accent-strong); stroke-width: 1.3; }
+.tn-expander path { stroke: var(--accent-strong); stroke-width: 1.6; fill: none; }
+.tn-expander:hover circle, .tn-expander:focus circle { fill: var(--accent-soft); }
+.tree-svg .uml-edges path { fill: none; stroke: var(--line-strong); stroke-width: 1.2; }
+.tn-key { display: inline-block; width: 16px; height: 10px; border: 1.5px solid var(--line-strong); border-radius: 2px; margin: 0 2px 0 8px; vertical-align: -1px; }
+.tn-key.many { margin-right: 5px; }
+.tn-key.optional { border-style: dashed; }
+.tn-key.many { box-shadow: 3px 3px 0 -1.5px var(--surface), 3px 3px 0 0 var(--line-strong); }
+.rdf-card { padding: 12px; }
+.rdf-card > p.muted { margin: 0 4px 10px; }
+.rdf-src { margin: 0; max-height: 70vh; overflow: auto; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); font: 12px/1.55 var(--mono); tab-size: 4; }
+.rdf-src a { text-decoration: none; }
+.rdf-src a:hover { text-decoration: underline; }
+.tok-comment { color: var(--muted); font-style: italic; }
+.tok-string { color: var(--ok); }
+.tok-iri, a.tok-string { color: var(--accent-strong); }
+.tok-keyword, .tok-tag { color: var(--signal-ink); font-weight: 500; }
+.tok-name, .tok-key, .tok-attr { color: var(--text); font-weight: 500; }
 .uml-rect { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1.2; }
 .uml-rect.focus { stroke: var(--accent-strong); stroke-width: 2.4; }
 .uml-rect.side { stroke-dasharray: 4 3; }

@@ -74,7 +74,7 @@ const PAGES: Page[] = [
     { art: ART.graph, title: 'Graph',
       text: 'The resource and its neighbours as a network. Click a neighbour to open its page.' },
     { art: ART.share, title: 'Export and share',
-      text: 'Download the triples as Turtle, N-Triples or CSV. Share copies a link to the page and tab you are on.' },
+      text: 'Download the triples as Turtle, RDF/XML, JSON-LD, N-Triples or CSV. Share copies a link to the page and tab you are on.' },
   ] },
 ];
 

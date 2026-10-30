@@ -121,6 +121,12 @@ export interface ModelResponse {
   used: { out: Record<string, number>; in: Record<string, number>; via?: Record<string, number> };
 }
 
+/** A class and its superclasses on their own, for a branch of the content tree. */
+export interface ClassModelResponse {
+  class: string; env: string; focus: string; boxes: ModelBox[]; classes: Record<string, { iri: string; label?: string; comment?: string }>;
+}
+export type ExportFormat = 'ttl' | 'nt' | 'rdf' | 'jsonld' | 'csv';
+
 export interface EnvInfo { key: string; label: string }
 export interface Config { envs: EnvInfo[]; atlasUrl: string | null }
 export interface SearchHit { iri: string; label: string | null; class: string | null }
@@ -148,6 +154,13 @@ export const api = {
   rows: (uri: string, env: string, key: string, offset: number) =>
     get<{ key: string; offset: number; items: Item[]; total: number; labels: Record<string, string> }>('rows', { uri, env, key, offset }),
   examples: (env: string) => get<{ results: Example[] }>('examples', { env }),
-  exportUrl: (uri: string, env: string, format: 'ttl' | 'nt' | 'csv') =>
+  classModel: (cls: string, env: string) => get<ClassModelResponse>('model/class', { class: cls, env }),
+  exportUrl: (uri: string, env: string, format: ExportFormat) =>
     `/api/export?${new URLSearchParams({ uri, env, format })}`,
+  /** An export as text, for showing it on the page. */
+  exportText: async (uri: string, env: string, format: ExportFormat): Promise<string> => {
+    const r = await fetch(api.exportUrl(uri, env, format));
+    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+    return r.text();
+  },
 };
