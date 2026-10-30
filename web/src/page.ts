@@ -68,12 +68,10 @@ function header(r: DescribeResponse, cfg: Config, badges: string[]): HTMLElement
   if (ds) meta.push(h('span', null, 'Data: ', ds.provider || iriLabel(ds.graph, r.labels), ds.graph ? h('span', { class: 'mono small muted' }, ` ${prefixed(ds.graph)}`) : null));
   if (env) meta.push(h('span', null, env.label));
   if (ds?.modified) meta.push(h('span', null, `published ${formatDate(ds.modified)}`));
-  if (r.source === 'index' && env?.updatedAt) meta.push(h('span', null, `indexed ${formatDate(env.updatedAt)}`));
-  if (r.source === 'live') meta.push(h('span', null, 'read live from ERA'));
   const atlas = cfg.atlasUrl && r.pages.length
     ? h('a', { class: 'btn ghost small', href: `${cfg.atlasUrl}/#env=${encodeURIComponent(r.env)}&sel=${encodeURIComponent(r.iri).replace(/%3A/g, ':').replace(/%2F/g, '/')}`, target: '_blank', rel: 'noopener' }, 'Open in RINF Atlas')
     : null;
-  const exports = r.counts.out || r.source === 'live'
+  const exports = r.counts.out
     ? h('details', { class: 'menu' },
       h('summary', { class: 'btn ghost small' }, 'Export'),
       h('div', { class: 'menu-items', role: 'menu' },
@@ -96,7 +94,7 @@ function propertyName(p: string, labels: Record<string, string>): string {
 }
 
 function triplesTable(res: TriplesResponse, env: string): Node {
-  if (!res.triples.length) return h('p', { class: 'muted' }, res.dir === 'out' ? 'No properties.' : 'No other resource links to this one in the index.');
+  if (!res.triples.length) return h('p', { class: 'muted' }, res.dir === 'out' ? 'No properties.' : 'No other resource links to this one.');
   const by = new Map<string, Triple[]>();
   for (const t of res.triples) {
     if (!by.has(t.p)) by.set(t.p, []);
@@ -119,7 +117,6 @@ function lazyTriples(iri: string, env: string, dir: 'out' | 'in'): Node {
   const box = h('div', { class: 'card wide' }, h('p', { class: 'muted' }, 'Loading…'));
   api.triples(iri, env, dir).then((res) => {
     const parts: Node[] = [];
-    if (res.source === 'live') parts.push(h('p', { class: 'note' }, 'Read live from ERA\'s SPARQL endpoint: this resource is not in the describe index.'));
     parts.push(triplesTable(res, env));
     if (res.truncated) parts.push(h('p', { class: 'muted small' }, `Showing the first ${res.triples.length}. Export for all of them.`));
     box.replaceChildren(...parts);
@@ -183,9 +180,8 @@ export function describePage(r: DescribeResponse, cfg: Config, wantTab: string |
   select(current, false);
 
   const notes: Node[] = [];
-  if (r.source === 'live') notes.push(h('p', { class: 'note' }, 'This resource is not in the describe index, so it is read live from ERA\'s SPARQL endpoint. Class pages are built for indexed resources only.'));
-  if (r.source === 'missing') notes.push(h('p', { class: 'note' }, 'Nothing is known about this IRI in the describe index for this environment.'));
-  else if (r.source === 'index' && !r.pages.length && r.classes.length) notes.push(h('p', { class: 'note muted' }, 'No describe shape for this class yet: All properties lists everything known about it.'));
+  if (r.source === 'missing') notes.push(h('p', { class: 'note' }, 'ERA\'s data holds nothing about this IRI in this environment.'));
+  else if (!r.pages.length && r.classes.length) notes.push(h('p', { class: 'note muted' }, 'No describe shape for this class yet: All properties lists everything known about it.'));
 
   return h('article', { class: 'page' }, header(r, cfg, badges), notes, bar, panel);
 }

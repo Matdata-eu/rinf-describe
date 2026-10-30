@@ -1,15 +1,12 @@
-"""Time class pages built live from ERA's SPARQL endpoint against indexed ones.
+"""Time class pages built live from ERA's SPARQL endpoint.
 
     pip install -r api/requirements.txt
-    python scripts/bench_live.py                      # live only, straight against ERA
-    python scripts/bench_live.py --api http://localhost:8090 --env prod
-                                                      # also the indexed page, through a running API
+    python scripts/bench_live.py --env prod
 
 Picks --n sections of line and --n running tracks spread over ERA's data (or takes
---iri), builds each page live with the API's own code (no cache), with each
---batch setting, and when --api is given asks that API for the indexed page
-(source=index) of the same resources. Prints a Markdown table: median, 90th percentile
-and maximum in milliseconds, and the number of SPARQL queries per live page.
+--iri), builds each page with the API's own code (no cache), with each --batch
+setting. Prints a Markdown table: median, 90th percentile and maximum in
+milliseconds, and the number of SPARQL queries per page.
 """
 from __future__ import annotations
 
@@ -18,8 +15,6 @@ import statistics
 import sys
 import time
 from pathlib import Path
-
-import httpx
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "api"))
 from app import live, livepage, shapes  # noqa: E402
@@ -53,7 +48,6 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--env", default="prod")
     ap.add_argument("--endpoint", help="SPARQL endpoint (default: ERA's for --env)")
-    ap.add_argument("--api", help="a running RINF Describe, for the indexed pages (http://localhost:8090)")
     ap.add_argument("--n", type=int, default=10, help="resources per class")
     ap.add_argument("--iri", action="append", default=[], help="these resources instead of a sample")
     ap.add_argument("--batch", default="12", help="rows per query to try, comma separated (e.g. 4,12,100)")
@@ -72,23 +66,12 @@ def main() -> None:
     sq("SELECT ?s WHERE { ?s ?p ?o } LIMIT 1")  # open the connection first
     results: list[tuple[str, str, list[float], str]] = []
     for name, iris in picks.items():
-        if args.api:
-            idx = []
-            for iri in iris:
-                t = time.perf_counter()
-                r = httpx.get(f"{args.api.rstrip('/')}/api/describe",
-                              params={"uri": iri, "env": args.env, "source": "index"}, timeout=60)
-                r.raise_for_status()
-                idx.append((time.perf_counter() - t) * 1000)
-                if not r.json()["pages"]:
-                    print(f"  not indexed: {iri}", file=sys.stderr)
-            results.append((name, "indexed (API, HTTP)", idx, "–"))
         simple = []
         for iri in iris:
             t = time.perf_counter()
             sq(f"SELECT ?p ?o WHERE {{ <{iri}> ?p ?o }} LIMIT 1000")
             simple.append((time.perf_counter() - t) * 1000)
-        results.append((name, "plain triples (old fallback)", simple, "1"))
+        results.append((name, "plain triples", simple, "1"))
         for batch in (int(b) for b in args.batch.split(",")):
             ms, queries, parts = [], [], {"head": [], "rows": [], "labels": []}
             for iri in iris:
@@ -101,7 +84,7 @@ def main() -> None:
                 if not p["pages"]:
                     print(f"  no class page: {iri}", file=sys.stderr)
             q = f"{min(queries)}–{max(queries)}" if queries and min(queries) != max(queries) else str(queries[0] if queries else "–")
-            results.append((name, f"live, {batch} rows per query", ms, q))
+            results.append((name, f"page, {batch} rows per query", ms, q))
             for k, v in parts.items():
                 results.append((name, f"  of which {k}", v, ""))
     print("\n| Class | Page | Median ms | p90 ms | Max ms | SPARQL queries |\n|---|---|---:|---:|---:|---:|")

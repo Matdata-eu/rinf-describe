@@ -9,9 +9,9 @@ resource with all its properties, incoming links and a graph.
   order, and which widget draws each value is in [`shapes/`](shapes): standard SHACL and
   DASH plus a few `rd:` terms for widgets DASH lacks. Adding a class is a Turtle file, not
   code. See [docs/shapes.md](docs/shapes.md).
-- **Fast.** Pages are evaluated ahead of time by [RINF Atlas](https://github.com/Matdata-eu/rinf-atlas)'s
-  worker into Atlas's database, so a page is one lookup, not a series of live SPARQL
-  queries. Resources outside the index are read live from ERA.
+- **Live and fast.** Every page is built on the spot from ERA's SPARQL endpoint, about a
+  tenth of a second for a section of line, so it always shows what ERA publishes today.
+  Nothing is stored: no database, no index to keep up to date.
 - **One family with RINF Atlas.** Same type (IBM Plex), colours, light and dark themes,
   MapLibre maps and vis-network graphs, with the MatData design system's graph grammar.
 
@@ -29,7 +29,8 @@ neighbourhood graph. Each is a `dash:viewer` a shape picks per property.
 
 ## Run it
 
-Next to a running RINF Atlas with its describe index on: [docs/deploy.md](docs/deploy.md).
+Anywhere with outbound HTTPS to ERA: [docs/deploy.md](docs/deploy.md). The search box
+finds names through [RINF Atlas](https://github.com/Matdata-eu/rinf-atlas)'s public API.
 
 ```sh
 cp .env.example .env
@@ -43,13 +44,12 @@ How it fits together: [docs/architecture.md](docs/architecture.md). Search engin
 
 | Path | What |
 |---|---|
-| `shapes/` | Describe shapes, mounted into Atlas's worker |
-| `api/` | FastAPI service, read-only on Atlas's database |
+| `shapes/` | Describe shapes |
+| `api/` | FastAPI service: builds the pages from ERA's SPARQL endpoint |
 | `web/` | TypeScript + Vite UI |
-| `db/readonly.sql` | The read-only role the API uses |
 | `site/` | Your own pages, such as `privacy.html` |
-| `scripts/` | Development database and seed from Atlas's sample |
-| `tests/` | The shapes, evaluated with Atlas's indexer on Atlas's sample |
+| `scripts/` | Benchmark of pages against ERA's endpoint |
+| `tests/` | The shapes, evaluated on a Luxembourg sample of ERA's data |
 
 ## Licence
 

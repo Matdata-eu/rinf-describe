@@ -8,41 +8,18 @@ on:
 jobs:
   api:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: atlas
-          POSTGRES_PASSWORD: atlas
-          POSTGRES_DB: atlas
-        ports: ["5432:5432"]
-        options: --health-cmd "pg_isready -U atlas" --health-interval 5s --health-retries 10
-    env:
-      DATABASE_URL: postgresql://atlas:atlas@localhost:5432/atlas
-      ATLAS_DIR: ${{ github.workspace }}/rinf-atlas
     steps:
       - uses: actions/checkout@v7
-      # The describe indexer lives in RINF Atlas's worker; the shapes are checked with it.
-      - uses: actions/checkout@v7
-        with:
-          repository: Matdata-eu/rinf-atlas
-          path: rinf-atlas
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
-      - run: pip install -r api/requirements.txt -e rinf-atlas/worker pytest ruff
+      - run: pip install -r api/requirements.txt pytest ruff
       - run: ruff check api scripts tests
-      - name: Shapes compile and evaluate on Atlas's sample
+      # ERA's endpoint is stood in for by the Luxembourg sample (tests/sample.py).
+      - name: Shapes compile and evaluate on the sample
         run: pytest -q tests
-      - name: Seed a describe index from the sample
-        run: |
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/dev-schema.sql
-          python scripts/dev_seed.py --atlas rinf-atlas
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -v pw=ci -f db/readonly.sql
-      - name: API tests (read-only role)
+      - name: API tests
         working-directory: api
-        env:
-          DATABASE_URL: postgresql://describe_ro:ci@localhost:5432/atlas
         run: pytest -q tests
 
   web:

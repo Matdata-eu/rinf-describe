@@ -1,7 +1,7 @@
 FROM python:3.14-slim
 ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
 WORKDIR /app
-# Built from the repository root (docker-compose.yml): the shapes come along for live pages.
+# Built from the repository root (docker-compose.yml): the shapes come along for the pages.
 COPY api/requirements.txt requirements.txt
 RUN pip install -r requirements.txt
 COPY api/app /app/app

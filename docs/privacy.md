@@ -63,15 +63,17 @@ backups, hosting provider).
   text typed in the search box. uvicorn (`describe-api`) logs requests as well,
   with the IP address of the nginx container. Both go to the Docker log driver;
   retention is whatever you configure there.
-- Pages, searches and exports are answered from RINF Atlas's database and are
-  not stored apart from those logs.
+- Pages, searches and exports are not stored apart from those logs.
 
-**Requests your server makes to ERA**
+**Requests your server makes to ERA and RINF Atlas**
 
-- For a resource that is not in the index (`DESCRIBE_LIVE=1`, the default),
-  the API queries ERA's SPARQL endpoint for its page and its triples. The request comes from your server and
-  carries only the resource's IRI, not the visitor's IP address.
-- RINF Atlas's worker, not RINF Describe, keeps the index current from ERA.
+- For every page, the API queries ERA's SPARQL endpoint for the resource's page
+  and its triples, and ERA's dataset explorer for who published it. The request
+  comes from your server and carries only the resource's IRI, not the visitor's
+  IP address.
+- The text typed in the search box is sent to the RINF Atlas instance in
+  `DESCRIBE_ATLAS_URL`, from your server, without the visitor's IP address.
+  Empty `DESCRIBE_ATLAS_URL` sends nothing (the search box then takes IRIs only).
 
 The RINF data itself describes railway infrastructure published by the
 infrastructure managers through ERA.

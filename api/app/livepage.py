@@ -1,11 +1,9 @@
-"""Class pages built live from a SPARQL endpoint, for resources the describe index lacks.
+"""Class pages built live from a SPARQL endpoint.
 
-The describe shapes are evaluated on the resource the way RINF Atlas's describe indexer
-evaluates them on its mirror (worker/atlas/describe.py, build_docs), so a live page
-holds the same document as an indexed one: each row's values, summaries over child
-resources (rd:over + rd:aggregate), linked resources as tables (sh:node), the rd: paths
-of the viewers and the data status. Paths are evaluated inside the resource's own named
-graph, like the indexer does.
+The describe shapes are evaluated on the resource: each row's values, summaries over
+child resources (rd:over + rd:aggregate), linked resources as tables (sh:node), the rd:
+paths of the viewers and the data status. Paths are evaluated inside the resource's own
+named graph.
 
 A page takes three rounds of queries, each run in parallel:
   1. the resource's named graph and classes, and its triple counts;
@@ -65,7 +63,7 @@ def _add(lst: list, v: dict | None) -> None:
 
 
 def aggregate(kind: str, per_child: dict[str, list]) -> dict:
-    """Sum up the values of a row over child resources ({child: [values]}), as the indexer does."""
+    """Sum up the values of a row over child resources ({child: [values]})."""
     n = len(per_child)
     if kind == "count":
         return {"count": n}
@@ -163,7 +161,7 @@ def assemble(ds: DocShape, bindings: list[dict]) -> dict:
 
 
 def labels(sparql: Sparql, iris: set[str], pool: ThreadPoolExecutor, chunk: int = 200) -> dict[str, str]:
-    """skos:prefLabel before rdfs:label, English or untagged first: the order of Atlas's term table."""
+    """skos:prefLabel before rdfs:label, English or untagged first."""
     todo = sorted(i for i in iris if i.startswith("http") and not any(c in i for c in '<> "{}|^`\\'))
     queries = [f"""SELECT ?i ?p ?l WHERE {{ VALUES ?i {{ {' '.join(f'<{x}>' for x in todo[n:n + chunk])} }}
                    VALUES ?p {{ <{SKOS_PREF}> <{RDFS_LABEL}> }} ?i ?p ?l }}""" for n in range(0, len(todo), chunk)]

@@ -1,9 +1,7 @@
-"""The describe shapes (shapes/*.ttl) compiled to class pages, for pages built live.
+"""The describe shapes (shapes/*.ttl) compiled to class pages.
 
-The same rules as the describe indexer of RINF Atlas (worker/atlas/describe.py), which
-compiles this folder for indexed pages: a row has a SPARQL path, optionally rd:over and
-rd:aggregate, sh:node columns, and rd: paths and settings for its viewer. Both must
-give the same layout, so tests/test_live.py compares them.
+A row has a SPARQL path, optionally rd:over and rd:aggregate, sh:node columns, and rd:
+paths and settings for its viewer. livepage.py evaluates them on a resource.
 """
 from __future__ import annotations
 
@@ -68,7 +66,7 @@ class DocShape:
     rows: list[Row] = field(default_factory=list)
 
     def definition(self, groups: dict[str, Group]) -> dict:
-        """The compiled layout, as the indexer stores it in describe_def."""
+        """The compiled layout the web app draws the page with."""
         used = {r.group for r in self.rows if r.group}
         return {"label": self.label, "rows": [asdict(r) for r in self.rows],
                 "groups": [asdict(groups[g]) for g in sorted(used, key=lambda g: (groups[g].order, g))]}

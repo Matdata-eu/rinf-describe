@@ -4,10 +4,9 @@ A class page is one `sh:NodeShape` with `sh:targetClass` in [`shapes/`](../shape
 file per class. Nothing about a class is in code: the shapes say which properties a page
 shows, in which group, tab and order, and which widget draws each one.
 
-RINF Atlas's worker reads this folder (when its describe index is on, see
-[deploy.md](deploy.md)), evaluates every shape against its mirror of ERA's data and stores
-one document per resource. After an edit, the next poll rebuilds the pages from the mirror
-without downloading anything; `atlas describe-reindex` does it at once.
+The API compiles this folder at start (the image carries it) and evaluates the shapes of a
+resource's classes on ERA's SPARQL endpoint each time its page is opened
+([architecture.md](architecture.md)). After an edit, restart the API.
 
 ## Standard terms
 
@@ -79,14 +78,13 @@ shape:section-of-line a sh:NodeShape ;
   ] .
 ```
 
-## Limits of the indexer
+## Limits
 
 - One `sh:targetClass` per node shape (a second class needs a second shape).
-- Paths are evaluated inside the resource's own named graph; labels come from Atlas's `term` table (all graphs, including the SKOS vocabularies).
+- Paths are evaluated inside the resource's own named graph; labels are the `skos:prefLabel` or `rdfs:label` of each IRI on the endpoint (all graphs, including the SKOS vocabularies).
 - `sh:node` is one level deep, and its columns take plain paths (no `rd:over`).
 - Paths are evaluated on the resource itself; a widget that needs values of a linked resource reaches them with a sequence path (`( era:netReference era:startsAt era:hasLrsCoordinate era:kmPost era:kilometer )`).
 
-`tests/test_shapes.py` compiles the shapes with Atlas's indexer and checks the pages on
-Atlas's Luxembourg sample; run it after editing. `tests/test_live.py` checks that the
-API's own compiler and live evaluation give the same pages (the API builds pages live for
-resources outside the index). Restart the API after editing the shapes.
+`tests/test_shapes.py` compiles the shapes and checks the pages on the Luxembourg sample
+in `tests/fixtures/`, served as a SPARQL endpoint by pyoxigraph; run it after editing.
+Restart the API after editing the shapes.
