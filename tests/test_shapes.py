@@ -56,3 +56,27 @@ def test_running_track(docs):
     assert rows["contact-line-system"]["items"][0]["cells"]["type"]
     assert rows["etcs"]["items"][0]["cells"]["level"]
     assert track["dataStatus"]["notApplicable"]
+
+
+def test_parameters_from_common_characteristics_subsets():
+    """ETCS and the legacy train protection stated on a subset a track belongs to, or on a
+    subset of that subset, count for the track and its section of line."""
+    st = ox.Store()
+    g = ox.NamedNode(G)
+    n = ox.NamedNode
+    sol, track, ccs, parent = n(SOL), n(ERA + "runningTrack/t1"), n(ERA + "ccs/1"), n(ERA + "ccs/2")
+    etcs, pls = n(ERA + "etcs/1"), n(ERA + "concepts/train-protection-legacy-systems/rinf/30")
+    a = n("http://www.w3.org/1999/02/22-rdf-syntax-ns#type")
+    for q in [(sol, a, n(ERA + "SectionOfLine")), (sol, n(ERA + "hasPart"), track),
+              (track, a, n(ERA + "RunningTrack")), (ccs, n(ERA + "contains"), track),
+              (ccs, n(ERA + "subsetOf"), parent), (parent, n(ERA + "protectionLegacySystem"), pls),
+              (ccs, n(ERA + "etcs"), etcs), (etcs, n(ERA + "etcsBaseline"), ox.Literal("3"))]:
+        st.add(ox.Quad(*q, g))
+    out, _ = D.build_docs(st, G, D.load_describe_shapes(ROOT / "shapes"))
+    by = {(iri, shape.rsplit("/", 1)[-1]): doc for iri, shape, doc in out}
+    rows = by[(SOL, "section-of-line")]["rows"]
+    assert rows["train-protection-legacy-system"]["aggregate"]["values"] == [{"iri": pls.value, "count": 1}]
+    assert rows["etcs-baseline"]["aggregate"]["values"] == [{"value": "3", "count": 1}]
+    t = by[(track.value, "running-track")]["rows"]
+    assert t["train-protection-legacy-system"]["values"][0]["iri"] == pls.value
+    assert t["etcs"]["items"][0]["cells"]["baseline"]

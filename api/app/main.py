@@ -91,7 +91,22 @@ def _labels(env: str, iris: set[str]) -> dict[str, str]:
     todo = sorted(i for i in iris if i)
     if not todo:
         return {}
-    return {r["iri"]: r["label"] for r in _q("SELECT iri, label FROM term WHERE env=%s AND iri = ANY(%s)", (env, todo))}
+    labels = {r["iri"]: r["label"] for r in _q("SELECT iri, label FROM term WHERE env=%s AND iri = ANY(%s)",
+                                               (env, todo))}
+    # Atlas's worker labels the values on a page only; tracks, operational points and lines
+    # that show up elsewhere (tables, All properties, incoming links) fall back to
+    # Atlas's feature label, then to their own rdfs:label or skos:prefLabel in the index.
+    if missing := [i for i in todo if i not in labels]:
+        for r in _q("SELECT iri, label FROM feature WHERE env=%s AND iri = ANY(%s) AND label IS NOT NULL",
+                    (env, missing)):
+            labels.setdefault(r["iri"], r["label"])
+    if missing := [i for i in todo if i not in labels]:
+        rows = _q("SELECT s, o, lang FROM describe_triple WHERE env=%s AND s = ANY(%s) AND p = ANY(%s) AND NOT o_iri",
+                  (env, missing, [R.SKOS_PREF, R.RDFS_LABEL]))
+        rows.sort(key=lambda r: (r["lang"] not in ("en", None), r["lang"] is not None, r["o"]))
+        for r in rows:
+            labels.setdefault(r["s"], r["o"])
+    return labels
 
 
 def _collect(node: Any, out: set[str]) -> None:

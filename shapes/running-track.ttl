@@ -130,17 +130,17 @@ shape:running-track
 
     # --- Signalling and radio: ETCS expanded in place ---
     sh:property [
-        sh:path era:etcs ; sh:name "ETCS" ;
+        sh:path ( _:own-or-subset era:etcs ) ; sh:name "ETCS" ;
         sh:group shape:rt-signalling ; sh:order 10 ;
         dash:viewer dash:DetailsViewer ;
         sh:node shape:rt-etcs ;
     ] ;
     sh:property [
-        sh:path ( era:etcs era:etcsLevelType ) ; sh:name "ETCS level" ; rd:key "etcs-level-badge" ; sh:order 2 ;
+        sh:path ( _:own-or-subset era:etcs era:etcsLevelType ) ; sh:name "ETCS level" ; rd:key "etcs-level-badge" ; sh:order 2 ;
         dash:propertyRole dash:KeyInfoRole ;
     ] ;
     sh:property [
-        sh:path era:protectionLegacySystem ; sh:name "Legacy train protection" ;
+        sh:path ( _:own-or-subset era:protectionLegacySystem ) ; sh:name "Train protection legacy system" ;
         sh:group shape:rt-signalling ; sh:order 20 ;
     ] ;
     sh:property [
@@ -318,3 +318,12 @@ shape:rt-train-detection
     a sh:NodeShape ;
     sh:property [ sh:path era:trainDetectionSystemType ; sh:name "Type" ; sh:order 10 ] ;
     sh:property [ sh:path era:trainDetectionSystemSpecificCheck ; sh:name "Specific check" ; sh:order 20 ] .
+
+# A track's own parameters, or those of the common characteristics subsets it belongs to
+# (era:belongsTo, or era:contains from the subset) and the subsets those are part of
+# (era:subsetOf). Infrastructure managers often state ETCS and the legacy train protection
+# on a subset rather than on each track.
+_:own-or-subset sh:zeroOrOnePath (
+    [ sh:alternativePath ( era:belongsTo [ sh:inversePath era:contains ] ) ]
+    [ sh:zeroOrMorePath era:subsetOf ]
+) .
