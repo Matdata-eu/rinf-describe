@@ -1,5 +1,13 @@
 [
   {
+    "version": "1.2.0",
+    "date": "2026-10-30",
+    "improved": [
+      "Every page is now built on the spot from ERA's SPARQL endpoint, so it always shows what ERA publishes today. The notes about the describe index are gone.",
+      "The search box finds names through RINF Atlas's search; a pasted IRI still opens directly."
+    ]
+  },
+  {
     "version": "1.1.0",
     "date": "2026-10-30",
     "new": [

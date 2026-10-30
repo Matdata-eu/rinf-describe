@@ -72,7 +72,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="RINF Describe API", version="1.1.0", lifespan=lifespan,
+app = FastAPI(title="RINF Describe API", version="1.2.0", lifespan=lifespan,
               docs_url="/api/docs", openapi_url="/api/openapi.json")
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 
