@@ -1,0 +1,200 @@
+# Section of line page.
+#
+# Standard SHACL and DASH, plus the rd: terms of describe.ttl (docs/shapes.md).
+# The page shows: a route diagram and a map at the top, then the groups below
+# in sh:order. Rows with dash:KeyInfoRole also appear as badges in the header.
+# After editing, the worker of RINF Atlas rebuilds the pages on its next poll
+# (or run `atlas describe-reindex`).
+PREFIX rd:    <https://rinf-describe.matdata.eu/ns#>
+PREFIX shape: <https://rinf-describe.matdata.eu/shapes/>
+PREFIX dash:  <http://datashapes.org/dash#>
+PREFIX sh:    <http://www.w3.org/ns/shacl#>
+PREFIX era:   <http://data.europa.eu/949/>
+PREFIX gsp:   <http://www.opengis.net/ont/geosparql#>
+PREFIX time:  <http://www.w3.org/2006/time#>
+PREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
+
+shape:sol-route a sh:PropertyGroup ; rdfs:label "Route" ; sh:order 10 .
+shape:sol-tracks a sh:PropertyGroup ; rdfs:label "Track characteristics" ; sh:order 20 .
+shape:sol-track-list a sh:PropertyGroup ; rdfs:label "Tracks" ; sh:order 30 .
+shape:sol-identification a sh:PropertyGroup ; rdfs:label "Identification" ; sh:order 40 .
+
+shape:section-of-line
+    a sh:NodeShape ;
+    rdfs:label "Section of line" ;
+    sh:targetClass era:SectionOfLine ;
+
+    sh:property [
+        sh:path rdfs:label ; rd:key "title" ;
+        dash:propertyRole dash:LabelRole ;
+    ] ;
+
+    # --- top of the page ---
+    sh:property [
+        sh:name "Route diagram" ; rd:key "route" ; sh:order 1 ;
+        dash:viewer rd:RouteDiagramViewer ;
+        rd:start era:opStart ;
+        rd:end era:opEnd ;
+        rd:length era:lengthOfSectionOfLine ;
+        rd:startKm ( era:netReference era:startsAt era:hasLrsCoordinate era:kmPost era:kilometer ) ;
+        rd:startOffset ( era:netReference era:startsAt era:hasLrsCoordinate era:offsetFromKilometricPost ) ;
+        rd:endKm ( era:netReference era:endsAt era:hasLrsCoordinate era:kmPost era:kilometer ) ;
+        rd:endOffset ( era:netReference era:endsAt era:hasLrsCoordinate era:offsetFromKilometricPost ) ;
+        rd:unit "km" ;
+    ] ;
+    sh:property [
+        sh:path ( era:netReference gsp:hasGeometry gsp:asWKT ) ;
+        sh:name "Map" ; rd:key "map" ; sh:order 2 ;
+        dash:viewer rd:MapViewer ;
+        # The two operational points at the ends, as dots.
+        rd:context ( [ sh:alternativePath ( era:opStart era:opEnd ) ] era:netReference gsp:hasGeometry gsp:asWKT ) ;
+    ] ;
+
+    # --- Route ---
+    sh:property [
+        sh:path era:opStart ; sh:name "From" ;
+        sh:group shape:sol-route ; sh:order 10 ;
+        dash:viewer rd:LrsLocationViewer ;
+        rd:km ( era:netReference era:startsAt era:hasLrsCoordinate era:kmPost era:kilometer ) ;
+        rd:offset ( era:netReference era:startsAt era:hasLrsCoordinate era:offsetFromKilometricPost ) ;
+    ] ;
+    sh:property [
+        sh:path era:opEnd ; sh:name "To" ;
+        sh:group shape:sol-route ; sh:order 20 ;
+        dash:viewer rd:LrsLocationViewer ;
+        rd:km ( era:netReference era:endsAt era:hasLrsCoordinate era:kmPost era:kilometer ) ;
+        rd:offset ( era:netReference era:endsAt era:hasLrsCoordinate era:offsetFromKilometricPost ) ;
+    ] ;
+    sh:property [
+        sh:path era:lengthOfSectionOfLine ; sh:name "Length" ;
+        sh:group shape:sol-route ; sh:order 30 ;
+        rd:unit "km" ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "{value} km" ;
+    ] ;
+    sh:property [
+        sh:path ( era:nationalLine era:lineId ) ; sh:name "National line" ;
+        sh:group shape:sol-route ; sh:order 40 ;
+    ] ;
+    sh:property [
+        sh:path era:solNature ; sh:name "Nature" ;
+        sh:group shape:sol-route ; sh:order 50 ;
+    ] ;
+
+    # --- Track characteristics: summed up over the tracks of the section ---
+    sh:property [
+        sh:path rdf:type ; sh:name "Number of tracks" ; rd:key "track-count" ;
+        rd:over [ sh:alternativePath ( era:hasPart [ sh:inversePath era:isPartOf ] ) ] ;
+        rd:aggregate "count" ;
+        sh:group shape:sol-tracks ; sh:order 10 ;
+        dash:viewer rd:AggregateViewer ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "{count} tracks" ;
+    ] ;
+    sh:property [
+        sh:path era:maximumPermittedSpeed ; sh:name "Maximum permitted speed" ;
+        rd:over [ sh:alternativePath ( era:hasPart [ sh:inversePath era:isPartOf ] ) ] ;
+        rd:aggregate "range" ; rd:unit "km/h" ;
+        sh:group shape:sol-tracks ; sh:order 20 ;
+        dash:viewer rd:AggregateViewer ;
+        dash:propertyRole dash:KeyInfoRole ;
+    ] ;
+    sh:property [
+        sh:path era:wheelSetGauge ; sh:name "Nominal track gauge" ;
+        rd:over [ sh:alternativePath ( era:hasPart [ sh:inversePath era:isPartOf ] ) ] ;
+        rd:aggregate "distinct-count" ;
+        sh:group shape:sol-tracks ; sh:order 30 ;
+        dash:viewer rd:AggregateViewer ;
+    ] ;
+    sh:property [
+        sh:path ( era:contactLineSystem era:contactLineSystemType ) ; sh:name "Contact line system" ;
+        rd:over [ sh:alternativePath ( era:hasPart [ sh:inversePath era:isPartOf ] ) ] ;
+        rd:aggregate "distinct-count" ;
+        sh:group shape:sol-tracks ; sh:order 40 ;
+        dash:viewer rd:AggregateViewer ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "Electrified {withValue} of {children}" ;
+    ] ;
+    sh:property [
+        sh:path ( era:contactLineSystem era:energySupplySystem ) ; sh:name "Energy supply system" ;
+        rd:over [ sh:alternativePath ( era:hasPart [ sh:inversePath era:isPartOf ] ) ] ;
+        rd:aggregate "distinct-count" ;
+        sh:group shape:sol-tracks ; sh:order 50 ;
+        dash:viewer rd:AggregateViewer ;
+    ] ;
+    sh:property [
+        sh:path ( era:etcs era:etcsLevelType ) ; sh:name "ETCS level" ;
+        rd:over [ sh:alternativePath ( era:hasPart [ sh:inversePath era:isPartOf ] ) ] ;
+        rd:aggregate "distinct-count" ;
+        sh:group shape:sol-tracks ; sh:order 60 ;
+        dash:viewer rd:AggregateViewer ;
+    ] ;
+    sh:property [
+        sh:path ( era:etcs era:etcsBaseline ) ; sh:name "ETCS baseline" ;
+        rd:over [ sh:alternativePath ( era:hasPart [ sh:inversePath era:isPartOf ] ) ] ;
+        rd:aggregate "distinct-count" ;
+        sh:group shape:sol-tracks ; sh:order 70 ;
+        dash:viewer rd:AggregateViewer ;
+    ] ;
+    sh:property [
+        sh:path era:lineCategory ; sh:name "Category of line" ;
+        rd:over [ sh:alternativePath ( era:hasPart [ sh:inversePath era:isPartOf ] ) ] ;
+        rd:aggregate "distinct-count" ;
+        sh:group shape:sol-tracks ; sh:order 80 ;
+        dash:viewer rd:AggregateViewer ;
+    ] ;
+    sh:property [
+        sh:path era:gaugingProfile ; sh:name "Gauging" ;
+        rd:over [ sh:alternativePath ( era:hasPart [ sh:inversePath era:isPartOf ] ) ] ;
+        rd:aggregate "distinct-count" ;
+        sh:group shape:sol-tracks ; sh:order 90 ;
+        dash:viewer rd:AggregateViewer ;
+    ] ;
+    sh:property [
+        sh:path ( era:trainDetectionSystem era:trainDetectionSystemType ) ; sh:name "Train detection" ;
+        rd:over [ sh:alternativePath ( era:hasPart [ sh:inversePath era:isPartOf ] ) ] ;
+        rd:aggregate "distinct-count" ;
+        sh:group shape:sol-tracks ; sh:order 100 ;
+        dash:viewer rd:AggregateViewer ;
+    ] ;
+    sh:property [
+        sh:path era:maxPermittedTrainLength ; sh:name "Maximum train length" ;
+        rd:over [ sh:alternativePath ( era:hasPart [ sh:inversePath era:isPartOf ] ) ] ;
+        rd:aggregate "range" ; rd:unit "m" ;
+        sh:group shape:sol-tracks ; sh:order 110 ;
+        dash:viewer rd:AggregateViewer ;
+    ] ;
+
+    # --- Tracks: one row per track, opens the track's page ---
+    sh:property [
+        sh:path [ sh:alternativePath ( era:hasPart [ sh:inversePath era:isPartOf ] ) ] ;
+        sh:name "Tracks" ; rd:key "track-table" ;
+        sh:group shape:sol-track-list ; sh:order 10 ;
+        dash:viewer dash:ValueTableViewer ;
+        sh:node shape:sol-track-row ;
+    ] ;
+
+    # --- Identification ---
+    sh:property [
+        sh:path era:infrastructureManager ; sh:name "Infrastructure manager" ;
+        sh:group shape:sol-identification ; sh:order 10 ;
+    ] ;
+    sh:property [
+        sh:path era:inCountry ; sh:name "Country" ;
+        sh:group shape:sol-identification ; sh:order 20 ;
+    ] ;
+    sh:property [
+        sh:name "Validity" ; rd:key "validity" ;
+        sh:group shape:sol-identification ; sh:order 30 ;
+        dash:viewer rd:ValidityViewer ;
+        rd:begin ( era:validity time:hasBeginning time:inXSDDate ) ;
+        rd:end ( era:validity time:hasEnd time:inXSDDate ) ;
+    ] .
+
+# Columns of the Tracks table.
+shape:sol-track-row
+    a sh:NodeShape ;
+    sh:property [ sh:path era:trackDirection ; sh:name "Direction" ; sh:order 20 ] ;
+    sh:property [ sh:path era:maximumPermittedSpeed ; sh:name "Max speed" ; rd:unit "km/h" ; sh:order 30 ] ;
+    sh:property [ sh:path era:wheelSetGauge ; sh:name "Gauge" ; sh:order 40 ] ;
+    sh:property [ sh:path ( era:contactLineSystem era:contactLineSystemType ) ; sh:name "Contact line" ; sh:order 50 ] ;
+    sh:property [ sh:path ( era:etcs era:etcsLevelType ) ; sh:name "ETCS" ; sh:order 60 ] ;
+    sh:property [ sh:path era:lineCategory ; sh:name "Line category" ; sh:order 70 ] .

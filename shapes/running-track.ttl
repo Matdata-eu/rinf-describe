@@ -1,0 +1,320 @@
+# Running track page: an Overview tab and a Route compatibility tab.
+#
+# Standard SHACL and DASH, plus the rd: terms of describe.ttl (docs/shapes.md).
+# Groups carry their tab with rd:tab; groups without one sit on the Overview tab.
+PREFIX rd:    <https://rinf-describe.matdata.eu/ns#>
+PREFIX shape: <https://rinf-describe.matdata.eu/shapes/>
+PREFIX dash:  <http://datashapes.org/dash#>
+PREFIX sh:    <http://www.w3.org/ns/shacl#>
+PREFIX era:   <http://data.europa.eu/949/>
+PREFIX gsp:   <http://www.opengis.net/ont/geosparql#>
+PREFIX time:  <http://www.w3.org/2006/time#>
+PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
+
+# Overview tab
+shape:rt-location a sh:PropertyGroup ; rdfs:label "Location" ; sh:order 10 .
+shape:rt-characteristics a sh:PropertyGroup ; rdfs:label "Track characteristics" ; sh:order 20 .
+shape:rt-gradient a sh:PropertyGroup ; rdfs:label "Gradient profile" ; sh:order 30 .
+shape:rt-energy a sh:PropertyGroup ; rdfs:label "Energy" ; sh:order 40 .
+shape:rt-signalling a sh:PropertyGroup ; rdfs:label "Signalling and radio" ; sh:order 50 .
+# Route compatibility tab: the parameters a vehicle is checked against.
+shape:rt-rcc-infrastructure a sh:PropertyGroup ; rdfs:label "Infrastructure" ; sh:order 110 ; rd:tab "Route compatibility" .
+shape:rt-rcc-braking a sh:PropertyGroup ; rdfs:label "Braking" ; sh:order 120 ; rd:tab "Route compatibility" .
+shape:rt-rcc-energy a sh:PropertyGroup ; rdfs:label "Energy and pantograph" ; sh:order 130 ; rd:tab "Route compatibility" .
+shape:rt-rcc-detection a sh:PropertyGroup ; rdfs:label "Train detection" ; sh:order 140 ; rd:tab "Route compatibility" .
+
+shape:running-track
+    a sh:NodeShape ;
+    rdfs:label "Running track" ;
+    sh:targetClass era:RunningTrack ;
+
+    sh:property [
+        sh:path rdfs:label ; rd:key "title" ;
+        dash:propertyRole dash:LabelRole ;
+    ] ;
+
+    # --- top of the page: the track, with its section of line as context ---
+    sh:property [
+        sh:path ( era:netReference gsp:hasGeometry gsp:asWKT ) ;
+        sh:name "Map" ; rd:key "map" ; sh:order 1 ;
+        dash:viewer rd:MapViewer ;
+        rd:context ( [ sh:alternativePath ( era:isPartOf [ sh:inversePath era:hasPart ] ) ] era:netReference gsp:hasGeometry gsp:asWKT ) ;
+    ] ;
+
+    # --- Location ---
+    sh:property [
+        sh:path [ sh:alternativePath ( era:isPartOf [ sh:inversePath era:hasPart ] ) ] ;
+        sh:name "Part of" ; sh:group shape:rt-location ; sh:order 10 ;
+    ] ;
+    sh:property [
+        sh:path era:trackId ; sh:name "Track identification" ;
+        sh:group shape:rt-location ; sh:order 20 ;
+    ] ;
+    sh:property [
+        sh:path era:trackDirection ; sh:name "Normal running direction" ;
+        sh:group shape:rt-location ; sh:order 30 ;
+    ] ;
+    sh:property [
+        sh:path era:infrastructureManager ; sh:name "Infrastructure manager" ;
+        sh:group shape:rt-location ; sh:order 40 ;
+    ] ;
+    sh:property [
+        sh:path era:inCountry ; sh:name "Country" ;
+        sh:group shape:rt-location ; sh:order 50 ;
+    ] ;
+    sh:property [
+        sh:name "Validity" ; rd:key "validity" ;
+        sh:group shape:rt-location ; sh:order 60 ;
+        dash:viewer rd:ValidityViewer ;
+        rd:begin ( era:validity time:hasBeginning time:inXSDDate ) ;
+        rd:end ( era:validity time:hasEnd time:inXSDDate ) ;
+    ] ;
+
+    # --- Track characteristics ---
+    sh:property [
+        sh:path era:maximumPermittedSpeed ; sh:name "Maximum permitted speed" ;
+        sh:group shape:rt-characteristics ; sh:order 10 ; rd:unit "km/h" ;
+        dash:propertyRole dash:KeyInfoRole ;
+    ] ;
+    sh:property [
+        sh:path era:wheelSetGauge ; sh:name "Nominal track gauge" ;
+        sh:group shape:rt-characteristics ; sh:order 20 ;
+        dash:viewer rd:SymbolViewer ; rd:symbol "track-gauge" ;
+        dash:propertyRole dash:KeyInfoRole ;
+    ] ;
+    sh:property [
+        sh:path era:gaugingProfile ; sh:name "Gauging" ;
+        sh:group shape:rt-characteristics ; sh:order 30 ;
+        dash:viewer rd:SymbolViewer ; rd:symbol "loading-gauge" ;
+    ] ;
+    sh:property [
+        sh:path era:lineCategory ; sh:name "Category of line" ;
+        sh:group shape:rt-characteristics ; sh:order 40 ;
+    ] ;
+    sh:property [
+        sh:path era:tenClassification ; sh:name "TEN classification" ;
+        sh:group shape:rt-characteristics ; sh:order 50 ;
+    ] ;
+    sh:property [
+        sh:path era:partOfTENT ; sh:name "TEN-T corridor" ;
+        sh:group shape:rt-characteristics ; sh:order 60 ;
+    ] ;
+    sh:property [
+        sh:path era:freightCorridor ; sh:name "Rail freight corridor" ;
+        sh:group shape:rt-characteristics ; sh:order 70 ;
+    ] ;
+    sh:property [
+        sh:path era:trackLoadCapability ; sh:name "Load capability" ;
+        sh:group shape:rt-characteristics ; sh:order 80 ;
+    ] ;
+
+    # --- Gradient profile ---
+    sh:property [
+        sh:path era:gradientProfile ; sh:name "Gradient profile" ;
+        sh:group shape:rt-gradient ; sh:order 10 ;
+        dash:viewer rd:StepChartViewer ; rd:unit "‰" ; rd:lengthUnit "m" ;
+    ] ;
+
+    # --- Energy: the contact line system expanded in place ---
+    sh:property [
+        sh:path ( era:contactLineSystem era:contactLineSystemType ) ; sh:name "Electrification" ;
+        rd:key "electrification" ; sh:order 1 ;
+        dash:propertyRole dash:KeyInfoRole ;
+    ] ;
+    sh:property [
+        sh:path era:contactLineSystem ; sh:name "Contact line system" ;
+        sh:group shape:rt-energy ; sh:order 10 ;
+        dash:viewer dash:DetailsViewer ;
+        sh:node shape:rt-contact-line ;
+    ] ;
+
+    # --- Signalling and radio: ETCS expanded in place ---
+    sh:property [
+        sh:path era:etcs ; sh:name "ETCS" ;
+        sh:group shape:rt-signalling ; sh:order 10 ;
+        dash:viewer dash:DetailsViewer ;
+        sh:node shape:rt-etcs ;
+    ] ;
+    sh:property [
+        sh:path ( era:etcs era:etcsLevelType ) ; sh:name "ETCS level" ; rd:key "etcs-level-badge" ; sh:order 2 ;
+        dash:propertyRole dash:KeyInfoRole ;
+    ] ;
+    sh:property [
+        sh:path era:protectionLegacySystem ; sh:name "Legacy train protection" ;
+        sh:group shape:rt-signalling ; sh:order 20 ;
+    ] ;
+    sh:property [
+        sh:path era:otherTrainProtection ; sh:name "Other train protection" ;
+        sh:group shape:rt-signalling ; sh:order 30 ;
+    ] ;
+    sh:property [
+        sh:path era:gsmRVersion ; sh:name "GSM-R version" ;
+        sh:group shape:rt-signalling ; sh:order 40 ;
+    ] ;
+    sh:property [
+        sh:path era:legacyRadioSystem ; sh:name "Legacy radio system" ;
+        sh:group shape:rt-signalling ; sh:order 50 ;
+    ] ;
+
+    # --- Route compatibility: infrastructure ---
+    sh:property [
+        sh:path era:wheelSetGauge ; sh:name "Nominal track gauge" ; rd:key "rcc-gauge" ;
+        sh:group shape:rt-rcc-infrastructure ; sh:order 10 ;
+    ] ;
+    sh:property [
+        sh:path era:gaugingProfile ; sh:name "Gauging" ; rd:key "rcc-gauging" ;
+        sh:group shape:rt-rcc-infrastructure ; sh:order 20 ;
+    ] ;
+    sh:property [
+        sh:path era:cantDeficiency ; sh:name "Cant deficiency" ; rd:unit "mm" ;
+        sh:group shape:rt-rcc-infrastructure ; sh:order 30 ;
+    ] ;
+    sh:property [
+        sh:path era:railInclination ; sh:name "Rail inclination" ;
+        sh:group shape:rt-rcc-infrastructure ; sh:order 40 ;
+    ] ;
+    sh:property [
+        sh:path era:minimumHorizontalRadius ; sh:name "Minimum horizontal radius" ; rd:unit "m" ;
+        sh:group shape:rt-rcc-infrastructure ; sh:order 50 ;
+    ] ;
+    sh:property [
+        sh:path era:maxPermittedTrainLength ; sh:name "Maximum train length" ; rd:unit "m" ;
+        sh:group shape:rt-rcc-infrastructure ; sh:order 60 ;
+    ] ;
+    sh:property [
+        sh:path era:minimumWheelDiameter ; sh:name "Minimum wheel diameter" ; rd:unit "mm" ;
+        sh:group shape:rt-rcc-infrastructure ; sh:order 70 ;
+    ] ;
+    sh:property [
+        sh:path era:temperatureRange ; sh:name "Temperature range" ;
+        sh:group shape:rt-rcc-infrastructure ; sh:order 80 ;
+    ] ;
+    sh:property [
+        sh:path era:maximumAltitude ; sh:name "Maximum altitude" ; rd:unit "m" ;
+        sh:group shape:rt-rcc-infrastructure ; sh:order 90 ;
+    ] ;
+    sh:property [
+        sh:path era:hasSevereWeatherConditions ; sh:name "Severe climatic conditions" ;
+        sh:group shape:rt-rcc-infrastructure ; sh:order 100 ;
+    ] ;
+    sh:property [
+        sh:path era:hasBallast ; sh:name "Ballast" ;
+        sh:group shape:rt-rcc-infrastructure ; sh:order 110 ;
+    ] ;
+    sh:property [
+        sh:path era:hasLevelCrossings ; sh:name "Level crossings" ;
+        sh:group shape:rt-rcc-infrastructure ; sh:order 120 ;
+    ] ;
+
+    # --- Route compatibility: braking ---
+    sh:property [
+        sh:path era:maximumTrainDeceleration ; sh:name "Maximum train deceleration" ; rd:unit "m/s²" ;
+        sh:group shape:rt-rcc-braking ; sh:order 10 ;
+    ] ;
+    sh:property [
+        sh:path era:maximumBrakingDistance ; sh:name "Maximum braking distance" ; rd:unit "m" ;
+        sh:group shape:rt-rcc-braking ; sh:order 20 ;
+    ] ;
+    sh:property [
+        sh:path era:eddyCurrentBraking ; sh:name "Eddy current brakes" ;
+        sh:group shape:rt-rcc-braking ; sh:order 30 ;
+    ] ;
+    sh:property [
+        sh:path era:magneticBraking ; sh:name "Magnetic brakes" ;
+        sh:group shape:rt-rcc-braking ; sh:order 40 ;
+    ] ;
+    sh:property [
+        sh:path era:flangeLubeForbidden ; sh:name "Flange lubrication forbidden" ;
+        sh:group shape:rt-rcc-braking ; sh:order 50 ;
+    ] ;
+    sh:property [
+        sh:path era:hasAdditionalBrakingInformation ; sh:name "Additional braking information" ;
+        sh:group shape:rt-rcc-braking ; sh:order 60 ;
+    ] ;
+
+    # --- Route compatibility: energy and pantograph ---
+    sh:property [
+        sh:path ( era:contactLineSystem era:energySupplySystem ) ; sh:name "Energy supply system" ;
+        rd:key "rcc-energy-supply" ;
+        sh:group shape:rt-rcc-energy ; sh:order 10 ;
+    ] ;
+    sh:property [
+        sh:path ( era:contactLineSystem era:maxTrainCurrent ) ; sh:name "Maximum train current" ; rd:unit "A" ;
+        rd:key "rcc-max-train-current" ;
+        sh:group shape:rt-rcc-energy ; sh:order 20 ;
+    ] ;
+    sh:property [
+        sh:path era:tsiPantographHead ; sh:name "TSI compliant pantograph heads" ;
+        sh:group shape:rt-rcc-energy ; sh:order 30 ;
+    ] ;
+    sh:property [
+        sh:path era:otherPantographHead ; sh:name "Other pantograph heads" ;
+        sh:group shape:rt-rcc-energy ; sh:order 40 ;
+    ] ;
+    sh:property [
+        sh:path era:contactStripMaterial ; sh:name "Contact strip material" ;
+        sh:group shape:rt-rcc-energy ; sh:order 50 ;
+    ] ;
+    sh:property [
+        sh:path era:contactStripMaterialMetallicContent ; sh:name "Metallic content of contact strip" ; rd:unit "%" ;
+        sh:group shape:rt-rcc-energy ; sh:order 60 ;
+    ] ;
+    sh:property [
+        sh:path era:hasPhaseSeparation ; sh:name "Phase separation" ;
+        sh:group shape:rt-rcc-energy ; sh:order 70 ;
+    ] ;
+    sh:property [
+        sh:path era:hasSystemSeparation ; sh:name "System separation" ;
+        sh:group shape:rt-rcc-energy ; sh:order 80 ;
+    ] ;
+    sh:property [
+        sh:path era:automaticDroppingDeviceRequired ; sh:name "Automatic dropping device required" ;
+        sh:group shape:rt-rcc-energy ; sh:order 90 ;
+    ] ;
+
+    # --- Route compatibility: train detection ---
+    sh:property [
+        sh:path era:trainDetectionSystem ; sh:name "Train detection systems" ;
+        sh:group shape:rt-rcc-detection ; sh:order 10 ;
+        dash:viewer dash:ValueTableViewer ;
+        sh:node shape:rt-train-detection ;
+    ] ;
+    sh:property [
+        sh:path era:hasTSITrainDetection ; sh:name "TSI compliant train detection" ;
+        sh:group shape:rt-rcc-detection ; sh:order 20 ;
+    ] ;
+    sh:property [
+        sh:path era:tsiMagneticFields ; sh:name "TSI compliant magnetic fields" ;
+        sh:group shape:rt-rcc-detection ; sh:order 30 ;
+    ] ;
+    sh:property [
+        sh:path era:tsiTractionHarmonics ; sh:name "TSI compliant traction harmonics" ;
+        sh:group shape:rt-rcc-detection ; sh:order 40 ;
+    ] .
+
+shape:rt-contact-line
+    a sh:NodeShape ;
+    sh:property [ sh:path era:contactLineSystemType ; sh:name "Type" ; sh:order 10 ] ;
+    sh:property [ sh:path era:energySupplySystem ; sh:name "Energy supply system" ; sh:order 20 ] ;
+    sh:property [ sh:path era:maxTrainCurrent ; sh:name "Maximum train current" ; rd:unit "A" ; sh:order 30 ] ;
+    sh:property [ sh:path era:maxCurrentStandstillPantograph ; sh:name "Maximum current at standstill" ; rd:unit "A" ; sh:order 40 ] ;
+    sh:property [ sh:path era:maximumContactWireHeight ; sh:name "Maximum contact wire height" ; rd:unit "m" ; sh:order 50 ] ;
+    sh:property [ sh:path era:minimumContactWireHeight ; sh:name "Minimum contact wire height" ; rd:unit "m" ; sh:order 60 ] ;
+    sh:property [ sh:path era:conditionalRegenerativeBrake ; sh:name "Regenerative braking" ; sh:order 70 ] ;
+    sh:property [ sh:path era:currentLimitationRequired ; sh:name "Current limitation required" ; sh:order 80 ] ;
+    sh:property [ sh:path era:umax2 ; sh:name "Umax2" ; rd:unit "V" ; sh:order 90 ] .
+
+shape:rt-etcs
+    a sh:NodeShape ;
+    sh:property [ sh:path era:etcsLevelType ; sh:name "Level" ; sh:order 10 ] ;
+    sh:property [ sh:path era:etcsBaseline ; sh:name "Baseline" ; sh:order 20 ] ;
+    sh:property [ sh:path era:etcsMVersion ; sh:name "M_VERSION" ; sh:order 30 ] ;
+    sh:property [ sh:path era:etcsInfill ; sh:name "Infill" ; sh:order 40 ] ;
+    sh:property [ sh:path era:etcsSystemCompatibility ; sh:name "System compatibility" ; sh:order 50 ] ;
+    sh:property [ sh:path era:etcsTransmitsTrackConditions ; sh:name "Transmits track conditions" ; sh:order 70 ] ;
+    sh:property [ sh:path era:hasETCSRestrictionsConditions ; sh:name "Restrictions or conditions" ; sh:order 80 ] .
+
+shape:rt-train-detection
+    a sh:NodeShape ;
+    sh:property [ sh:path era:trainDetectionSystemType ; sh:name "Type" ; sh:order 10 ] ;
+    sh:property [ sh:path era:trainDetectionSystemSpecificCheck ; sh:name "Specific check" ; sh:order 20 ] .
