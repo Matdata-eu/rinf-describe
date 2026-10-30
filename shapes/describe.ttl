@@ -70,6 +70,22 @@ rd:PlatformViewer a dash:SingleViewer ;
     rdfs:label "Platform" ;
     rdfs:comment "Side view of a platform edge against the TSI heights 550 and 760 mm. Paths: rd:height, rd:length, rd:curved." .
 
+rd:LineProfileViewer a dash:MultiViewer ;
+    rdfs:label "Line profile" ;
+    rdfs:comment "A national line along km: a lane per column of its sections (rd:table, rd:lanes), numbers as steps, categories as bands, operational points as ticks." .
+
+rd:LineStopsViewer a dash:MultiViewer ;
+    rdfs:label "Operational points along a line" ;
+    rdfs:comment "The operational points of a line in km order, from the ends of the sections in rd:table." .
+
+rd:AlongLineViewer a dash:MultiViewer ;
+    rdfs:label "Along the line" ;
+    rdfs:comment "A section of line as a strip with the assets of the rows in rd:markers at their km; rd:table names the route row with the section's km." .
+
+rd:CrossSectionViewer a dash:SingleViewer ;
+    rdfs:label "Cross-section" ;
+    rdfs:comment "A track end-on, not to scale. Paths: rd:gauge, rd:loadingGauge, rd:wireMin, rd:wireMax, rd:inclination." .
+
 rd:DataStatusViewer a dash:MultiViewer ;
     rdfs:label "Data status" ;
     rdfs:comment "Parameters marked era:notApplicable or era:notYetAvailable. Shown on every class page; needs no property shape." .
@@ -120,6 +136,21 @@ rd:layers a owl:DatatypeProperty ;
 rd:hidden a owl:DatatypeProperty ;
     rdfs:label "hidden" ;
     rdfs:comment "\"true\": a column that is read but not shown." .
+rd:table a owl:DatatypeProperty ;
+    rdfs:label "table" ;
+    rdfs:comment "Key of another row of the page whose values the widget draws (the sections of a line profile); the row needs no path." .
+rd:lanes a owl:DatatypeProperty ;
+    rdfs:label "lanes" ;
+    rdfs:comment "Columns of the rd:table row drawn as lanes by rd:LineProfileViewer." .
+rd:markers a owl:DatatypeProperty ;
+    rdfs:label "markers" ;
+    rdfs:comment "Keys of the rows whose resources rd:AlongLineViewer places along the line." .
+rd:sortBy a owl:DatatypeProperty ;
+    rdfs:label "sort by" ;
+    rdfs:comment "Column a table is sorted by, as numbers." .
+rd:cacheSeconds a owl:DatatypeProperty ;
+    rdfs:label "cache seconds" ;
+    rdfs:comment "On a node shape: how long its pages are kept (86400 for national lines)." .
 rd:key a owl:DatatypeProperty ;
     rdfs:label "key" ;
     rdfs:comment "Stable key of a property row; by default made from sh:name or the path." .

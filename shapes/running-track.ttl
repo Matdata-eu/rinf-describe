@@ -15,6 +15,7 @@ PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
 # Overview tab
 shape:rt-location a sh:PropertyGroup ; rdfs:label "Location" ; sh:order 10 .
 shape:rt-characteristics a sh:PropertyGroup ; rdfs:label "Track characteristics" ; sh:order 20 .
+shape:rt-platforms a sh:PropertyGroup ; rdfs:label "Platforms" ; sh:order 25 .
 shape:rt-gradient a sh:PropertyGroup ; rdfs:label "Gradient profile" ; sh:order 30 .
 shape:rt-energy a sh:PropertyGroup ; rdfs:label "Energy" ; sh:order 40 .
 shape:rt-signalling a sh:PropertyGroup ; rdfs:label "Signalling and radio" ; sh:order 50 .
@@ -54,6 +55,7 @@ shape:running-track
     sh:property [
         sh:path era:trackDirection ; sh:name "Normal running direction" ;
         sh:group shape:rt-location ; sh:order 30 ;
+        dash:viewer rd:SymbolViewer ; rd:symbol "direction" ;
     ] ;
 
     # --- Track characteristics ---
@@ -142,7 +144,26 @@ shape:running-track
         sh:group shape:rt-signalling ; sh:order 50 ;
     ] ;
 
+    # --- Platforms along the track ---
+    sh:property [
+        sh:path [ sh:inversePath era:isPartOf ] ; rd:class era:PlatformEdge ;
+        sh:name "Platforms" ; rd:key "platform-table" ;
+        sh:group shape:rt-platforms ; sh:order 10 ;
+        dash:viewer dash:ValueTableViewer ;
+        sh:node shape:rt-platform-row ;
+    ] ;
+
     # --- Route compatibility: infrastructure ---
+    sh:property [
+        sh:name "Cross-section" ; rd:key "cross-section" ;
+        sh:group shape:rt-rcc-infrastructure ; sh:order 1 ;
+        dash:viewer rd:CrossSectionViewer ;
+        rd:gauge era:wheelSetGauge ;
+        rd:loadingGauge era:gaugingProfile ;
+        rd:wireMin ( era:contactLineSystem era:minimumContactWireHeight ) ;
+        rd:wireMax ( era:contactLineSystem era:maximumContactWireHeight ) ;
+        rd:inclination era:railInclination ;
+    ] ;
     sh:property [
         sh:path era:wheelSetGauge ; sh:name "Nominal track gauge" ; rd:key "rcc-gauge" ;
         sh:group shape:rt-rcc-infrastructure ; sh:order 10 ;
@@ -304,3 +325,9 @@ shape:rt-train-detection
     a sh:NodeShape ;
     sh:property [ sh:path era:trainDetectionSystemType ; sh:name "Type" ; sh:order 10 ] ;
     sh:property [ sh:path era:trainDetectionSystemSpecificCheck ; sh:name "Specific check" ; sh:order 20 ] .
+
+shape:rt-platform-row
+    a sh:NodeShape ;
+    sh:property [ sh:path era:platformId ; sh:name "Platform" ; sh:order 10 ] ;
+    sh:property [ sh:path era:lengthOfPlatform ; sh:name "Usable length" ; rd:unit "m" ; sh:order 20 ] ;
+    sh:property [ sh:path era:platformHeight ; sh:name "Height (mm)" ; sh:order 30 ] .

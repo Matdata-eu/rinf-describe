@@ -44,6 +44,7 @@ function countedNode(v: CountedTerm, env: string, labels: Record<string, string>
 /** Plain text of a summary, for badges and table cells. */
 export function aggregateText(a: Aggregate, labels: Record<string, string>, unit?: string | null): string | null {
   if (a.count !== undefined) return String(a.count);
+  if (a.sum !== undefined) return withUnit(formatNumber(a.sum), unit);
   if (a.min !== undefined) return formatRange(a, unit);
   if (a.values?.length) return a.values.map((v) => withUnit(termText(v, labels), unit)).join(' · ');
   return null;
@@ -54,6 +55,7 @@ export const AggregateViewer: Widget = {
     const a = entry.aggregate;
     if (!a) return null;
     if (a.count !== undefined) return h('span', { class: 'lit' }, String(a.count));
+    if (a.sum !== undefined) return h('span', { class: 'lit' }, withUnit(formatNumber(a.sum), row.unit));
     if (a.min !== undefined) {
       const partial = a.children !== undefined && a.withValue !== undefined && a.withValue < a.children;
       return h('span', null, h('span', { class: 'lit' }, formatRange(a, row.unit)),
@@ -76,8 +78,12 @@ export const LrsLocationViewer: Widget = {
   },
 };
 
-function cellNode(values: Term[] | undefined, col: RowDef, env: string, labels: Record<string, string>): Node {
-  return valuesNode(values, env, labels, col.unit) ?? h('span', { class: 'muted' }, '–');
+/** One cell of a table: the column's values, or its summary over the item's children. */
+export function cellNode(it: Item, col: RowDef, env: string, labels: Record<string, string>): Node {
+  const a = it.aggregates?.[col.key];
+  const text = a ? aggregateText(a, labels, col.unit) : null;
+  if (text) return h('span', { class: 'lit' }, text);
+  return valuesNode(it.cells[col.key], env, labels, col.unit) ?? h('span', { class: 'muted' }, '–');
 }
 
 /** Linked resources as a table, columns from the row's sh:node. */
@@ -90,9 +96,13 @@ export const ValueTableViewer: Widget = {
     const total = entry.total ?? items.length;
     const line = (it: Item) => h('tr', null,
       h('td', null, h('a', { class: 'iri-link', href: describeHref(it.iri, env), title: it.iri }, iriLabel(it.iri, labels))),
-      cols.map((c) => h('td', null, cellNode(it.cells[c.key], c, env, labels))));
+      cols.map((c) => h('td', null, cellNode(it, c, env, labels))));
     // A paged table keeps the endpoint's order, so the next page follows on; a whole one is sorted.
-    const shown = entry.total !== undefined ? items : [...items].sort((a, b) => sortKey(a, cols, labels).localeCompare(sortKey(b, cols, labels), 'en', { numeric: true }));
+    // rd:sortBy "km": in the numeric order of that column (sections of a line by start km).
+    const by = row.settings.sortBy;
+    const numeric = (it: Item) => { const v = Number(it.cells[by ?? '']?.[0]?.value); return Number.isFinite(v) ? v : Infinity; };
+    const shown = by ? [...items].sort((a, b) => numeric(a) - numeric(b) || a.iri.localeCompare(b.iri))
+      : entry.total !== undefined ? items : [...items].sort((a, b) => sortKey(a, cols, labels).localeCompare(sortKey(b, cols, labels), 'en', { numeric: true }));
     const body = h('tbody', null, shown.map(line));
     const note = h('p', { class: 'table-note muted small' });
     let count = items.length;
@@ -139,9 +149,9 @@ export const DetailsViewer: Widget = {
     if (!items.length) return null;
     return h('div', { class: 'details-list' }, items.map((it) => h('div', { class: 'details' },
       h('a', { class: 'details-title iri-link', href: describeHref(it.iri, env), title: it.iri }, iriLabel(it.iri, labels)),
-      h('dl', { class: 'rows' }, row.columns.filter((c) => it.cells[c.key]?.length).map((c) =>
+      h('dl', { class: 'rows' }, row.columns.filter((c) => it.cells[c.key]?.length || it.aggregates?.[c.key]).map((c) =>
         h('div', { class: 'row' }, h('dt', { title: c.path ? pathText(c.path) : null }, c.name ?? c.key),
-          h('dd', null, cellNode(it.cells[c.key], c, env, labels))))))));
+          h('dd', null, cellNode(it, c, env, labels))))))));
   },
 };
 

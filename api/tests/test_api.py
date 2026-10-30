@@ -113,7 +113,7 @@ def test_search_and_examples(client):
     assert client.get("/api/search", params={"q": SOL, "env": "prod"}).json()["results"] == [
         {"iri": SOL, "label": None, "class": None}]
     ex = client.get("/api/examples", params={"env": "prod"}).json()["results"]
-    assert [e["classLabel"] for e in ex] == ["Operational point", "Platform edge", "Running track", "Section of line", "Tunnel"]
+    assert [e["classLabel"] for e in ex] == ["National line", "Operational point", "Platform edge", "Running track", "Section of line", "Tunnel"]
     assert all(e["label"] for e in ex)
 
 
@@ -153,7 +153,7 @@ def test_sitemaps(client, monkeypatch):
     assert f"<loc>{loc}</loc><lastmod>2026-10-01</lastmod>" in page
     # Every infrastructure element of the sample has a page: 10 sections of line, 82 running
     # tracks and the operational points, platforms, sidings... (the base page).
-    assert page.count("<url>") == 218
+    assert page.count("<url>") == 223
     assert client.get("/api/sitemap-2.xml").status_code == 404
 
 
@@ -162,3 +162,12 @@ def test_more_rows(client):
     r = client.get("/api/rows", params={"uri": op, "key": "track-table", "offset": 1}).json()
     assert r["total"] == 3 and len(r["items"]) == 2 and r["offset"] == 1
     assert client.get("/api/rows", params={"uri": op, "key": "nothing"}).status_code == 404
+
+
+def test_national_line_pages_are_kept_a_day(client):
+    from app import main
+    line = ERA + "lrs/3d5c54deb2"
+    r = client.get("/api/describe", params={"uri": line}).json()
+    assert r["pages"][0]["class"] == ERA + "LinearPositioningSystem"
+    expires = main._cache[("page", "prod", line)][0]
+    assert expires - main.time.time() > 3600

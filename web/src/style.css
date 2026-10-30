@@ -33,6 +33,7 @@
   --radius-sm: 6px;
   --top-h: 52px;
   --layer-0: #2e7d6b; --layer-1: #8a5cc2; --layer-2: #c05621; --layer-3: #3a6ea5;
+  --lane-0: #3a6ea5; --lane-1: #2e9e6b; --lane-2: #c05621; --lane-3: #8a5cc2; --lane-4: #b8860b; --lane-5: #c2417a;
   --font: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   color-scheme: light dark;
@@ -516,3 +517,43 @@ ol.tl-tracks, ul.tl-sidings { list-style: none; margin: 0; padding: 0; display: 
 .pf-text { fill: var(--text); font: 600 13px var(--font); }
 .platform-sketch figcaption { text-align: center; }
 .symbol .outline.dashed { stroke-dasharray: 4 3; }
+
+/* line profile and along the line (rd:LineProfileViewer, rd:AlongLineViewer) */
+.line-profile, .along-line, .cross-section { margin: 0; }
+.profile-wrap { overflow-x: auto; }
+.profile-svg, .along-svg { display: block; width: 100%; min-width: 640px; height: auto; }
+.pr-lane-bg { fill: var(--surface-2); }
+.pr-lane-name { fill: var(--muted); font: 12px var(--font); }
+.pr-step { fill: var(--accent-soft); stroke: var(--accent-strong); stroke-width: 1; }
+.pr-step-text { fill: var(--text); font: 600 10px var(--font); }
+.pr-band { stroke: var(--surface); stroke-width: 0.5; }
+.pr-stop { stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 2 3; }
+.pr-stop-text { fill: var(--accent); font: 11px var(--font); }
+.pr-axis { stroke: var(--line-strong); }
+.pr-axis-text { fill: var(--muted); font: 10px var(--mono); }
+.pr-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin-top: 6px; }
+.pr-key { display: inline-flex; align-items: center; gap: 6px; }
+.pr-swatch { width: 12px; height: 12px; border-radius: 3px; }
+.line-profile figcaption, .along-line figcaption { margin-top: 6px; }
+.al-line { stroke: var(--text); stroke-width: 4; stroke-linecap: round; }
+.al-end { fill: var(--surface); stroke: var(--accent-strong); stroke-width: 3; }
+.al-end-text { fill: var(--text); font: 600 13px var(--font); }
+.al-km-text { fill: var(--muted); font: 11px var(--mono); }
+.al-band { opacity: 0.85; }
+.al-tick { stroke-width: 2.5; stroke-linecap: round; fill: none; }
+.along-svg a:hover .al-band, .along-svg a:hover .al-tick { opacity: 1; filter: brightness(1.15); }
+
+/* cross-section (rd:CrossSectionViewer) */
+.xs-svg { display: block; width: 100%; max-width: 420px; height: auto; margin: 0 auto; }
+.xs-ballast { fill: var(--surface-2); stroke: var(--line-strong); }
+.xs-sleeper { fill: var(--line-strong); }
+.xs-rail { fill: var(--text); }
+.xs-measure { stroke: var(--accent-strong); stroke-width: 1.5; fill: none; }
+.xs-profile { fill: color-mix(in srgb, var(--accent-soft) 60%, transparent); stroke: var(--accent-strong); stroke-width: 2.5; stroke-linejoin: round; }
+.xs-profile.unknown { stroke-dasharray: 6 4; fill: none; }
+.xs-wire-band { fill: var(--signal-soft); }
+.xs-wire { stroke: var(--signal-ink); stroke-width: 2; }
+.xs-text { fill: var(--text); font: 12px var(--font); }
+.xs-text.strong { font-weight: 600; font-size: 14px; }
+.xs-text.muted { fill: var(--muted); }
+.cross-section figcaption { text-align: center; }

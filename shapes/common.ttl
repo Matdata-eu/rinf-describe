@@ -36,3 +36,22 @@ shape:document-card
     a sh:NodeShape ;
     sh:property [ sh:path era:documentUrl ; sh:name "Address" ; rd:key "url" ; sh:order 10 ] ;
     sh:property [ sh:path foaf:name ; sh:name "Name" ; rd:key "name" ; sh:order 20 ] .
+
+# Assets along a section of line (rd:AlongLineViewer), by their km on the national line.
+shape:along-stretch
+    a sh:NodeShape ;
+    sh:property [ sh:path ( era:netReference era:startsAt era:hasLrsCoordinate era:kmPost era:kilometer ) ; rd:key "start-km" ] ;
+    sh:property [ sh:path ( era:netReference era:startsAt era:hasLrsCoordinate era:offsetFromKilometricPost ) ; rd:key "start-offset" ] ;
+    sh:property [ sh:path ( era:netReference era:endsAt era:hasLrsCoordinate era:kmPost era:kilometer ) ; rd:key "end-km" ] ;
+    sh:property [ sh:path ( era:netReference era:endsAt era:hasLrsCoordinate era:offsetFromKilometricPost ) ; rd:key "end-offset" ] .
+shape:along-point
+    a sh:NodeShape ;
+    sh:property [ sh:path ( era:netReference era:hasLrsCoordinate era:kmPost era:kilometer ) ; rd:key "km" ] ;
+    sh:property [ sh:path ( era:netReference era:hasLrsCoordinate era:offsetFromKilometricPost ) ; rd:key "offset" ] .
+shape:along-post
+    a sh:NodeShape ;
+    sh:property [ sh:path era:kilometer ; rd:key "km" ] .
+shape:along-separation
+    a sh:NodeShape ;
+    sh:property [ sh:path era:phaseInfoKm ; rd:key "km" ] ;
+    sh:property [ sh:path era:phaseInfoLength ; rd:key "length" ] .

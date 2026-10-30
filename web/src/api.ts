@@ -10,12 +10,19 @@ export interface Aggregate {
   count?: number;
   // range
   min?: number; max?: number; withValue?: number;
+  // sum (of the first value of each child)
+  sum?: number;
   // distinct-count
   values?: CountedTerm[]; withoutValue?: number;
   children?: number;
 }
 
-export interface Item { iri: string; cells: Record<string, Term[]> }
+export interface Item {
+  iri: string;
+  cells: Record<string, Term[]>;
+  /** Columns with rd:over: summed up over the children of the linked resource. */
+  aggregates?: Record<string, Aggregate>;
+}
 
 /** A RINF parameter of the resource (rd:ParameterIndexViewer): the property, its values, and
  * when it sits on a linked resource (its contact line system...), the link and that resource. */

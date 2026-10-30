@@ -1,0 +1,139 @@
+# National line page (era:LinearPositioningSystem): not an infrastructure element, but the
+# natural index of a network ("line 36"). Its sections of line (^era:nationalLine) give the
+# map, a line profile along km, and the operational points in km order; its kilometric
+# posts (^era:hasLRS) get a tab of their own.
+#
+# A line sums up all its sections and their tracks, so its pages are kept a day.
+PREFIX rd:    <https://rinf-describe.matdata.eu/ns#>
+PREFIX shape: <https://rinf-describe.matdata.eu/shapes/>
+PREFIX dash:  <http://datashapes.org/dash#>
+PREFIX sh:    <http://www.w3.org/ns/shacl#>
+PREFIX era:   <http://data.europa.eu/949/>
+PREFIX gsp:   <http://www.opengis.net/ont/geosparql#>
+PREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
+
+shape:nl-identification a sh:PropertyGroup ; rdfs:label "National line" ; sh:order 10 .
+shape:nl-sections a sh:PropertyGroup ; rdfs:label "Sections of line" ; sh:order 20 .
+shape:nl-stops a sh:PropertyGroup ; rdfs:label "Operational points" ; sh:order 30 .
+shape:nl-posts a sh:PropertyGroup ; rdfs:label "Kilometric posts" ; sh:order 40 ; rd:tab "Kilometric posts" .
+
+shape:sections-of-line sh:inversePath era:nationalLine .
+
+shape:national-line
+    a sh:NodeShape ;
+    rdfs:label "National line" ;
+    sh:targetClass era:LinearPositioningSystem ;
+    rd:cacheSeconds 86400 ;
+
+    sh:property [
+        sh:path rdfs:label ; rd:key "title" ;
+        dash:propertyRole dash:LabelRole ;
+    ] ;
+
+    # --- badges ---
+    sh:property [
+        sh:path era:lineId ; sh:name "Line" ; rd:key "line-badge" ; sh:order 1 ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "Line {value}" ;
+    ] ;
+    sh:property [
+        sh:path era:lengthOfSectionOfLine ; sh:name "Length" ; rd:key "length" ;
+        rd:over shape:sections-of-line ; rd:aggregate "sum" ; rd:unit "km" ;
+        sh:group shape:nl-identification ; sh:order 30 ; dash:viewer rd:AggregateViewer ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "{sum} km" ;
+    ] ;
+    sh:property [
+        sh:path rdf:type ; sh:name "Sections of line" ; rd:key "section-count" ;
+        rd:over shape:sections-of-line ; rd:class era:SectionOfLine ; rd:aggregate "count" ;
+        sh:group shape:nl-identification ; sh:order 40 ; dash:viewer rd:AggregateViewer ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "{count} sections" ;
+    ] ;
+
+    # --- top of the page: the line on the map, its profile along km ---
+    sh:property [
+        sh:path ( shape:sections-of-line era:netReference gsp:hasGeometry gsp:asWKT ) ;
+        sh:name "Map" ; rd:key "map" ; sh:order 2 ;
+        dash:viewer rd:MapViewer ;
+        rd:context ( shape:sections-of-line [ sh:alternativePath ( era:opStart era:opEnd ) ]
+                     [ sh:alternativePath ( ( era:netReference gsp:hasGeometry gsp:asWKT ) ( gsp:hasGeometry gsp:asWKT ) ) ] ) ;
+    ] ;
+    sh:property [
+        sh:name "Line profile" ; rd:key "profile" ; sh:order 3 ;
+        dash:viewer rd:LineProfileViewer ;
+        rd:table "section-table" ;
+        rd:lanes "speed energy etcs gauge tracks" ;
+    ] ;
+
+    # --- National line ---
+    sh:property [ sh:path era:lineId ; sh:name "Line identification" ; sh:group shape:nl-identification ; sh:order 10 ] ;
+    sh:property [
+        sh:path era:inCountry ; sh:name "Country" ; rd:key "country" ;
+        sh:group shape:nl-identification ; sh:order 20 ;
+        dash:viewer rd:SymbolViewer ; rd:symbol "country" ;
+    ] ;
+
+    # --- Sections of line, in km order, with what their tracks allow ---
+    sh:property [
+        sh:path shape:sections-of-line ; rd:class era:SectionOfLine ;
+        sh:name "Sections of line" ; rd:key "section-table" ;
+        sh:group shape:nl-sections ; sh:order 10 ;
+        dash:viewer dash:ValueTableViewer ; rd:sortBy "start-km" ;
+        sh:node shape:nl-section-row ;
+    ] ;
+
+    # --- Operational points along the line, from the ends of its sections ---
+    sh:property [
+        sh:name "Operational points" ; rd:key "stops" ;
+        sh:group shape:nl-stops ; sh:order 10 ;
+        dash:viewer rd:LineStopsViewer ;
+        rd:table "section-table" ;
+    ] ;
+
+    # --- Kilometric posts ---
+    sh:property [
+        sh:path [ sh:inversePath era:hasLRS ] ; rd:class era:KilometricPost ;
+        sh:name "Kilometric posts" ; rd:key "post-table" ;
+        sh:group shape:nl-posts ; sh:order 10 ;
+        dash:viewer dash:ValueTableViewer ; rd:limit "100" ; rd:sortBy "km" ;
+        sh:node shape:nl-post-row ;
+    ] .
+
+# A section of line on its line: its ends with their km, and its tracks summed up.
+shape:nl-section-row
+    a sh:NodeShape ;
+    sh:property [ sh:path era:opStart ; sh:name "From" ; rd:key "from" ; sh:order 10 ] ;
+    sh:property [ sh:path era:opEnd ; sh:name "To" ; rd:key "to" ; sh:order 20 ] ;
+    sh:property [ sh:path ( era:netReference era:startsAt era:hasLrsCoordinate era:kmPost era:kilometer ) ; sh:name "Start km" ; rd:key "start-km" ; sh:order 30 ] ;
+    sh:property [ sh:path ( era:netReference era:startsAt era:hasLrsCoordinate era:offsetFromKilometricPost ) ; rd:key "start-offset" ; rd:hidden "true" ; sh:order 31 ] ;
+    sh:property [ sh:path ( era:netReference era:endsAt era:hasLrsCoordinate era:kmPost era:kilometer ) ; rd:key "end-km" ; rd:hidden "true" ; sh:order 32 ] ;
+    sh:property [ sh:path ( era:netReference era:endsAt era:hasLrsCoordinate era:offsetFromKilometricPost ) ; rd:key "end-offset" ; rd:hidden "true" ; sh:order 33 ] ;
+    sh:property [ sh:path ( era:opStart era:opType ) ; rd:key "from-type" ; rd:hidden "true" ; sh:order 34 ] ;
+    sh:property [ sh:path ( era:opEnd era:opType ) ; rd:key "to-type" ; rd:hidden "true" ; sh:order 35 ] ;
+    sh:property [ sh:path era:lengthOfSectionOfLine ; sh:name "Length" ; rd:key "length" ; rd:unit "km" ; sh:order 40 ] ;
+    sh:property [
+        sh:path era:maximumPermittedSpeed ; sh:name "Max speed" ; rd:key "speed" ; rd:unit "km/h" ; sh:order 50 ;
+        rd:over shape:parts ; rd:class era:RunningTrack ; rd:aggregate "range" ;
+    ] ;
+    sh:property [
+        sh:path ( era:contactLineSystem era:energySupplySystem ) ; sh:name "Energy supply" ; rd:key "energy" ; sh:order 60 ;
+        rd:over shape:parts ; rd:class era:RunningTrack ; rd:aggregate "distinct-count" ;
+    ] ;
+    sh:property [
+        sh:path ( shape:own-or-subset era:etcs era:etcsLevelType ) ; sh:name "ETCS" ; rd:key "etcs" ; sh:order 70 ;
+        rd:over shape:parts ; rd:class era:RunningTrack ; rd:aggregate "distinct-count" ;
+    ] ;
+    sh:property [
+        sh:path era:wheelSetGauge ; sh:name "Gauge" ; rd:key "gauge" ; sh:order 80 ;
+        rd:over shape:parts ; rd:class era:RunningTrack ; rd:aggregate "distinct-count" ;
+    ] ;
+    sh:property [
+        sh:path rdf:type ; sh:name "Tracks" ; rd:key "tracks" ; sh:order 90 ;
+        rd:over shape:parts ; rd:class era:RunningTrack ; rd:aggregate "count" ;
+    ] ;
+    sh:property [ sh:path ( era:netReference gsp:hasGeometry gsp:asWKT ) ; rd:key "wkt" ; rd:hidden "true" ; sh:order 99 ] .
+
+shape:nl-post-row
+    a sh:NodeShape ;
+    sh:property [ sh:path era:kilometer ; sh:name "km" ; rd:key "km" ; sh:order 10 ] ;
+    sh:property [ sh:path era:kmPostName ; sh:name "Name" ; sh:order 20 ] ;
+    sh:property [ sh:path era:measuredDistance ; sh:name "Measured distance" ; sh:order 30 ] .
