@@ -1,0 +1,73 @@
+# RINF Describe vocabulary (rd:): the widgets and terms the class shapes use on top
+# of SHACL and DASH. Documented in docs/shapes.md.
+#
+# Each widget is a dash:SingleViewer or dash:MultiViewer, so a generic DASH tool
+# reading these shapes still knows what kind of viewer it is and can fall back
+# to a plain one.
+PREFIX rd:   <https://rinf-describe.matdata.eu/ns#>
+PREFIX dash: <http://datashapes.org/dash#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX owl:  <http://www.w3.org/2002/07/owl#>
+
+<https://rinf-describe.matdata.eu/ns>
+    a owl:Ontology ;
+    rdfs:label "RINF Describe vocabulary" ;
+    rdfs:comment "Widgets and summaries for describe pages laid out by SHACL DASH shapes." .
+
+rd:RouteDiagramViewer a dash:SingleViewer ;
+    rdfs:label "Route diagram" ;
+    rdfs:comment "Start and end point on a line, with the length and the kilometre positions. Paths: rd:start, rd:end, rd:length, optionally rd:startKm, rd:startOffset, rd:endKm, rd:endOffset." .
+
+rd:MapViewer a dash:MultiViewer ;
+    rdfs:label "Map" ;
+    rdfs:comment "WKT geometries of sh:path on OpenStreetMap with the OpenRailwayMap overlay. rd:context: geometries drawn as context (the section of line of a track, the end points of a section)." .
+
+rd:AggregateViewer a dash:MultiViewer ;
+    rdfs:label "Summary over linked resources" ;
+    rdfs:comment "Values of sh:path on each resource reached by rd:over, summed up as rd:aggregate: range, distinct-count or count." .
+
+rd:LrsLocationViewer a dash:SingleViewer ;
+    rdfs:label "Railway location" ;
+    rdfs:comment "The value with its kilometre position, written km 53+240. Paths: rd:km (kilometric post), rd:offset (metres from it)." .
+
+rd:StepChartViewer a dash:SingleViewer ;
+    rdfs:label "Step chart" ;
+    rdfs:comment "A profile written as value(length) pairs, e.g. a gradient profile, as a kilometre-ordered step chart: positive values green, negative red." .
+
+rd:SymbolViewer a dash:MultiViewer ;
+    rdfs:label "Symbol" ;
+    rdfs:comment "An illustrative, non-dimensioned symbol next to each value's label. rd:symbol: loading-gauge or track-gauge." .
+
+rd:ValidityViewer a dash:SingleViewer ;
+    rdfs:label "Validity" ;
+    rdfs:comment "Validity period (an era:TemporalFeature, a time:TemporalDuration) as a bar on a time axis with today marked. Paths: rd:begin, rd:end (xsd:date)." .
+
+rd:DataStatusViewer a dash:MultiViewer ;
+    rdfs:label "Data status" ;
+    rdfs:comment "Parameters marked era:notApplicable or era:notYetAvailable. Shown on every class page; needs no property shape." .
+
+rd:GraphViewer a dash:MultiViewer ;
+    rdfs:label "Graph" ;
+    rdfs:comment "Interactive neighbourhood graph from the indexed triples; nodes open their own page. Shown on every page; needs no property shape." .
+
+rd:tab a owl:DatatypeProperty ;
+    rdfs:label "tab" ;
+    rdfs:comment "Tab of a sh:PropertyGroup, shown as its title; overview by default." .
+rd:over a owl:ObjectProperty ;
+    rdfs:label "over" ;
+    rdfs:comment "SHACL path to linked resources; sh:path is evaluated on each of them." .
+rd:aggregate a owl:DatatypeProperty ;
+    rdfs:label "aggregate" ;
+    rdfs:comment "range, distinct-count or count: how the values reached through rd:over are summed up." .
+rd:unit a owl:DatatypeProperty ;
+    rdfs:label "unit" ;
+    rdfs:comment "Display unit written after the value." .
+rd:badge a owl:DatatypeProperty ;
+    rdfs:label "badge" ;
+    rdfs:comment "Template of the header badge of a dash:KeyInfoRole property: {value}, {min}, {max}, {count}, {withValue}, {children}, {unit}." .
+rd:symbol a owl:DatatypeProperty ;
+    rdfs:label "symbol" ;
+    rdfs:comment "Symbol set of rd:SymbolViewer." .
+rd:key a owl:DatatypeProperty ;
+    rdfs:label "key" ;
+    rdfs:comment "Stable key of a property row; by default made from sh:name or the path." .
