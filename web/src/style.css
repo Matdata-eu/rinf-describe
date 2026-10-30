@@ -633,3 +633,59 @@ ul.changes-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8
 .seg-btn[aria-pressed="true"] { background: var(--accent-strong); color: var(--on-accent); }
 .seg-btn:focus-visible { outline: 2px solid var(--signal); outline-offset: 1px; }
 .uml-card > p.muted { margin: 0 4px 10px; }
+
+/* concept tree (rd:ConceptTreeViewer) */
+.concept-tree { display: grid; gap: 8px; }
+.ct-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ct-filter { font: inherit; font-size: 14px; padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); min-width: 0; width: min(320px, 100%); }
+.ct-tree, .ct-list { list-style: none; margin: 0; padding: 0; }
+.ct-list { margin-left: 9px; padding-left: 14px; border-left: 1px solid var(--border); }
+.ct-item { margin: 0; }
+.ct-item > details > summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; gap: 6px; }
+.ct-item > details > summary::-webkit-details-marker { display: none; }
+.ct-item > details > summary::before { content: ""; flex: none; width: 0; height: 0; border-style: solid; border-width: 5px 0 5px 7px; border-color: transparent transparent transparent var(--muted); transform: translateY(1px); transition: transform 0.12s; }
+.ct-item > details[open] > summary::before { transform: translateY(1px) rotate(90deg); }
+.ct-leaf { display: inline-block; width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid var(--line-strong); margin-right: 6px; vertical-align: 1px; }
+.ct-tree.flat .ct-leaf { display: none; }
+.ct-head { display: inline-flex; align-items: baseline; gap: 8px; padding: 3px 6px; border-radius: var(--radius-sm); min-width: 0; flex-wrap: wrap; }
+.ct-head.self { background: var(--signal-soft); box-shadow: inset 3px 0 0 var(--signal); }
+.ct-head.self .ct-label { color: var(--text); }
+.ct-notation { color: var(--muted); background: var(--surface-2); border-radius: 4px; padding: 0 5px; font-size: 12px; }
+.ct-count { font-variant-numeric: tabular-nums; }
+.ct-count::before { content: "· "; }
+.ct-tree.flat { columns: 2 280px; column-gap: 24px; }
+.ct-tree.flat .ct-item { break-inside: avoid; }
+
+/* topology around a linear element (rd:TopologyViewer) */
+.topology { margin: 0; display: grid; gap: 8px; }
+.topology:fullscreen { background: var(--surface); padding: 16px; grid-template-rows: auto 1fr auto; }
+.topo-tools { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.topo-buttons { display: inline-flex; gap: 6px; }
+.topo-graph { height: min(520px, 65vh); border-radius: var(--radius-sm); background: var(--surface-2); }
+.topology:fullscreen .topo-graph { height: auto; }
+.topo-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--muted); }
+.topo-key { display: inline-flex; align-items: center; gap: 6px; }
+.topo-swatch { width: 14px; height: 10px; border-radius: 5px; background: var(--surface); border: 2px solid var(--line-strong); }
+.topo-swatch.self { border-color: var(--signal); }
+.topo-swatch.near { border-color: var(--accent-strong); }
+.topo-edge { width: 22px; height: 0; border-top: 2px solid var(--accent-strong); }
+.topo-edge.none { border-top: 2px dashed var(--danger); }
+.topo-edge.unknown { border-top: 2px dotted var(--line-strong); }
+
+/* objects positioned on a linear element (rd:PositionedViewer) */
+.positioned { margin: 0; display: grid; gap: 10px; }
+.pos-lane { stroke: var(--border); stroke-width: 1; }
+.pos-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px 20px; }
+.pos-group summary { cursor: pointer; display: flex; align-items: center; gap: 6px; }
+.pos-list { list-style: none; margin: 6px 0 0; padding: 0 0 0 18px; display: grid; gap: 2px; max-height: 280px; overflow: auto; }
+
+/* a kilometric post on its line (rd:LinePositionViewer) */
+.line-position { margin: 0; display: grid; gap: 10px; }
+.kp-tick { stroke: var(--line-strong); stroke-width: 1.2; }
+.kp-stop { fill: var(--surface); stroke: var(--accent-strong); stroke-width: 2; }
+.kp-stop-text { fill: var(--text); font: 12px var(--font); }
+.kp-self { fill: var(--signal); stroke: var(--surface); stroke-width: 2; }
+.kp-self-line { stroke: var(--signal); stroke-width: 2; }
+.kp-self-text { fill: var(--text); font: 600 13px var(--mono); }
+.kp-sides { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px 20px; }
+.kp-side { display: grid; gap: 2px; }

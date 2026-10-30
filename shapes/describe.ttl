@@ -174,3 +174,26 @@ rd:cacheSeconds a owl:DatatypeProperty ;
 rd:key a owl:DatatypeProperty ;
     rdfs:label "key" ;
     rdfs:comment "Stable key of a property row; by default made from sh:name or the path." .
+
+rd:ConceptTreeViewer a dash:MultiViewer ;
+    rdfs:label "Concept tree" ;
+    rdfs:comment "SKOS concepts (sh:path, sh:node with columns broader and notation) as a tree along skos:broader. On a concept page the concept is marked and its branch open." .
+
+rd:TopologyViewer a dash:MultiViewer ;
+    rdfs:label "Topology" ;
+    rdfs:comment "Net relations (sh:path, sh:node with columns a, b, navigability, origin-a, origin-b) as a graph of linear elements, arrows the way a train can pass. rd:elements: the row with the elements (wkt, length) that places them as on the map." .
+
+rd:PositionedViewer a dash:MultiViewer ;
+    rdfs:label "Positioned on an element" ;
+    rdfs:comment "Objects positioned on a linear element (sh:path, sh:node with columns type, on, offset) as ticks along it at their offset from its origin, and by type." .
+
+rd:LinePositionViewer a dash:SingleViewer ;
+    rdfs:label "Position on the line" ;
+    rdfs:comment "A kilometric post (the page's km row) on its line, with the line's operational points (rd:table: sections with from, to, start-km... end-offset) and posts (rd:posts: rows with a km column)." .
+
+rd:elements a owl:DatatypeProperty ;
+    rdfs:label "elements" ;
+    rdfs:comment "Key of the row with the linear elements rd:TopologyViewer draws as nodes." .
+rd:posts a owl:DatatypeProperty ;
+    rdfs:label "posts" ;
+    rdfs:comment "Key of the row with the kilometric posts rd:LinePositionViewer draws as ticks." .

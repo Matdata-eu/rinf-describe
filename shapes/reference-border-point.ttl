@@ -1,5 +1,6 @@
-# Reference border point page: where a line crosses a border, and the operational points
-# on both sides that name it (rd:scope "all": they are in the two countries' graphs).
+# Reference border point page: where a line crosses a border, the operational points on both
+# sides that name it, their primary locations, and the sections of line that end at it
+# (rd:scope "all": they are in the two countries' graphs).
 PREFIX rd:    <https://rinf-describe.matdata.eu/ns#>
 PREFIX shape: <https://rinf-describe.matdata.eu/shapes/>
 PREFIX dash:  <http://datashapes.org/dash#>
@@ -21,7 +22,7 @@ shape:reference-border-point
         sh:path [ sh:alternativePath ( ( era:netReference gsp:hasGeometry gsp:asWKT ) ( gsp:hasGeometry gsp:asWKT ) ) ] ;
         sh:name "Map" ; rd:key "map" ; sh:order 2 ;
         dash:viewer rd:MapViewer ;
-        rd:layers "border-ops" ;
+        rd:layers "border-ops border-locations border-sections" ;
     ] ;
     sh:property [
         sh:path era:borderPointId ; sh:name "Border point ID" ; rd:key "id" ;
@@ -30,12 +31,50 @@ shape:reference-border-point
     ] ;
     sh:property [ sh:path era:inCountry ; sh:name "Countries" ; rd:key "country" ; sh:group shape:rbp-group ; sh:order 20 ; dash:viewer rd:SymbolViewer ; rd:symbol "country" ] ;
     sh:property [
-        sh:path [ sh:inversePath era:referenceBorderPoint ] ; rd:class era:OperationalPoint ; rd:scope "all" ;
+        sh:path shape:rbp-ops ; rd:class era:OperationalPoint ; rd:scope "all" ;
         sh:name "Operational points at the border" ; rd:key "border-ops" ;
         sh:group shape:rbp-group ; sh:order 30 ;
         dash:viewer dash:ValueTableViewer ;
         sh:node shape:rbp-op-row ;
+    ] ;
+    sh:property [
+        sh:path [ sh:alternativePath ( ( shape:rbp-ops era:primaryLocation ) [ sh:inversePath era:netReference ] ) ] ;
+        rd:class era:PrimaryLocation ; rd:scope "all" ;
+        sh:name "Primary locations" ; rd:key "border-locations" ;
+        sh:group shape:rbp-group ; sh:order 40 ;
+        dash:viewer dash:ValueTableViewer ;
+        sh:node shape:rbp-location-row ;
+    ] ;
+    sh:property [
+        # Sections from or to the operational points at the border, or whose net reference ends on it.
+        sh:path [ sh:alternativePath (
+            ( shape:rbp-ops [ sh:alternativePath ( [ sh:inversePath era:opStart ] [ sh:inversePath era:opEnd ] ) ] )
+            ( [ sh:alternativePath ( [ sh:inversePath era:startsAt ] [ sh:inversePath era:endsAt ] ) ] [ sh:inversePath era:netReference ] )
+        ) ] ;
+        rd:class era:SectionOfLine ; rd:scope "all" ;
+        sh:name "Sections of line at the border" ; rd:key "border-sections" ;
+        sh:group shape:rbp-group ; sh:order 50 ;
+        dash:viewer dash:ValueTableViewer ;
+        sh:node shape:rbp-section-row ;
     ] .
+
+# The operational points at the border: they name it, or are positioned on it.
+shape:rbp-ops sh:alternativePath ( [ sh:inversePath era:referenceBorderPoint ] [ sh:inversePath era:netReference ] ) .
+
+shape:rbp-location-row
+    a sh:NodeShape ;
+    sh:property [ sh:path era:primaryLocationCode ; sh:name "Code" ; sh:order 10 ] ;
+    sh:property [ sh:path era:inCountry ; sh:name "Country" ; sh:order 20 ] ;
+    sh:property [ sh:path [ sh:inversePath era:primaryLocation ] ; rd:class era:OperationalPoint ; sh:name "Operational point" ; rd:key "op" ; sh:order 30 ] ;
+    sh:property [ sh:path ( [ sh:inversePath era:primaryLocation ] [ sh:alternativePath ( ( era:netReference gsp:hasGeometry gsp:asWKT ) ( gsp:hasGeometry gsp:asWKT ) ) ] ) ; rd:key "wkt" ; rd:hidden "true" ; sh:order 99 ] .
+
+shape:rbp-section-row
+    a sh:NodeShape ;
+    sh:property [ sh:path era:opStart ; sh:name "From" ; sh:order 10 ] ;
+    sh:property [ sh:path era:opEnd ; sh:name "To" ; sh:order 20 ] ;
+    sh:property [ sh:path era:lengthOfSectionOfLine ; sh:name "Length" ; rd:unit "km" ; sh:order 30 ] ;
+    sh:property [ sh:path era:infrastructureManager ; sh:name "Infrastructure manager" ; sh:order 40 ] ;
+    sh:property [ sh:path ( era:netReference gsp:hasGeometry gsp:asWKT ) ; rd:key "wkt" ; rd:hidden "true" ; sh:order 99 ] .
 
 shape:rbp-op-row
     a sh:NodeShape ;

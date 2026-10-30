@@ -1,4 +1,6 @@
-# Kilometric post page: its km on its national line. Not an infrastructure element.
+# Kilometric post page: its km on its linear positioning system (the national line), where
+# that is on the line between the operational points and next to the other posts, and the
+# linear element it is placed on. Not an infrastructure element.
 PREFIX rd:    <https://rinf-describe.matdata.eu/ns#>
 PREFIX shape: <https://rinf-describe.matdata.eu/shapes/>
 PREFIX dash:  <http://datashapes.org/dash#>
@@ -9,6 +11,7 @@ PREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
 
 shape:kp-group a sh:PropertyGroup ; rdfs:label "Kilometric post" ; sh:order 10 .
+shape:kp-line a sh:PropertyGroup ; rdfs:label "On the line" ; sh:order 20 .
 
 shape:kilometric-post
     a sh:NodeShape ;
@@ -20,6 +23,7 @@ shape:kilometric-post
         sh:path [ sh:alternativePath ( ( era:netReference gsp:hasGeometry gsp:asWKT ) ( gsp:hasGeometry gsp:asWKT ) ) ] ;
         sh:name "Map" ; rd:key "map" ; sh:order 2 ;
         dash:viewer rd:MapViewer ;
+        rd:context ( era:hasLRS [ sh:inversePath era:nationalLine ] era:netReference gsp:hasGeometry gsp:asWKT ) ;
     ] ;
     sh:property [
         sh:path era:kilometer ; sh:name "Kilometre" ; rd:key "km" ;
@@ -28,9 +32,69 @@ shape:kilometric-post
     ] ;
     sh:property [ sh:path era:kmPostName ; sh:name "Name" ; sh:group shape:kp-group ; sh:order 20 ] ;
     sh:property [
-        sh:path era:hasLRS ; sh:name "National line" ; rd:key "line" ;
+        sh:path era:hasLRS ; sh:name "Linear positioning system" ; rd:key "line" ;
         sh:group shape:kp-group ; sh:order 30 ;
         dash:propertyRole dash:KeyInfoRole ; rd:badge "Line {value}" ;
     ] ;
     sh:property [ sh:path era:measuredDistance ; sh:name "Measured distance" ; sh:group shape:kp-group ; sh:order 40 ] ;
-    sh:property [ sh:path era:inCountry ; sh:name "Country" ; sh:group shape:kp-group ; sh:order 50 ; dash:viewer rd:SymbolViewer ; rd:symbol "country" ] .
+    sh:property [ sh:path shape:part-of ; sh:name "Part of" ; rd:key "part-of" ; sh:group shape:kp-group ; sh:order 45 ] ;
+    sh:property [
+        sh:path ( era:netReference era:hasTopoCoordinate era:onLinearElement ) ; sh:name "On linear element" ; rd:key "element" ;
+        sh:group shape:kp-group ; sh:order 50 ;
+    ] ;
+    sh:property [
+        sh:path ( era:netReference era:hasTopoCoordinate era:offsetFromOrigin ) ; sh:name "From the element's origin" ; rd:key "element-offset" ;
+        rd:unit "m" ; sh:group shape:kp-group ; sh:order 55 ;
+    ] ;
+    sh:property [ sh:path era:infrastructureManager ; sh:name "Infrastructure manager" ; sh:group shape:kp-group ; sh:order 60 ] ;
+    sh:property [ sh:path era:inCountry ; sh:name "Country" ; sh:group shape:kp-group ; sh:order 70 ; dash:viewer rd:SymbolViewer ; rd:symbol "country" ] ;
+    sh:property [
+        sh:name "Validity" ; rd:key "validity" ;
+        sh:group shape:kp-group ; sh:order 80 ;
+        dash:viewer rd:ValidityViewer ;
+        rd:begin shape:validity-begin ;
+        rd:end shape:validity-end ;
+    ] ;
+
+    # --- On the line: the line as a strip, this post on it ---
+    sh:property [
+        sh:name "Position on the line" ; rd:key "position" ;
+        sh:group shape:kp-line ; sh:order 10 ;
+        dash:viewer rd:LinePositionViewer ;
+        rd:table "line-sections" ;
+        rd:posts "line-posts" ;
+    ] ;
+    sh:property [
+        sh:path era:hasLRS ; sh:name "Linear positioning system" ; rd:key "line-details" ;
+        sh:group shape:kp-line ; sh:order 20 ;
+        dash:viewer dash:DetailsViewer ;
+        sh:node shape:kp-lps-row ;
+    ] ;
+    # Data for the strip: the sections of the line with their ends, and the posts of the line.
+    sh:property [
+        sh:path ( era:hasLRS [ sh:inversePath era:nationalLine ] ) ; rd:class era:SectionOfLine ;
+        sh:name "Sections of the line" ; rd:key "line-sections" ; rd:hidden "true" ;
+        sh:group shape:kp-line ; sh:order 90 ;
+        sh:node shape:kp-section-row ;
+    ] ;
+    sh:property [
+        sh:path ( era:hasLRS [ sh:inversePath era:hasLRS ] ) ; rd:class era:KilometricPost ;
+        sh:name "Posts of the line" ; rd:key "line-posts" ; rd:hidden "true" ;
+        sh:group shape:kp-line ; sh:order 91 ;
+        sh:node shape:along-post ;
+    ] .
+
+shape:kp-lps-row
+    a sh:NodeShape ;
+    sh:property [ sh:path era:lineId ; sh:name "Line identification" ; sh:order 10 ] ;
+    sh:property [ sh:path era:lrsMethod ; sh:name "Method" ; sh:order 20 ] ;
+    sh:property [ sh:path era:inCountry ; sh:name "Country" ; sh:order 30 ] .
+
+shape:kp-section-row
+    a sh:NodeShape ;
+    sh:property [ sh:path era:opStart ; rd:key "from" ; sh:order 10 ] ;
+    sh:property [ sh:path era:opEnd ; rd:key "to" ; sh:order 20 ] ;
+    sh:property [ sh:path ( era:netReference era:startsAt era:hasLrsCoordinate era:kmPost era:kilometer ) ; rd:key "start-km" ; sh:order 30 ] ;
+    sh:property [ sh:path ( era:netReference era:startsAt era:hasLrsCoordinate era:offsetFromKilometricPost ) ; rd:key "start-offset" ; sh:order 31 ] ;
+    sh:property [ sh:path ( era:netReference era:endsAt era:hasLrsCoordinate era:kmPost era:kilometer ) ; rd:key "end-km" ; sh:order 32 ] ;
+    sh:property [ sh:path ( era:netReference era:endsAt era:hasLrsCoordinate era:offsetFromKilometricPost ) ; rd:key "end-offset" ; sh:order 33 ] .
