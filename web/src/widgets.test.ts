@@ -3,18 +3,22 @@ import { test } from 'node:test';
 import { formatDate, parseSteps } from './format.ts';
 import { helpPredicate, helpText, indexUnder } from './rdf.ts';
 import { markOf } from './widgets/alongline.ts';
+import { buildTree } from './widgets/concepttree.ts';
 import { bearing, evenly } from './widgets/connections.ts';
 import { multiplicity, typeName } from './widgets/datamodel.ts';
 import { fileName, fileType } from './widgets/document.ts';
+import { around, stops } from './widgets/lineposition.ts';
+import { gradientSteps, place } from './widgets/lineprofile.ts';
 import { classTree, pageTree } from './widgets/modeltree.ts';
-import { tokens } from './widgets/source.ts';
-import { classUml, mermaid, pageUml, plantuml } from './widgets/umltext.ts';
-import { place } from './widgets/lineprofile.ts';
 import { chaptersOf, indexRoots } from './widgets/parameters.ts';
 import { heightMm } from './widgets/platform.ts';
+import { placed } from './widgets/positioned.ts';
 import { parseMarks } from './widgets/scalebar.ts';
+import { tokens } from './widgets/source.ts';
 import { countryCode, directionOf, supplyColor, supplyOf } from './widgets/symbol.ts';
+import { depths, way } from './widgets/topology.ts';
 import { commonPrefix } from './widgets/tracklayout.ts';
+import { classUml, mermaid, pageUml, plantuml } from './widgets/umltext.ts';
 
 const ERA = 'http://data.europa.eu/949/';
 
@@ -52,11 +56,19 @@ test('widget helpers', () => {
   assert.deepEqual(parseSteps('-06.0(+172.800)'), [{ value: -6, length: 172.8 }]);
 });
 
-test('a connection points the way its section leaves the operational point', () => {
+test('a connection points to where its section goes', () => {
   // A section running east from the centre, given either way round.
   assert.equal(Math.round(bearing([4, 50], [[4, 50], [4.1, 50], [4.2, 50]])!), 0);
   assert.equal(Math.round(bearing([4, 50], [[4, 50.2], [4, 50.1], [4, 50]])!), 90);
+  // It leaves northwards beside another line, then turns east: it goes north-east.
+  assert.equal(Math.round(bearing([4, 50], [[4, 50], [4, 50.1], [4 + 0.1 / Math.cos((50 * Math.PI) / 180), 50.1]])!), 45);
   assert.equal(bearing([4, 50], [[4, 50]]), null);
+});
+
+test('a gradient profile is placed along the km, steepest either way, within its section', () => {
+  // Two tracks running opposite ways give each change with opposite signs.
+  const steps = gradientSteps(['+4.0(10.5)', '-4.0(10.5)', '-12.0(11.2)', '+12.0(11.2)', '+2.0(13.0)'], 10, 12);
+  assert.deepEqual(steps, [{ from: 10.5, to: 11.2, value: 4 }, { from: 11.2, to: 12, value: 12 }]);
 });
 
 test('many connections are spread evenly in the order of their bearings', () => {
@@ -124,6 +136,42 @@ test('the data model writes UML multiplicities and attribute types', () => {
   assert.equal(typeName({ p: 'x', min: 0, max: null, type: 'Concept', scheme: `${ERA}concepts/line-category/LineCategories` }), 'LineCategories');
   assert.equal(typeName({ p: 'x', min: 0, max: 1, type: 'boolean' }), 'boolean');
   assert.equal(typeName({ p: 'x', min: 0, max: 1 }), 'IRI');
+});
+
+test('concept tree: roots, nesting by notation, several broader concepts, cycles cut', () => {
+  const it = (iri: string, broader: string[] = [], notation?: string) => ({ iri, cells: { broader: broader.map((b) => ({ iri: b })), ...(notation ? { notation: [{ value: notation }] } : {}) } });
+  const roots = buildTree([it('a', [], '2'), it('b', [], '1'), it('c', ['a', 'b']), it('d', ['c']), it('x', ['y']), it('y', ['x'])], {});
+  assert.deepEqual(roots.map((r) => r.iri), ['b', 'a']);
+  assert.equal(roots[0].children[0].iri, 'c');
+  assert.equal(roots[1].children[0].children[0].iri, 'd');
+  assert.deepEqual(buildTree([it('x', ['y']), it('y', ['x'])], {}).map((r) => r.iri), ['x']);
+});
+
+test('topology: navigability and steps from the element', () => {
+  assert.equal(way('http://data.europa.eu/949/concepts/navigabilities/Both'), 'both');
+  assert.equal(way('http://data.europa.eu/949/concepts/navigabilities/None'), 'none');
+  assert.equal(way(undefined), 'unknown');
+  const rel = (a: string, b: string) => ({ iri: a + b, a, b, way: 'both' as const, endA: null, endB: null });
+  const d = depths('e', [rel('e', 'f'), rel('g', 'f'), rel('g', 'h')]);
+  assert.deepEqual([...d], [['e', 0], ['f', 1], ['g', 2], ['h', 3]]);
+});
+
+test('positioned objects: most specific type, offset only on this element', () => {
+  const ERA = 'http://data.europa.eu/949/';
+  const p = placed([
+    { iri: 's', cells: { type: [{ iri: ERA + 'InfrastructureElement' }, { iri: ERA + 'Signal' }], on: [{ iri: 'e' }], offset: [{ value: '12.5' }] } },
+    { iri: 't', cells: { type: [{ iri: ERA + 'Track' }, { iri: ERA + 'RunningTrack' }] } },
+    { iri: 'k', cells: { type: [{ iri: ERA + 'KilometricPost' }], on: [{ iri: 'other' }], offset: [{ value: '3' }] } },
+  ], 'e');
+  assert.deepEqual(p.map((x) => [x.kind.replace(ERA, ''), x.at]), [['Signal', 12.5], ['RunningTrack', null], ['KilometricPost', null]]);
+});
+
+test('line position: stops from section ends, neighbours either side', () => {
+  const sec = (from: string, to: string, a: string, b: string) => ({ iri: from + to, cells: { from: [{ iri: from }], to: [{ iri: to }], 'start-km': [{ value: a }], 'end-km': [{ value: b }] } });
+  const st = stops([sec('B', 'C', '10', '20'), sec('A', 'B', '0', '10')]);
+  assert.deepEqual(st.map((x) => [x.iri, x.km]), [['A', 0], ['B', 10], ['C', 20]]);
+  assert.deepEqual(around(st, 12).map((x) => x?.iri), ['B', 'C']);
+  assert.deepEqual(around(st, 25).map((x) => x?.iri ?? null), ['C', null]);
 });
 
 const MODEL = {

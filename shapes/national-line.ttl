@@ -61,7 +61,8 @@ shape:national-line
         sh:name "Line profile" ; rd:key "profile" ; sh:order 3 ;
         dash:viewer rd:LineProfileViewer ;
         rd:table "section-table" ;
-        rd:lanes "speed energy etcs gauge tracks" ;
+        rd:lanes "speed energy etcs legacy gauging axle-load gradient gauge tracks" ;
+        rd:profiles "gradient" ;
     ] ;
 
     # --- National line ---
@@ -120,6 +121,22 @@ shape:nl-section-row
     ] ;
     sh:property [
         sh:path ( shape:own-or-subset era:etcs era:etcsLevelType ) ; sh:name "ETCS" ; rd:key "etcs" ; sh:order 70 ;
+        rd:over shape:parts ; rd:class era:RunningTrack ; rd:aggregate "distinct-count" ;
+    ] ;
+    sh:property [
+        sh:path ( shape:own-or-subset era:protectionLegacySystem ) ; sh:name "Class B" ; rd:key "legacy" ; sh:order 72 ;
+        rd:over shape:parts ; rd:class era:RunningTrack ; rd:aggregate "distinct-count" ;
+    ] ;
+    sh:property [
+        sh:path era:gaugingProfile ; sh:name "Gauging" ; rd:key "gauging" ; sh:order 74 ;
+        rd:over shape:parts ; rd:class era:RunningTrack ; rd:aggregate "distinct-count" ;
+    ] ;
+    sh:property [
+        sh:path ( era:trackLoadCapability era:loadCapabilityLineCategory ) ; sh:name "Axle load" ; rd:key "axle-load" ; sh:order 76 ;
+        rd:over shape:parts ; rd:class era:RunningTrack ; rd:aggregate "distinct-count" ;
+    ] ;
+    sh:property [
+        sh:path era:gradientProfile ; sh:name "Gradient" ; rd:key "gradient" ; rd:unit "‰" ; rd:hidden "true" ; sh:order 78 ;
         rd:over shape:parts ; rd:class era:RunningTrack ; rd:aggregate "distinct-count" ;
     ] ;
     sh:property [

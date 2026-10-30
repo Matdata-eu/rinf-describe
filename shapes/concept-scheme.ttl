@@ -1,0 +1,75 @@
+# Concept scheme page (skos:ConceptScheme): a code list of RINF (track gauges, ETCS levels,
+# organisation roles...) with its concepts as a tree along skos:broader / skos:narrower,
+# and the ERA properties whose values it lists. Not an infrastructure element.
+PREFIX rd:      <https://rinf-describe.matdata.eu/ns#>
+PREFIX shape:   <https://rinf-describe.matdata.eu/shapes/>
+PREFIX dash:    <http://datashapes.org/dash#>
+PREFIX sh:      <http://www.w3.org/ns/shacl#>
+PREFIX era:     <http://data.europa.eu/949/>
+PREFIX skos:    <http://www.w3.org/2004/02/skos/core#>
+PREFIX dcterms: <http://purl.org/dc/terms/>
+PREFIX rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs:    <http://www.w3.org/2000/01/rdf-schema#>
+
+shape:cs-tree a sh:PropertyGroup ; rdfs:label "Concepts" ; sh:order 10 .
+shape:cs-about a sh:PropertyGroup ; rdfs:label "Concept scheme" ; sh:order 20 .
+shape:cs-used a sh:PropertyGroup ; rdfs:label "Used by" ; sh:order 30 .
+
+# The concepts of a scheme, whichever side states it.
+shape:scheme-concepts sh:alternativePath ( [ sh:inversePath skos:inScheme ] skos:hasTopConcept [ sh:inversePath skos:topConceptOf ] ) .
+
+shape:concept-scheme
+    a sh:NodeShape ;
+    rdfs:label "Concept scheme" ;
+    sh:targetClass skos:ConceptScheme ;
+
+    sh:property [ sh:path [ sh:alternativePath ( skos:prefLabel rdfs:label dcterms:title ) ] ; rd:key "title" ; dash:propertyRole dash:LabelRole ] ;
+    sh:property [
+        sh:path rdf:type ; sh:name "Concepts" ; rd:key "concept-count" ;
+        rd:over shape:scheme-concepts ; rd:aggregate "count" ;
+        dash:viewer rd:AggregateViewer ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "{count} concepts" ;
+    ] ;
+    sh:property [
+        sh:path era:rinfIndex ; sh:name "RINF index" ; rd:key "rinf-index" ;
+        sh:group shape:cs-about ; sh:order 30 ;
+        dash:propertyRole dash:KeyInfoRole ; rd:badge "RINF {value}" ;
+    ] ;
+
+    # --- Concepts: the tree ---
+    sh:property [
+        sh:path shape:scheme-concepts ;
+        sh:name "Tree" ; rd:key "tree" ;
+        sh:group shape:cs-tree ; sh:order 10 ;
+        dash:viewer rd:ConceptTreeViewer ;
+        sh:node shape:concept-tree-row ;
+    ] ;
+
+    # --- Concept scheme ---
+    sh:property [ sh:path [ sh:alternativePath ( rdfs:comment dcterms:description skos:definition ) ] ; sh:name "Description" ; rd:key "description" ; sh:group shape:cs-about ; sh:order 10 ] ;
+    sh:property [ sh:path skos:scopeNote ; sh:name "Scope note" ; sh:group shape:cs-about ; sh:order 20 ] ;
+    sh:property [ sh:path era:eratvIndex ; sh:name "ERATV index" ; sh:group shape:cs-about ; sh:order 35 ] ;
+    sh:property [ sh:path era:unitOfMeasure ; sh:name "Unit of measure" ; sh:group shape:cs-about ; sh:order 40 ] ;
+    sh:property [ sh:path dcterms:issued ; sh:name "Issued" ; sh:group shape:cs-about ; sh:order 50 ] ;
+    sh:property [ sh:path <http://creativecommons.org/ns#license> ; sh:name "Licence" ; rd:key "licence" ; sh:group shape:cs-about ; sh:order 70 ; dash:viewer dash:URIViewer ] ;
+    sh:property [ sh:path rdfs:seeAlso ; sh:name "See also" ; sh:group shape:cs-about ; sh:order 80 ; dash:viewer dash:URIViewer ] ;
+
+    # --- Used by: the ERA properties whose values come from this scheme (ontology graph) ---
+    sh:property [
+        sh:path [ sh:inversePath era:inSkosConceptScheme ] ; rd:scope "all" ;
+        sh:name "Properties" ; rd:key "properties" ;
+        sh:group shape:cs-used ; sh:order 10 ;
+        dash:viewer dash:ValueTableViewer ;
+        sh:node shape:cs-property-row ;
+    ] .
+
+# A concept in a tree (rd:ConceptTreeViewer): its broader concepts and its notation.
+shape:concept-tree-row
+    a sh:NodeShape ;
+    sh:property [ sh:path [ sh:alternativePath ( skos:broader [ sh:inversePath skos:narrower ] ) ] ; rd:key "broader" ; sh:order 10 ] ;
+    sh:property [ sh:path skos:notation ; rd:key "notation" ; sh:order 20 ] .
+
+shape:cs-property-row
+    a sh:NodeShape ;
+    sh:property [ sh:path era:rinfIndex ; sh:name "RINF index" ; sh:order 10 ] ;
+    sh:property [ sh:path rdfs:domain ; sh:name "Domain" ; sh:order 20 ] .

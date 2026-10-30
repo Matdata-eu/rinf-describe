@@ -6,7 +6,8 @@ their tracks summed up; tracks with their gradient profile, cross-section and ro
 compatibility; operational points with the lines that meet there and a schematic of their
 tracks; national lines with a profile along km; platforms, sidings, tunnels, contact line
 systems, ETCS, train detection systems, infrastructure managers, primary locations,
-signals, border points, kilometric posts and the rest. Every resource also gets all its
+signals, border points, kilometric posts, linear elements with their topology, the
+RINF code lists (SKOS concept schemes) and their concepts, and the rest. Every resource also gets all its
 RINF parameters by index chapter, all its properties, incoming links, a graph, and a UML
 diagram of its data model from ERA's SHACL shapes.
 

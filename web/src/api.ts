@@ -3,7 +3,7 @@
 /** An RDF term on a page: an IRI, or a literal. */
 export interface Term { iri?: string; value?: string; datatype?: string; lang?: string }
 /** A value counted over linked resources (rd:aggregate "distinct-count"). */
-export type CountedTerm = Term & { count: number };
+export type CountedTerm = Term & { count: number; weight?: number };
 
 export interface Aggregate {
   // count
@@ -12,8 +12,9 @@ export interface Aggregate {
   min?: number; max?: number; withValue?: number;
   // sum (of the first value of each child)
   sum?: number;
-  // distinct-count
+  // distinct-count; with rd:weight also each value's weight (track-km) and the total
   values?: CountedTerm[]; withoutValue?: number;
+  weight?: number; withoutValueWeight?: number;
   children?: number;
 }
 

@@ -18,7 +18,7 @@ DASH = "http://datashapes.org/dash#"
 RDF = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
 RDFS = "http://www.w3.org/2000/01/rdf-schema#"
 AGGREGATES = ("range", "distinct-count", "count", "sum")
-_KNOWN_RD = {RD + k for k in ("key", "tab", "over", "aggregate", "unit", "format", "enabled", "class")}
+_KNOWN_RD = {RD + k for k in ("key", "tab", "over", "aggregate", "unit", "format", "enabled", "class", "weight")}
 # Viewers that read the resource as a whole rather than a path of it.
 WHOLE_VIEWERS = {RD + "ParameterIndexViewer"}
 _PREFIXES = {
@@ -60,6 +60,7 @@ class Row:
     columns: list[Row] = field(default_factory=list)
     deactivated: bool = False
     filter_class: str | None = None   # rd:class: only linked resources of this class
+    weight: str | None = None         # rd:weight: path to a number each child counts for (a length)
 
     @property
     def limit(self) -> int | None:
@@ -234,6 +235,11 @@ def _row(r: _Reader, prop, where: str, nested: bool = False) -> Row | None:
         row.over = r.path(over)
     if row.aggregate and row.aggregate not in AGGREGATES:
         raise ShapeError(f"{where}.{key}: rd:aggregate must be one of {', '.join(AGGREGATES)}")
+    weight = r.one(prop, RD + "weight")
+    if weight is not None:
+        row.weight = r.path(weight)
+        if not row.over or (row.aggregate or "distinct-count") != "distinct-count":
+            raise ShapeError(f"{where}.{key}: rd:weight goes with rd:over and a distinct count")
     if row.over and not row.path:
         raise ShapeError(f"{where}.{key}: rd:over needs a sh:path to evaluate on each child")
     if row.aggregate and not row.over:

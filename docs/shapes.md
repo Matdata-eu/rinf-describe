@@ -55,6 +55,7 @@ Namespace `https://rinf-describe.matdata.eu/ns#`, declared in
 | `rd:tab` | group | Tab of the group, shown as its title (`"Route compatibility"`). Default: Overview |
 | `rd:over` | row | Path to linked resources (the tracks of a section); `sh:path` is evaluated on each |
 | `rd:aggregate` | row, column | How those values are summed up: `"range"`, `"distinct-count"`, `"count"` or `"sum"` (of the first value of each) |
+| `rd:weight` | row | With a distinct count: a path from each linked resource to the number it counts for, so shares are by that rather than by count (track-km: `( shape:part-of era:lengthOfSectionOfLine )`); `rd:weightUnit` names it |
 | `rd:unit` | row, column | Unit written after the value |
 | `rd:badge` | row | Badge text: `{value}`, `{min}`, `{max}`, `{count}`, `{withValue}`, `{children}`, `{unit}` |
 | `rd:class` | row | Only the linked resources of this class (the tracks among the parts of an operational point) |
@@ -82,13 +83,13 @@ Namespace `https://rinf-describe.matdata.eu/ns#`, declared in
 | `dash:DetailsViewer` | Linked resources expanded in place | `sh:path`, `sh:node` (lines) |
 | `rd:RouteDiagramViewer` | Start and end point on a line, length and km positions | `rd:start`, `rd:end`, `rd:length`, optional `rd:startKm`, `rd:startOffset`, `rd:endKm`, `rd:endOffset` |
 | `rd:MapViewer` | WKT on OpenStreetMap + OpenRailwayMap, WKT text below | `sh:path` (highlighted), optional `rd:context` (drawn quieter), optional `rd:layers "connections track-table"`: table rows of the page whose `wkt` column becomes a layer that can be switched off, each line or point opening its page |
-| `rd:ConnectionsViewer` | The sections of line that start or end at an operational point as spokes, pointing the way they leave, each to the operational point at its other end with line and length | `sh:path`, `sh:node` with columns `start`, `end`, `line`, `length`, `wkt` |
+| `rd:ConnectionsViewer` | The sections of line that start or end at an operational point as spokes, pointing to where each goes (its far end, north up), each to the operational point at its other end with line and length; a spoke opens its section, and a table below lists the sections | `sh:path`, `sh:node` with columns `start`, `end`, `line`, `length`, `wkt` |
 | `rd:TrackLayoutViewer` | An operational point's tracks as parallel bars, its platform edges on the tracks they serve, its sidings below; not to scale | `sh:path` to the tracks (column `id`); `rd:platforms` and `rd:sidings` name the table rows with the platforms (`track`, `length`, `height`) and sidings (`length`) |
-| `rd:LineProfileViewer` | A national line along km: one lane per column of its sections, numbers as steps, categories as coloured bands, operational points as ticks | `rd:table` (columns `start-km`, `start-offset`, `end-km`, `end-offset`, `length`, `from`, `to`), `rd:lanes "speed energy etcs"` |
+| `rd:LineProfileViewer` | A national line along km: one lane per column of its sections, numbers as steps, categories as coloured bands, gradient profiles as the steepest gradient along the km, operational points as ticks | `rd:table` (columns `start-km`, `start-offset`, `end-km`, `end-offset`, `length`, `from`, `to`), `rd:lanes "speed energy etcs"`, `rd:profiles "gradient"` (lanes holding `era:gradientProfile` values, `gradient(km)` per change) |
 | `rd:LineStopsViewer` | The operational points of a line in km order, with their type | `rd:table` (as above, plus `from-type`, `to-type`) |
 | `rd:AlongLineViewer` | A section of line as a strip between its operational points, with tunnels and phase separations as bands and kilometric posts as ticks at their km | `rd:table "route"` (the route diagram row), `rd:markers` (hidden rows with columns `km`/`offset`, `start-km`…`end-offset`, or `km` and `length` in m) |
 | `rd:CrossSectionViewer` | A track end-on, not to scale: gauge, gauging profile, contact wire heights, rail inclination | `rd:gauge`, `rd:loadingGauge`, `rd:wireMin`, `rd:wireMax`, `rd:inclination` |
-| `rd:KeyFiguresViewer` | Stat tiles: a number for a count, sum or range; shares as a bar for a distinct count | `rd:figures "im-ops im-km im-energy"` |
+| `rd:KeyFiguresViewer` | Stat tiles: a number for a count, sum or range; shares as a bar for a distinct count (by `rd:weight` when the row has one) | `rd:figures "im-ops im-km im-energy"` |
 | `rd:ChangesViewer` | Parameters that apply from or until a date (`era:parameterApplicability`) on a time axis with today marked | `sh:path`, `sh:node` with columns `parameter`, `value`, `begin`, `end` |
 | `rd:PlatformViewer` | Side view of a platform edge against the TSI heights of 550 and 760 mm, with its usable length and whether it is curved | `rd:height`, `rd:length`, `rd:curved` |
 | `rd:AggregateViewer` | `85–140 km/h`, `1435 (3) · 1668 (3)`, `6` | `sh:path`, `rd:over`, `rd:aggregate` |
@@ -100,6 +101,10 @@ Namespace `https://rinf-describe.matdata.eu/ns#`, declared in
 | `rd:DocumentViewer` | `era:Document` resources as cards: file type, name, open link | `sh:path`, `sh:node shape:document-card` |
 | `rd:FacilitiesViewer` | Yes/no parameters as tiles: yes, no, not applicable, not yet available | `rd:facility`, once per property |
 | `rd:ScaleBarViewer` | A length against reference marks, or a min–max range on a scale | `sh:path` or `rd:min` / `rd:max`; `rd:marks "400 Passenger train; 740 Freight train"`, `rd:scale "4 7"` |
+| `rd:ConceptTreeViewer` | SKOS concepts as a tree along `skos:broader` (a filter on larger trees); on a concept page the concept is marked, with the branch down to it open | `sh:path`, `sh:node` with columns `broader`, `notation` |
+| `rd:TopologyViewer` | The net relations around a linear element as a graph: elements as nodes, placed as on the map, relations as edges with arrows the way a train can pass, dashed when it cannot; zoom, drag, full screen | `sh:path`, `sh:node` with columns `a`, `b`, `navigability`, `origin-a`, `origin-b`; `rd:elements` names the row with the elements (`wkt`, `length`) |
+| `rd:PositionedViewer` | What is positioned on a linear element: points as ticks at their offset from its origin, one lane per type, and everything by type (stretches that run over it too) | `sh:path`, `sh:node` with columns `type`, `on`, `offset` |
+| `rd:LinePositionViewer` | A kilometric post on its line: the line from its first to its last km with its operational points and posts, the operational points and posts either side | The page's `km` row; `rd:table` (sections: `from`, `to`, `start-km`…`end-offset`), `rd:posts` (rows with `km`) |
 
 Every class page also gets a **Data status** card (the parameters marked
 `era:notApplicable` or `era:notYetAvailable`), and every resource the **All properties**,

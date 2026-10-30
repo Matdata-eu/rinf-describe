@@ -4,19 +4,23 @@ import { DASH, RD } from '../rdf.ts';
 import { AggregateViewer, DetailsViewer, LabelViewer, LrsLocationViewer, URIViewer, ValueTableViewer } from './basic.ts';
 import { AlongLineViewer } from './alongline.ts';
 import { ChangesViewer } from './changes.ts';
+import { ConceptTreeViewer } from './concepttree.ts';
 import { ConnectionsViewer } from './connections.ts';
 import { CrossSectionViewer } from './crosssection.ts';
 import { DocumentViewer } from './document.ts';
 import { FacilitiesViewer } from './facilities.ts';
 import { KeyFiguresViewer } from './keyfigures.ts';
+import { LinePositionViewer } from './lineposition.ts';
 import { LineProfileViewer, LineStopsViewer } from './lineprofile.ts';
 import { MapViewer } from './map.ts';
 import { ParameterIndexViewer } from './parameters.ts';
+import { PositionedViewer } from './positioned.ts';
 import { PlatformViewer } from './platform.ts';
 import { RouteDiagramViewer } from './route.ts';
 import { ScaleBarViewer } from './scalebar.ts';
 import { StepChartViewer } from './stepchart.ts';
 import { SymbolViewer } from './symbol.ts';
+import { TopologyViewer } from './topology.ts';
 import { TrackLayoutViewer } from './tracklayout.ts';
 import type { Ctx, Widget } from './types.ts';
 import { ValidityViewer } from './validity.ts';
@@ -47,6 +51,10 @@ export const WIDGETS: Record<string, Widget> = {
   [RD + 'CrossSectionViewer']: CrossSectionViewer,
   [RD + 'KeyFiguresViewer']: KeyFiguresViewer,
   [RD + 'ChangesViewer']: ChangesViewer,
+  [RD + 'ConceptTreeViewer']: ConceptTreeViewer,
+  [RD + 'TopologyViewer']: TopologyViewer,
+  [RD + 'PositionedViewer']: PositionedViewer,
+  [RD + 'LinePositionViewer']: LinePositionViewer,
 };
 
 export function widgetFor(ctx: Pick<Ctx, 'row' | 'entry'>): Widget {
