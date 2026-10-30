@@ -26,10 +26,21 @@ export const ValidityViewer: Widget = {
     const today = Date.now();
     const open = !end || isOpenEnd(end);
     const state = validityState(begin, end, today);
-    // Axis: a year either side of the period and of today; an open end runs off the right.
     const b = begin ? parse(begin) : today - 365 * DAY;
-    const e = open ? Math.max(today, b) + 2 * 365 * DAY : parse(end!);
-    const lo = Math.min(b, today) - 180 * DAY, hi = Math.max(e, today) + 180 * DAY;
+    let e: number, lo: number, hi: number;
+    if (open && b <= today) {
+      // Open-ended and in force: today in the middle, the period running off the right, so a
+      // long past does not make it look as if the period nears its end.
+      lo = b - 180 * DAY;
+      hi = today + (today - lo);
+      e = hi;
+    } else {
+      // Axis: half a year either side of the period and of today; an open end runs off the right.
+      e = open ? Math.max(today, b) + 2 * 365 * DAY : parse(end!);
+      lo = Math.min(b, today) - 180 * DAY;
+      hi = Math.max(e, today) + 180 * DAY;
+      if (open) e = hi;
+    }
     const pct = (t: number) => `${((t - lo) / (hi - lo)) * 100}%`;
     const text = `${begin ? formatDate(begin) : 'Always'} – ${open ? 'open-ended' : formatDate(end!)}`;
     return h('div', { class: 'validity' },

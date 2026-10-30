@@ -21,16 +21,16 @@ function points(g: Geometry | null): Position[] {
   return [];
 }
 
-/** Bearing in degrees (0 = east, counter-clockwise) from the centre to the end of the section away from it. */
+/** Bearing in degrees (0 = east, counter-clockwise) from the centre to the end of the section
+ * away from it: where the section goes, not the way its first metres leave the station (lines
+ * often leave side by side before they part). */
 export function bearing(center: Position, section: Position[]): number | null {
   if (section.length < 2) return null;
   const k = Math.cos((center[1] * Math.PI) / 180);
   const d = (p: Position) => Math.hypot((p[0] - center[0]) * k, p[1] - center[1]);
   const a = section[0], b = section[section.length - 1];
-  // A point a little way along the section from the end nearest the centre: the way it leaves.
-  const near = d(a) <= d(b) ? section : [...section].reverse();
-  const along = near[Math.min(near.length - 1, Math.max(1, Math.floor(near.length / 4)))];
-  const far = d(along) > 1e-9 ? along : near[near.length - 1];
+  const far = d(a) > d(b) ? a : b;
+  if (d(far) < 1e-9) return null;
   return (Math.atan2(far[1] - center[1], (far[0] - center[0]) * k) * 180) / Math.PI;
 }
 
@@ -90,9 +90,13 @@ export const ConnectionsViewer: Widget = {
     angles.forEach((deg, i) => {
       const r = (deg * Math.PI) / 180;
       const x = cx + Math.cos(r) * R, y = cy - Math.sin(r) * R * 1.12;
-      svg.append(s('line', { x1: cx, y1: cy, x2: x, y2: y, class: 'conn-line' }));
-      svg.append(s('circle', { cx: x, cy: y, r: 6, class: 'conn-far' }));
       const sp = spokes[i];
+      // The spoke is the section of line: it opens its page.
+      const link = s('a', { href: describeHref(sp.section, env) });
+      link.append(s('title', {}, `Section of line: ${iriLabel(sp.section, labels)}`),
+        s('line', { x1: cx, y1: cy, x2: x, y2: y, class: 'conn-hit' }), s('line', { x1: cx, y1: cy, x2: x, y2: y, class: 'conn-line' }));
+      svg.append(link);
+      svg.append(s('circle', { cx: x, cy: y, r: 6, class: 'conn-far' }));
       const right = Math.cos(r) >= -0.2;
       const side = Math.abs(Math.cos(r)) < 0.26 ? 'mid' : right ? 'right' : 'left';
       const meta = [sp.line ? termText(sp.line, labels) : null, sp.length ? `${formatNumber(sp.length)} km` : null].filter(Boolean).join(' · ');
@@ -102,8 +106,19 @@ export const ConnectionsViewer: Widget = {
     });
     svg.append(s('circle', { cx, cy, r: 13, class: 'conn-hub-ring' }), s('circle', { cx, cy, r: 6, class: 'conn-hub' }));
     labelsBox.append(h('div', { class: 'conn-label centre', style: 'left:50%;top:50%' }, h('strong', null, iriLabel(iri, labels))));
+    // The sections themselves, in the order of the spokes (clockwise from north).
+    const order = spokes.map((sp, i) => ({ sp, a: ((90 - angles[i]) % 360 + 360) % 360 })).sort((x, y) => x.a - y.a).map((o) => o.sp);
+    const table = h('div', { class: 'table-wrap conn-table' }, h('table', { class: 'value-table' },
+      h('thead', null, h('tr', null, h('th', { scope: 'col' }, 'Section of line'), h('th', { scope: 'col' }, 'Line'),
+        h('th', { scope: 'col' }, 'To'), h('th', { scope: 'col' }, 'Length'))),
+      h('tbody', null, order.map((sp) => h('tr', null,
+        h('td', null, h('a', { class: 'iri-link', href: describeHref(sp.section, env), title: sp.section }, iriLabel(sp.section, labels))),
+        h('td', null, sp.line ? termText(sp.line, labels) : h('span', { class: 'muted' }, '–')),
+        h('td', null, sp.far ? h('a', { class: 'iri-link', href: describeHref(sp.far, env), title: sp.far }, iriLabel(sp.far, labels)) : h('span', { class: 'muted' }, '–')),
+        h('td', null, sp.length ? `${formatNumber(sp.length)} km` : h('span', { class: 'muted' }, '–')))))));
     return h('figure', { class: 'connections', role: 'group', 'aria-label': `${items.length} connected ${items.length === 1 ? 'section' : 'sections'} of line` },
       h('div', { class: 'conn-canvas' }, svg, labelsBox),
-      h('figcaption', { class: 'muted small' }, `${items.length} ${items.length === 1 ? 'section' : 'sections'} of line start or end here${known === spokes.length ? '; spokes point the way each section leaves' : ''}. Not to scale.`));
+      table,
+      h('figcaption', { class: 'muted small' }, `${items.length} ${items.length === 1 ? 'section' : 'sections'} of line start or end here${known === spokes.length ? '; each spoke points to where its section goes, north up' : ''}. Click a spoke for its section. Not to scale.`));
   },
 };

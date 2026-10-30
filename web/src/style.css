@@ -154,10 +154,12 @@ main:focus { outline: none; }
 .menu-items a:hover { background: var(--accent-soft); }
 
 /* tabs */
-.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin: 0 0 16px; overflow-x: auto; scrollbar-width: thin; }
+/* The rule is a shadow, so the selected tab's underline covers it without overflowing the bar
+   (an overflow would show a small vertical scroll bar). */
+.tabs { display: flex; gap: 2px; box-shadow: inset 0 -1px 0 var(--border); margin: 0 0 16px; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
 .tab {
   border: 0; background: none; padding: 10px 14px; cursor: pointer; color: var(--muted); font-weight: 500; white-space: nowrap;
-  border-bottom: 3px solid transparent; margin-bottom: -1px; display: inline-flex; gap: 6px; align-items: center;
+  border-bottom: 3px solid transparent; display: inline-flex; gap: 6px; align-items: center;
 }
 .tab:hover { color: var(--text); }
 .tab[aria-selected=true] { color: var(--text); border-bottom-color: var(--signal); }
@@ -212,15 +214,16 @@ thead th { font-weight: 600; font-size: 12px; color: var(--muted); background: v
 .details .row { border-top-color: var(--border); }
 
 /* route diagram: two hub nodes and the highlighted route between them */
-.route { display: grid; grid-template-columns: minmax(0, auto) minmax(80px, 1fr) minmax(0, auto); align-items: start; gap: 0 4px; padding: 8px 4px 4px; }
+.route { position: relative; display: grid; grid-template-columns: minmax(0, auto) minmax(80px, 1fr) minmax(0, auto); align-items: start; gap: 0 4px; padding: 8px 4px 4px; }
 .route-end { display: grid; justify-items: start; gap: 2px; min-width: 0; max-width: 34ch; }
 .route-end.end { justify-items: end; text-align: right; }
-.hub { width: 22px; height: 22px; border-radius: 50%; border: 3px solid var(--accent-strong); background: var(--surface); position: relative; }
+.hub { width: 22px; height: 22px; border-radius: 50%; border: 3px solid var(--accent-strong); background: var(--surface); position: relative; z-index: 1; }
 .hub::after { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: var(--accent-strong); }
 .route-name { font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
 .route .km { margin: 0; }
-.route-track { position: relative; height: 22px; display: grid; place-items: center; }
-.route-line { position: absolute; left: -2px; right: -2px; top: 9px; height: 4px; border-radius: 2px; background: var(--signal); }
+/* The route runs from hub to hub (centre to centre: padding + half a hub), under the names. */
+.route-track { height: 22px; display: grid; place-items: center; }
+.route-line { position: absolute; left: 15px; right: 15px; top: 17px; height: 4px; border-radius: 2px; background: var(--signal); }
 .route-length {
   position: relative; top: 26px; padding: 0 8px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap;
 }
@@ -473,7 +476,10 @@ ul.facilities { list-style: none; margin: 0; padding: 0; display: grid; grid-tem
 .connections { margin: 0; }
 .conn-canvas { position: relative; max-width: 760px; margin: 0 auto; aspect-ratio: 640 / 380; }
 .conn-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-.conn-line { stroke: var(--line-strong); stroke-width: 2.5; stroke-linecap: round; }
+.conn-line { stroke: var(--line-strong); stroke-width: 2.5; stroke-linecap: round; pointer-events: none; }
+.conn-hit { stroke: transparent; stroke-width: 14; cursor: pointer; }
+.connections a:hover .conn-line { stroke: var(--signal); stroke-width: 4; }
+.conn-table { margin: 12px 0 4px; }
 .conn-far { fill: var(--surface); stroke: var(--accent-strong); stroke-width: 2.5; }
 .conn-hub { fill: var(--accent-strong); }
 .conn-hub-ring { fill: var(--signal-soft); stroke: var(--signal); stroke-width: 3; }
@@ -520,6 +526,8 @@ ol.tl-tracks, ul.tl-sidings { list-style: none; margin: 0; padding: 0; display: 
 
 /* line profile and along the line (rd:LineProfileViewer, rd:AlongLineViewer) */
 .line-profile, .along-line, .cross-section { margin: 0; }
+.pr-grad { fill: var(--line-strong); }
+.pr-grad:hover { fill: var(--signal); }
 .profile-wrap { overflow-x: auto; }
 .profile-svg, .along-svg { display: block; width: 100%; min-width: 640px; height: auto; }
 .pr-lane-bg { fill: var(--surface-2); }

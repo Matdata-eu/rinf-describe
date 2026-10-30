@@ -8,7 +8,7 @@ import { bearing, evenly } from './widgets/connections.ts';
 import { multiplicity, typeName } from './widgets/datamodel.ts';
 import { fileName, fileType } from './widgets/document.ts';
 import { around, stops } from './widgets/lineposition.ts';
-import { place } from './widgets/lineprofile.ts';
+import { gradientSteps, place } from './widgets/lineprofile.ts';
 import { chaptersOf, indexRoots } from './widgets/parameters.ts';
 import { heightMm } from './widgets/platform.ts';
 import { placed } from './widgets/positioned.ts';
@@ -53,11 +53,19 @@ test('widget helpers', () => {
   assert.deepEqual(parseSteps('-06.0(+172.800)'), [{ value: -6, length: 172.8 }]);
 });
 
-test('a connection points the way its section leaves the operational point', () => {
+test('a connection points to where its section goes', () => {
   // A section running east from the centre, given either way round.
   assert.equal(Math.round(bearing([4, 50], [[4, 50], [4.1, 50], [4.2, 50]])!), 0);
   assert.equal(Math.round(bearing([4, 50], [[4, 50.2], [4, 50.1], [4, 50]])!), 90);
+  // It leaves northwards beside another line, then turns east: it goes north-east.
+  assert.equal(Math.round(bearing([4, 50], [[4, 50], [4, 50.1], [4 + 0.1 / Math.cos((50 * Math.PI) / 180), 50.1]])!), 45);
   assert.equal(bearing([4, 50], [[4, 50]]), null);
+});
+
+test('a gradient profile is placed along the km, steepest either way, within its section', () => {
+  // Two tracks running opposite ways give each change with opposite signs.
+  const steps = gradientSteps(['+4.0(10.5)', '-4.0(10.5)', '-12.0(11.2)', '+12.0(11.2)', '+2.0(13.0)'], 10, 12);
+  assert.deepEqual(steps, [{ from: 10.5, to: 11.2, value: 4 }, { from: 11.2, to: 12, value: 12 }]);
 });
 
 test('many connections are spread evenly in the order of their bearings', () => {

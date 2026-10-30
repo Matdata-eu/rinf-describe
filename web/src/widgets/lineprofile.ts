@@ -2,10 +2,12 @@
 // numbers (a range such as the maximum speed of the tracks, a count) as steps, categories
 // (energy supply, ETCS level, gauge) as coloured bands, the operational points as ticks.
 // rd:table names the table row with the sections (columns start-km, start-offset, end-km,
-// end-offset, length, from, to); rd:lanes lists the columns drawn as lanes.
+// end-offset, length, from, to); rd:lanes lists the columns drawn as lanes, and rd:profiles
+// those of them that hold a gradient profile (gradient(km) per change, as the tracks give it),
+// drawn as the steepest gradient along the km.
 import type { Aggregate, Item } from '../api.ts';
 import { h, s } from '../dom.ts';
-import { formatNumber, termText } from '../format.ts';
+import { formatNumber, parseSteps, termText } from '../format.ts';
 import { describeHref } from '../nav.ts';
 import { iriLabel } from '../rdf.ts';
 import type { Widget } from './types.ts';
@@ -54,6 +56,22 @@ export function place(items: Item[]): Placed[] {
   return out;
 }
 
+/** A gradient profile along the km of the line, from the values of a section's tracks: each
+ * value is `gradient(km where it starts)`, one triple per change. Tracks run either way and
+ * give the same change with opposite signs, so a stretch shows its steepest gradient either
+ * way. Clipped to the section (from..to); from the first change on. */
+export function gradientSteps(values: string[], from: number, to: number): { from: number; to: number; value: number }[] {
+  const at = new Map<number, number>();
+  for (const v of values) for (const st of parseSteps(v)) at.set(st.length, Math.max(at.get(st.length) ?? 0, Math.abs(st.value)));
+  const kms = [...at.keys()].sort((x, y) => x - y);
+  const out: { from: number; to: number; value: number }[] = [];
+  kms.forEach((km, i) => {
+    const a = Math.max(km, from), b = Math.min(kms[i + 1] ?? to, to);
+    if (b > a) out.push({ from: a, to: b, value: at.get(km)! });
+  });
+  return out;
+}
+
 const PALETTE = ['--lane-0', '--lane-1', '--lane-2', '--lane-3', '--lane-4', '--lane-5'];
 
 /** The value a band shows: the most common one. */
@@ -70,6 +88,7 @@ export const LineProfileViewer: Widget = {
     const lanes = (row.settings.lanes ?? '').split(/\s+/).map((k) => table?.columns.find((c) => c.key === k)).filter((c) => !!c)
       // A lane no section has a value for says nothing.
       .filter((c) => items.some((it) => { const g = it.aggregates?.[c!.key]; return g && (g.count || g.max !== undefined || g.values?.length || g.sum !== undefined); }));
+    const profiles = new Set((row.settings.profiles ?? '').split(/\s+/).filter(Boolean));
     const lo = placed[0].from, hi = Math.max(...placed.map((p) => p.to));
     const span = hi - lo || 1;
     const W = 1000, L = 120, R = 12, LANE = 30, GAP = 8, TOP = 34;
@@ -100,6 +119,20 @@ export const LineProfileViewer: Widget = {
       svg.append(s('text', { x: 0, y: y + LANE / 2 + 4, class: 'pr-lane-name' }, col.name ?? col.key));
       svg.append(s('rect', { x: L, y, width: W - L - R, height: LANE, class: 'pr-lane-bg' }));
       const aggs = placed.map((p) => p.it.aggregates?.[col.key]);
+      if (profiles.has(col.key)) {
+        const per = placed.map((p, j) => gradientSteps((aggs[j]?.values ?? []).map((v) => v.value ?? ''), p.from, p.to));
+        const peak = Math.max(1e-9, ...per.flat().map((st) => st.value));
+        placed.forEach((p, j) => {
+          for (const st of per[j]) {
+            const x0 = x(st.from), hgt = Math.max(1, (st.value / peak) * (LANE - 4));
+            const r = s('rect', { x: x0, y: y + LANE - hgt, width: Math.max(0.5, x(st.to) - x0), height: hgt, class: 'pr-grad' });
+            r.append(s('title', {}, `${iriLabel(p.it.iri, labels)}: ${formatNumber(st.value)}${col.unit ? ` ${col.unit}` : ''} from km ${formatNumber(st.from)}`));
+            svg.append(r);
+          }
+        });
+        if (per.some((x0) => x0.length)) svg.append(s('text', { x: W - R - 4, y: y + 11, class: 'pr-step-text', 'text-anchor': 'end' }, `max ${formatNumber(Math.round(peak * 10) / 10)}${col.unit ? ` ${col.unit}` : ''}`));
+        return;
+      }
       const numeric = aggs.some((a) => a?.max !== undefined || a?.count !== undefined);
       if (numeric) {
         const v = (a: Aggregate | undefined) => a?.max ?? a?.count ?? null;
@@ -140,7 +173,7 @@ export const LineProfileViewer: Widget = {
     }
     svg.append(s('text', { x: 0, y: ya + 6, class: 'pr-lane-name' }, 'km'));
     return h('figure', { class: 'line-profile' }, h('div', { class: 'profile-wrap' }, svg), legends,
-      h('figcaption', { class: 'muted small' }, `${placed.length} sections of line along ${formatNumber(Math.round(span * 10) / 10)} km. Numbers show the highest value of the section's tracks; bands its most common value.`));
+      h('figcaption', { class: 'muted small' }, `${placed.length} sections of line along ${formatNumber(Math.round(span * 10) / 10)} km. Numbers show the highest value of the section's tracks; bands their most common value; the gradient is the steepest of its tracks, either way.`));
   },
 };
 
