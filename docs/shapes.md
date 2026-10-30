@@ -75,6 +75,8 @@ Namespace `https://rinf-describe.matdata.eu/ns#`, declared in
 
 ## Widgets
 
+Each widget with a shape snippet and a screenshot: [widgets.md](widgets.md).
+
 | `dash:viewer` | Shows | Reads |
 |---|---|---|
 | `dash:LabelViewer`, `dash:LiteralViewer` | Linked label, or literal with its unit; booleans as Yes/No; several values joined with a middle dot | `sh:path` |

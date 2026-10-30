@@ -14,7 +14,8 @@ diagram of its data model from ERA's SHACL shapes.
 - **Laid out by SHACL DASH shapes.** What a class page shows, in which group, tab and
   order, and which widget draws each value is in [`shapes/`](shapes): standard SHACL and
   DASH plus a few `rd:` terms for widgets DASH lacks. Adding a class is a Turtle file, not
-  code. See [docs/shapes.md](docs/shapes.md).
+  code. See [docs/shapes.md](docs/shapes.md), and [docs/widgets.md](docs/widgets.md) for
+  each widget with a screenshot.
 - **Live and fast.** Every page is built on the spot from ERA's SPARQL endpoint, about a
   fraction of a second, so it always shows what ERA publishes today.
   Nothing is stored: no database, no index to keep up to date.
