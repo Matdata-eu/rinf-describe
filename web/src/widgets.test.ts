@@ -2,12 +2,14 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { formatDate, parseSteps } from './format.ts';
 import { helpPredicate, helpText, indexUnder } from './rdf.ts';
+import { markOf } from './widgets/alongline.ts';
 import { bearing, evenly } from './widgets/connections.ts';
 import { fileName, fileType } from './widgets/document.ts';
+import { place } from './widgets/lineprofile.ts';
 import { chaptersOf, indexRoots } from './widgets/parameters.ts';
 import { heightMm } from './widgets/platform.ts';
 import { parseMarks } from './widgets/scalebar.ts';
-import { countryCode } from './widgets/symbol.ts';
+import { countryCode, directionOf } from './widgets/symbol.ts';
 import { commonPrefix } from './widgets/tracklayout.ts';
 
 const ERA = 'http://data.europa.eu/949/';
@@ -68,4 +70,35 @@ test('platform heights, track id prefixes and document names', () => {
   assert.equal(commonPrefix(['Leuven - Voie A', 'Leuven|2 - CDS']), '');
   assert.equal(fileName('https://rinf.data.era.europa.eu/api/v1/document/9c66681895/download/'), 'Document 9c66681895');
   assert.equal(fileName('https://example.org/files/plan.pdf'), 'plan.pdf');
+});
+
+const v = (value: string) => [{ value }];
+const op = (iri: string) => [{ iri }];
+
+test('sections lie along their line by km, or chained when they have none', () => {
+  const byKm = place([
+    { iri: 'b', cells: { 'start-km': v('10'), 'start-offset': v('500'), length: v('4') } },
+    { iri: 'a', cells: { 'start-km': v('0'), length: v('10.5') } },
+  ]);
+  assert.deepEqual(byKm.map((p) => [p.it.iri, p.from, p.to]), [['a', 0, 10.5], ['b', 10.5, 14.5]]);
+  const chained = place([
+    { iri: 'y', cells: { from: op('B'), to: op('C'), length: v('2') } },
+    { iri: 'x', cells: { from: op('A'), to: op('B'), length: v('3') } },
+  ]);
+  assert.deepEqual(chained.map((p) => [p.it.iri, p.from, p.to]), [['x', 0, 3], ['y', 3, 5]]);
+});
+
+test('assets along a line: points, stretches and short stretches in metres', () => {
+  assert.deepEqual(markOf({ iri: 's', cells: { km: v('12'), offset: v('250') } })?.from, 12.25);
+  const t = markOf({ iri: 't', cells: { 'start-km': v('5'), 'end-km': v('4'), 'end-offset': v('500') } })!;
+  assert.deepEqual([t.from, t.to], [4.5, 5]);
+  assert.equal(markOf({ iri: 'p', cells: { km: v('2'), length: v('100') } })?.to, 2.1);
+  assert.equal(markOf({ iri: 'n', cells: {} }), null);
+});
+
+test('the running direction of a track', () => {
+  const D = 'http://data.europa.eu/949/concepts/track-running-directions/';
+  assert.equal(directionOf({ iri: D + '10' }, {}), 'normal');
+  assert.equal(directionOf({ iri: D + 'TrackRunningDirections/20' }, {}), 'opposite');
+  assert.equal(directionOf({ iri: 'x' }, { x: 'B' }), 'both');
 });

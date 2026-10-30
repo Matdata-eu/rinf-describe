@@ -69,6 +69,10 @@ def aggregate(kind: str, per_child: dict[str, list]) -> dict:
     n = len(per_child)
     if kind == "count":
         return {"count": n}
+    if kind == "sum":
+        nums = [x for vs in per_child.values() for x in [_num(vs[0].get("value")) if vs else None] if x is not None]
+        total = round(sum(nums), 6)
+        return {"sum": int(total) if total.is_integer() else total, "children": n, "withValue": len(nums)}
     if kind == "range":
         nums = [x for vs in per_child.values() for v in vs for x in [_num(v.get("value"))] if x is not None]
         with_value = sum(1 for vs in per_child.values() if vs)
@@ -102,7 +106,8 @@ def _linked(s: str, row, var: str = "?c", offset: int = 0) -> str:
 def branches(iri: str, ds: DocShape, rows=None, status: bool = True, offset: int = 0) -> list[str]:
     """One UNION branch per value set of the page. ?k says what a binding is for:
     v|row (values), o|row (children via rd:over, ?c), i|row (linked resources of a table),
-    c|row|col (a column on each of them), n|row (how many a table links to, with rd:limit),
+    c|row|col (a column on each of them), a|row|col (a column with rd:over: ?x the linked
+    resource, ?c its child), n|row (how many a table links to, with rd:limit),
     p|row|name (viewer path), s|name (data status), x|row (every property of the resource,
     ?c) and y|row|via (every property of a resource ?x it links to with `via` that is not an
     infrastructure element itself: its contact line system, ETCS...)."""
@@ -119,6 +124,11 @@ def branches(iri: str, ds: DocShape, rows=None, status: bool = True, offset: int
         elif row.columns:
             out.append(f"{{ {_linked(s, row, '?v', offset)} BIND({_lit('i|' + row.key)} AS ?k) }}")
             for col in row.columns:
+                if col.over:
+                    ccls = f" ?c a <{col.filter_class}> ." if col.filter_class else ""
+                    out.append(f"{{ {_linked(s, row, '?x', offset)} ?x {col.over} ?c .{ccls} OPTIONAL {{ ?c {col.path} ?v }} "
+                               f"BIND({_lit('a|' + row.key + '|' + col.key)} AS ?k) }}")
+                    continue
                 out.append(f"{{ {_linked(s, row, '?c', offset)} OPTIONAL {{ ?c {col.path} ?v }} "
                            f"BIND({_lit('c|' + row.key + '|' + col.key)} AS ?k) }}")
             if row.limit:
@@ -146,9 +156,17 @@ def assemble(ds: DocShape, bindings: list[dict]) -> dict:
     vals: dict[str, list] = {}                            # v|row, i|row, p|row|name, s|name
     kids: dict[str, dict[str, list]] = defaultdict(dict)  # o|row, c|row|col -> child -> values
     props: dict[str, dict[tuple, list]] = defaultdict(dict)  # x|row, y|row -> (p, via, of) -> values
+    deep: dict[str, dict[str, dict[str, list]]] = defaultdict(lambda: defaultdict(dict))  # a|row|col -> item -> child -> values
     for b in bindings:
         k = b["k"]["value"]
         v = term(b.get("v"))
+        if k[0] == "a":
+            x, c = b.get("x"), b.get("c")
+            if x and c and x["type"] == c["type"] == "uri":
+                lst = deep[k][x["value"]].setdefault(c["value"], [])
+                if v is not None:
+                    _add(lst, v)
+            continue
         if k[0] in "xy":
             if v is None or b.get("c", {}).get("type") != "uri":
                 continue
@@ -184,6 +202,11 @@ def assemble(ds: DocShape, bindings: list[dict]) -> dict:
             if linked:
                 items = {i: {"iri": i, "cells": {}} for i in linked}
                 for col in row.columns:
+                    if col.over:
+                        for x, per_child in deep.get(f"a|{row.key}|{col.key}", {}).items():
+                            if x in items:
+                                items[x].setdefault("aggregates", {})[col.key] = aggregate(col.aggregate or "distinct-count", per_child)
+                        continue
                     for c, vs in kids.get(f"c|{row.key}|{col.key}", {}).items():
                         if c in items:
                             items[c]["cells"][col.key] = vs
@@ -301,4 +324,5 @@ def page(sparql: Sparql, iri: str, dset: DescribeSet, batch: int = 12, workers: 
         counts = {"out": int(n_out.result()[0]["n"]["value"]), "in": int(n_in.result()[0]["n"]["value"])}
     timing["total"] = (time.perf_counter() - t0) * 1000
     return {"graph": graph, "classes": classes, "pages": pages, "labels": labs, "counts": counts,
+            "cacheSeconds": max((ds.cache_seconds or 0 for ds in shapes), default=0) or None,
             "queries": 3 + len(jobs) + max(1, -(-len(iris) // 200)), "timing": {k: round(v) for k, v in timing.items()}}

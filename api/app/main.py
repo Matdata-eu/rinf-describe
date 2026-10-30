@@ -73,20 +73,20 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="RINF Describe API", version="1.4.0", lifespan=lifespan,
+app = FastAPI(title="RINF Describe API", version="1.5.0", lifespan=lifespan,
               docs_url="/api/docs", openapi_url="/api/openapi.json")
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 
-def _cached(key: tuple, seconds: float, fn: Callable[[], Any]) -> Any:
-    """fn(), kept for `seconds` under key."""
+def _cached(key: tuple, seconds: float | Callable[[Any], float], fn: Callable[[], Any]) -> Any:
+    """fn(), kept for `seconds` under key (or for as long as `seconds(value)` says)."""
     hit = _cache.get(key)
-    if hit and time.time() - hit[0] < seconds:
+    if hit and time.time() < hit[0]:
         return hit[1]
     value = fn()
     if len(_cache) > 2000:
         _cache.clear()
-    _cache[key] = (time.time(), value)
+    _cache[key] = (time.time() + (seconds(value) if callable(seconds) else seconds), value)
     return value
 
 
@@ -175,7 +175,8 @@ def _page(env: str, iri: str) -> dict:
                                  batch=LIVE_BATCH, workers=LIVE_WORKERS, onto=_ontology(env))
         except httpx.HTTPError as e:
             raise HTTPException(502, f"ERA's SPARQL endpoint did not answer: {e}") from e
-    return _cached(("page", env, iri), PAGE_CACHE_SECONDS, build)
+    # A shape can keep its pages longer (rd:cacheSeconds: a national line sums up thousands of tracks).
+    return _cached(("page", env, iri), lambda p: p.get("cacheSeconds") or PAGE_CACHE_SECONDS, build)
 
 
 def _dataset(env: str, graph: str | None) -> dict | None:

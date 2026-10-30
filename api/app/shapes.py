@@ -17,7 +17,7 @@ SH = "http://www.w3.org/ns/shacl#"
 DASH = "http://datashapes.org/dash#"
 RDF = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
 RDFS = "http://www.w3.org/2000/01/rdf-schema#"
-AGGREGATES = ("range", "distinct-count", "count")
+AGGREGATES = ("range", "distinct-count", "count", "sum")
 _KNOWN_RD = {RD + k for k in ("key", "tab", "over", "aggregate", "unit", "format", "enabled", "class")}
 # Viewers that read the resource as a whole rather than a path of it.
 WHOLE_VIEWERS = {RD + "ParameterIndexViewer"}
@@ -79,6 +79,7 @@ class DocShape:
     class_iri: str
     label: str
     rows: list[Row] = field(default_factory=list)
+    cache_seconds: int | None = None   # rd:cacheSeconds: how long a page is kept (heavy pages)
 
     def definition(self, groups: dict[str, Group]) -> dict:
         """The compiled layout the web app draws the page with."""
@@ -113,7 +114,8 @@ class DescribeSet:
                 rows.setdefault(r.key, r)
         merged = [r for r in rows.values() if not r.deactivated]
         merged.sort(key=lambda x: (x.order, x.key))
-        return [DocShape(iri=top.iri, class_iri=top.class_iri, label=top.label, rows=merged)]
+        keep = max((s.cache_seconds for s in found if s.cache_seconds), default=None)
+        return [DocShape(iri=top.iri, class_iri=top.class_iri, label=top.label, rows=merged, cache_seconds=keep)]
 
 
 def _iri(t) -> str | None:
@@ -248,7 +250,8 @@ def _row(r: _Reader, prop, where: str, nested: bool = False) -> Row | None:
     for name, vals in sorted(found.items()):
         for n, (lit, v) in enumerate(sorted(vals)):
             (row.settings if lit else row.params)[name if n == 0 else f"{name}.{n}"] = v
-    if not row.path and not row.params and row.viewer not in WHOLE_VIEWERS:
+    # rd:table "key": the row draws another row's linked resources (a profile of a table).
+    if not row.path and not row.params and row.viewer not in WHOLE_VIEWERS and "table" not in row.settings:
         raise ShapeError(f"{where}.{key}: needs sh:path or rd: paths for its viewer")
     node = r.one(prop, SH + "node")
     if node is not None:
@@ -260,8 +263,10 @@ def _row(r: _Reader, prop, where: str, nested: bool = False) -> Row | None:
             c = _row(r, col, f"{where}.{key}", nested=True)
             if c is None or c.deactivated:
                 continue
-            if not c.path or c.over or c.params:
-                raise ShapeError(f"{where}.{key}.{c.key}: a column needs a plain sh:path")
+            # A column with rd:over sums up over the children of each linked resource (the
+            # speeds of the tracks of each section of a line).
+            if not c.path or c.params:
+                raise ShapeError(f"{where}.{key}.{c.key}: a column needs a sh:path")
             row.columns.append(c)
         _unique([c.key for c in row.columns], f"{where}.{key}")
         row.columns.sort(key=lambda c: (c.order, c.key))
@@ -297,8 +302,10 @@ def load(shapes_dir: Path = SHAPES_DIR) -> DescribeSet:
         if not isinstance(node, ox.NamedNode) or r.lit(node, RD + "enabled", "true") == "false":
             continue
         where = _local(node.value)
+        keep = r.lit(node, RD + "cacheSeconds")
         ds = DocShape(iri=node.value, class_iri=_iri(q.object),
-                      label=r.label(node, RDFS + "label", SH + "name") or where)
+                      label=r.label(node, RDFS + "label", SH + "name") or where,
+                      cache_seconds=int(float(keep)) if keep else None)
         for prop in r.objs(node, SH + "property"):
             row = _row(r, prop, where)
             if row is None:

@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.5.0",
+    "date": "2026-10-30",
+    "new": [
+      "National lines have a page: the line on the map, a profile along km with the speed, energy supply, ETCS, gauge and number of tracks of each section, its sections and operational points in km order, and its kilometric posts.",
+      "Sections of line show what lies along them at its km: tunnels, phase separations and kilometric posts. They list their neighbouring sections and their restrictions (axle load, load capability, noise, operational regime, industrial risk).",
+      "Tracks show a cross-section on the Route compatibility tab (gauge, gauging profile, contact wire height, rail inclination), the platforms along them, and their running direction as an arrow."
+    ],
+    "improved": [
+      "Pages of national lines are kept for a day, since they sum up all their sections and tracks."
+    ]
+  },
+  {
     "version": "1.4.0",
     "date": "2026-10-30",
     "new": [

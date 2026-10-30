@@ -2,9 +2,12 @@
 // gets the plain viewer that fits its data (as a generic DASH tool would).
 import { DASH, RD } from '../rdf.ts';
 import { AggregateViewer, DetailsViewer, LabelViewer, LrsLocationViewer, URIViewer, ValueTableViewer } from './basic.ts';
+import { AlongLineViewer } from './alongline.ts';
 import { ConnectionsViewer } from './connections.ts';
+import { CrossSectionViewer } from './crosssection.ts';
 import { DocumentViewer } from './document.ts';
 import { FacilitiesViewer } from './facilities.ts';
+import { LineProfileViewer, LineStopsViewer } from './lineprofile.ts';
 import { MapViewer } from './map.ts';
 import { ParameterIndexViewer } from './parameters.ts';
 import { PlatformViewer } from './platform.ts';
@@ -36,6 +39,10 @@ export const WIDGETS: Record<string, Widget> = {
   [RD + 'ConnectionsViewer']: ConnectionsViewer,
   [RD + 'TrackLayoutViewer']: TrackLayoutViewer,
   [RD + 'PlatformViewer']: PlatformViewer,
+  [RD + 'LineProfileViewer']: LineProfileViewer,
+  [RD + 'LineStopsViewer']: LineStopsViewer,
+  [RD + 'AlongLineViewer']: AlongLineViewer,
+  [RD + 'CrossSectionViewer']: CrossSectionViewer,
 };
 
 export function widgetFor(ctx: Pick<Ctx, 'row' | 'entry'>): Widget {

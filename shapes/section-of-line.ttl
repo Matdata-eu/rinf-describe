@@ -15,7 +15,10 @@ PREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
 
 shape:sol-route a sh:PropertyGroup ; rdfs:label "Route" ; sh:order 10 .
+shape:sol-along a sh:PropertyGroup ; rdfs:label "Along the line" ; sh:order 15 .
 shape:sol-tracks a sh:PropertyGroup ; rdfs:label "Track characteristics" ; sh:order 20 .
+shape:sol-restrictions a sh:PropertyGroup ; rdfs:label "Restrictions" ; sh:order 25 .
+shape:sol-neighbours a sh:PropertyGroup ; rdfs:label "Neighbouring sections" ; sh:order 40 .
 shape:sol-track-list a sh:PropertyGroup ; rdfs:label "Tracks" ; sh:order 30 .
 
 shape:section-of-line
@@ -177,8 +180,68 @@ shape:section-of-line
         sh:node shape:sol-track-row ;
     ] ;
 
+    # --- Along the line: assets at their km between the two operational points ---
+    sh:property [
+        sh:name "Along the line" ; rd:key "along" ;
+        sh:group shape:sol-along ; sh:order 10 ;
+        dash:viewer rd:AlongLineViewer ;
+        rd:table "route" ;
+        rd:markers "along-tunnels along-separations along-posts" ;
+    ] ;
+    # Its markers: data for the strip only (rd:hidden). Tunnels and phase separations hang
+    # off the section's tracks; the kilometric posts are the national line's, kept when
+    # within the section. (Signals and level crossings reach a national line with sections
+    # nowhere in the data yet: Norway's sit on a network-wide positioning system.)
+    sh:property [
+        sh:path ( shape:parts [ sh:inversePath era:isPartOf ] ) ; rd:class era:Tunnel ;
+        sh:name "Tunnels" ; rd:key "along-tunnels" ; rd:hidden "true" ;
+        sh:node shape:along-stretch ;
+    ] ;
+    sh:property [
+        sh:path ( shape:parts era:trackPhaseInfo ) ;
+        sh:name "Phase separations" ; rd:key "along-separations" ; rd:hidden "true" ;
+        sh:node shape:along-separation ;
+    ] ;
+    sh:property [
+        sh:path ( era:nationalLine [ sh:inversePath era:hasLRS ] ) ; rd:class era:KilometricPost ;
+        sh:name "Kilometric posts" ; rd:key "along-posts" ; rd:hidden "true" ;
+        sh:node shape:along-post ;
+    ] ;
+
+    # --- Restrictions ---
+    sh:property [ sh:path era:maxAxleLoadOfSoL ; sh:name "Maximum axle load" ; sh:group shape:sol-restrictions ; sh:order 10 ] ;
+    sh:property [
+        sh:path ( era:trackLoadCapability era:loadCapabilityLineCategory ) ; sh:name "Load capability" ;
+        rd:over shape:parts ; rd:class era:RunningTrack ; rd:aggregate "distinct-count" ;
+        sh:group shape:sol-restrictions ; sh:order 20 ; dash:viewer rd:AggregateViewer ;
+    ] ;
+    sh:property [ sh:path era:maxNoiseLevelOfSoL ; sh:name "Maximum noise level" ; sh:group shape:sol-restrictions ; sh:order 30 ] ;
+    sh:property [ sh:path era:operationalRegimeType ; sh:name "Operational regime" ; sh:group shape:sol-restrictions ; sh:order 40 ] ;
+    sh:property [ sh:path era:existenceOfIndustrialRisk ; sh:name "Industrial risk" ; sh:group shape:sol-restrictions ; sh:order 50 ] ;
+
+    # --- Neighbouring sections: the ones that go on from either end ---
+    sh:property [
+        sh:path [ sh:alternativePath ( ( era:opStart [ sh:inversePath era:opEnd ] ) ( era:opEnd [ sh:inversePath era:opStart ] ) ) ] ;
+        rd:class era:SectionOfLine ;
+        sh:name "Neighbouring sections" ; rd:key "neighbours" ;
+        sh:group shape:sol-neighbours ; sh:order 10 ;
+        dash:viewer dash:ValueTableViewer ;
+        sh:node shape:sol-neighbour-row ;
+    ] ;
+
     # The tracks table lists the parts already.
     sh:property [ rd:key "parts" ; sh:deactivated true ] .
+
+shape:sol-neighbour-row
+    a sh:NodeShape ;
+    sh:property [ sh:path era:nationalLine ; sh:name "Line" ; sh:order 10 ] ;
+    sh:property [ sh:path era:opStart ; sh:name "From" ; sh:order 20 ] ;
+    sh:property [ sh:path era:opEnd ; sh:name "To" ; sh:order 30 ] ;
+    sh:property [ sh:path era:lengthOfSectionOfLine ; sh:name "Length" ; rd:unit "km" ; sh:order 40 ] ;
+    sh:property [
+        sh:path era:maximumPermittedSpeed ; sh:name "Max speed" ; rd:key "speed" ; rd:unit "km/h" ; sh:order 50 ;
+        rd:over shape:parts ; rd:class era:RunningTrack ; rd:aggregate "range" ;
+    ] .
 
 # Columns of the Tracks table.
 shape:sol-track-row

@@ -54,13 +54,17 @@ Namespace `https://rinf-describe.matdata.eu/ns#`, declared in
 |---|---|---|
 | `rd:tab` | group | Tab of the group, shown as its title (`"Route compatibility"`). Default: Overview |
 | `rd:over` | row | Path to linked resources (the tracks of a section); `sh:path` is evaluated on each |
-| `rd:aggregate` | row | How those values are summed up: `"range"`, `"distinct-count"` or `"count"` |
+| `rd:aggregate` | row, column | How those values are summed up: `"range"`, `"distinct-count"`, `"count"` or `"sum"` (of the first value of each) |
 | `rd:unit` | row, column | Unit written after the value |
 | `rd:badge` | row | Badge text: `{value}`, `{min}`, `{max}`, `{count}`, `{withValue}`, `{children}`, `{unit}` |
 | `rd:class` | row | Only the linked resources of this class (the tracks among the parts of an operational point) |
 | `rd:limit` | table row | At most this many linked resources at a time; the page shows the total and a **Show more** button (`/api/rows`) |
 | `rd:scope "all"` | row | Evaluated over every graph, not only the resource's own (sections of line of another provider that end at a border point) |
-| `rd:hidden "true"` | column | Read but not shown as a column (a `wkt` column for the map) |
+| `rd:hidden "true"` | row, column | Read but not shown: a column for the map (`wkt`), or a row that is only data for another row's widget (the markers of `rd:AlongLineViewer`) |
+| `rd:table` | row | Key of another row whose values the widget draws (the sections of a line profile); the row needs no path |
+| `rd:sortBy` | table row | Column the table is sorted by, as numbers (`"start-km"`) |
+| `rd:cacheSeconds` | node shape | How long its pages are kept (86400 for national lines, which sum up thousands of tracks); default 10 minutes |
+| `rd:over` on a column | column | Sums the column up over the children of each linked resource (the tracks of each section of a line), with `rd:aggregate` and `rd:class` |
 | `rd:key` | row | Stable key of the row (default: from `sh:name` or the path); needed when two rows share a name |
 | other `rd:x` with a path | row | A named path the row's widget reads (`rd:start`, `rd:km`, ...) |
 | other `rd:x` with a literal | row | A widget setting (`rd:symbol "track-gauge"`) |
@@ -79,11 +83,15 @@ Namespace `https://rinf-describe.matdata.eu/ns#`, declared in
 | `rd:MapViewer` | WKT on OpenStreetMap + OpenRailwayMap, WKT text below | `sh:path` (highlighted), optional `rd:context` (drawn quieter), optional `rd:layers "connections track-table"`: table rows of the page whose `wkt` column becomes a layer that can be switched off, each line opening its page |
 | `rd:ConnectionsViewer` | The sections of line that start or end at an operational point as spokes, pointing the way they leave, each to the operational point at its other end with line and length | `sh:path`, `sh:node` with columns `start`, `end`, `line`, `length`, `wkt` |
 | `rd:TrackLayoutViewer` | An operational point's tracks as parallel bars, its platform edges on the tracks they serve, its sidings below; not to scale | `sh:path` to the tracks (column `id`); `rd:platforms` and `rd:sidings` name the table rows with the platforms (`track`, `length`, `height`) and sidings (`length`) |
+| `rd:LineProfileViewer` | A national line along km: one lane per column of its sections, numbers as steps, categories as coloured bands, operational points as ticks | `rd:table` (columns `start-km`, `start-offset`, `end-km`, `end-offset`, `length`, `from`, `to`), `rd:lanes "speed energy etcs"` |
+| `rd:LineStopsViewer` | The operational points of a line in km order, with their type | `rd:table` (as above, plus `from-type`, `to-type`) |
+| `rd:AlongLineViewer` | A section of line as a strip between its operational points, with tunnels and phase separations as bands and kilometric posts as ticks at their km | `rd:table "route"` (the route diagram row), `rd:markers` (hidden rows with columns `km`/`offset`, `start-km`…`end-offset`, or `km` and `length` in m) |
+| `rd:CrossSectionViewer` | A track end-on, not to scale: gauge, gauging profile, contact wire heights, rail inclination | `rd:gauge`, `rd:loadingGauge`, `rd:wireMin`, `rd:wireMax`, `rd:inclination` |
 | `rd:PlatformViewer` | Side view of a platform edge against the TSI heights of 550 and 760 mm, with its usable length and whether it is curved | `rd:height`, `rd:length`, `rd:curved` |
 | `rd:AggregateViewer` | `85–140 km/h`, `1435 (3) · 1668 (3)`, `6` | `sh:path`, `rd:over`, `rd:aggregate` |
 | `rd:LrsLocationViewer` | The value with its position, `km 53+240` | `sh:path`, `rd:km`, `rd:offset` (metres) |
 | `rd:StepChartViewer` | A `value(length),...` profile as a step chart: rising green, falling red | `sh:path`, `rd:unit`, `rd:lengthUnit` |
-| `rd:SymbolViewer` | An illustrative, non-dimensioned symbol per value | `sh:path`, `rd:symbol` (`loading-gauge`, `track-gauge`, `country`, `platform-height`) |
+| `rd:SymbolViewer` | An illustrative, non-dimensioned symbol per value | `sh:path`, `rd:symbol` (`loading-gauge`, `track-gauge`, `country`, `platform-height`, `direction`) |
 | `rd:ValidityViewer` | Validity period on a time axis with today marked | `rd:begin`, `rd:end` (`era:validity` is an `era:TemporalFeature`, a `time:TemporalDuration`) |
 | `rd:ParameterIndexViewer` | Every RINF parameter of the resource (and of the non-infrastructure resources it links to: contact line system, ETCS...) by RINF index chapter, with a filter; parameters marked not applicable or not yet available too | No path; optional `rd:indexRoot "1.2.1"` (default: the root most parameters share) |
 | `rd:DocumentViewer` | `era:Document` resources as cards: file type, name, open link | `sh:path`, `sh:node shape:document-card` |
@@ -96,7 +104,7 @@ Every class page also gets a **Data status** card (the parameters marked
 
 ## Layout rules
 
-- Rows without a group and with a map, route diagram or platform sketch go to the top of the Overview tab.
+- Rows without a group and with a map, route diagram, line profile or platform sketch go to the top of the Overview tab.
 - Rows without a group but with `dash:KeyInfoRole` are badges only; other rows without a group land in an "Other" card.
 - An empty row is hidden, unless the resource marks its property not applicable or not yet available: then it says so.
 - Tables, expanded resources, maps and charts take the full width of the page.
@@ -123,7 +131,7 @@ shape:section-of-line a sh:NodeShape ;
 - `rd:ParameterIndexViewer` follows one link from the resource (to resources that are not
   infrastructure elements themselves) and keeps the properties with a RINF index.
 - Paths are evaluated inside the resource's own named graph (unless `rd:scope "all"`); labels are the `skos:prefLabel` or `rdfs:label` of each IRI on the endpoint (all graphs, including the SKOS vocabularies).
-- `sh:node` is one level deep, and its columns take plain paths (no `rd:over`).
+- `sh:node` is one level deep; a column with `rd:over` sums up over one more level (no deeper).
 - Paths are evaluated on the resource itself; a widget that needs values of a linked resource reaches them with a sequence path (`( era:netReference era:startsAt era:hasLrsCoordinate era:kmPost era:kilometer )`).
 
 `tests/test_shapes.py` compiles the shapes and checks the pages on the Luxembourg sample

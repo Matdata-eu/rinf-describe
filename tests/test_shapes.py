@@ -175,3 +175,17 @@ def test_limit_pages_a_table(sparql):
         assert e["total"] == 3
         seen += [it["iri"] for it in e["items"]]
     assert len(seen) == 3 == len(set(seen))
+
+
+def test_national_line(docs):
+    """A line sums up its sections, and each section its tracks (a column with rd:over)."""
+    dset, by = docs
+    (nl,) = [d for d in dset.shapes if d.class_iri == ERA + "LinearPositioningSystem"]
+    assert nl.cache_seconds == 86400
+    rows = by[(ERA + "lrs/3d5c54deb2", "national-line")]["rows"]
+    assert rows["section-count"]["aggregate"] == {"count": 3}
+    assert rows["length"]["aggregate"]["sum"] == 11.292
+    items = rows["section-table"]["items"]
+    assert len(items) == 3
+    assert all(it["aggregates"]["tracks"]["count"] >= 1 for it in items)
+    assert any(it["aggregates"]["speed"].get("max") for it in items)

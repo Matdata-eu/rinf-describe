@@ -8,7 +8,7 @@ import { aggregateText } from './widgets/basic.ts';
 export const LABEL_ROLE = DASH + 'LabelRole';
 export const KEY_INFO_ROLE = DASH + 'KeyInfoRole';
 /** Viewers that take the top of the Overview tab when their row has no group. */
-const HERO = new Set(['RouteDiagramViewer', 'MapViewer', 'PlatformViewer'].map((v) => 'https://rinf-describe.matdata.eu/ns#' + v));
+const HERO = new Set(['RouteDiagramViewer', 'MapViewer', 'PlatformViewer', 'LineProfileViewer'].map((v) => 'https://rinf-describe.matdata.eu/ns#' + v));
 export const OTHER_GROUP: GroupDef = { iri: '', label: 'Other', order: 10_000, tab: 'overview' };
 
 export interface LaidGroup { group: GroupDef; rows: RowDef[] }
@@ -27,6 +27,7 @@ export function layout(page: ClassPage): Layout {
   const byGroup = new Map<string, LaidGroup>();
   for (const r of rows) {
     if (r === titleRow) continue;
+    if (r.settings?.hidden === 'true') continue; // data for another row's widget only
     let g = r.group ? groups.get(r.group) : undefined;
     if (!g) {
       if (r.viewer && HERO.has(r.viewer)) { hero.push(r); continue; }
@@ -59,13 +60,13 @@ export function statusOf(row: RowDef, page: ClassPage): 'notApplicable' | 'notYe
 export function isEmpty(e: RowEntry | undefined): boolean {
   if (!e) return true;
   const params = Object.values(e.params ?? {}).some((v) => v.length);
-  const agg = e.aggregate && (e.aggregate.count !== undefined || e.aggregate.min !== undefined || (e.aggregate.values?.length ?? 0) > 0);
+  const agg = e.aggregate && (e.aggregate.count !== undefined || e.aggregate.sum !== undefined || e.aggregate.min !== undefined || (e.aggregate.values?.length ?? 0) > 0);
   return !(e.values?.length || e.items?.length || e.parameters?.length || agg || params);
 }
 
 function aggFields(a: Aggregate): Record<string, number | undefined> {
   const withValue = a.withValue ?? (a.children !== undefined && a.withoutValue !== undefined ? a.children - a.withoutValue : undefined);
-  return { min: a.min, max: a.max, count: a.count, children: a.children, withValue };
+  return { min: a.min, max: a.max, count: a.count, sum: a.sum, children: a.children, withValue };
 }
 
 /** Text of a header badge: rd:badge filled in, else the row's name and its value. */

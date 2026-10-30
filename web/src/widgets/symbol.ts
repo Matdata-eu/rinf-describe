@@ -1,6 +1,7 @@
 // rd:SymbolViewer: an illustrative, non-dimensioned symbol next to each value's label
 // (rd:symbol "loading-gauge" for gauging profiles, "track-gauge" for the track gauge,
-// "country" for a country's flag, "platform-height" for a platform beside a rail at its height).
+// "country" for a country's flag, "platform-height" for a platform beside a rail at its height,
+// "direction" for the normal running direction against the kilometres).
 import type { Term } from '../api.ts';
 import { h, s } from '../dom.ts';
 import { describeHref } from '../nav.ts';
@@ -58,8 +59,29 @@ function platformHeight(v: Term, labels: Record<string, string>): SVGElement {
     s('path', { d: `M6 62V${top.toFixed(1)}h28V62`, class: mm === null ? 'outline dashed' : 'outline' }));
 }
 
+/** The way a track is normally run, against the direction of its kilometres: N(ormal),
+ * O(pposite) or B(oth) (era:trackDirection, track-running-directions/10, 20, 30). */
+export function directionOf(v: Term, labels: Record<string, string>): 'normal' | 'opposite' | 'both' | null {
+  const l = (v.iri ? labels[v.iri] ?? '' : v.value ?? '').trim().toUpperCase();
+  const code = v.iri?.match(/\/(10|20|30)$/)?.[1];
+  if (l === 'N' || code === '10') return 'normal';
+  if (l === 'O' || code === '20') return 'opposite';
+  if (l === 'B' || code === '30') return 'both';
+  return null;
+}
+
+function direction(v: Term, labels: Record<string, string>): SVGElement {
+  // An arrow along the kilometres (left to right), against them, or both ways.
+  const d = directionOf(v, labels);
+  const head = (x: number, dir: 1 | -1) => `M${x} 36l${-10 * dir} -8M${x} 36l${-10 * dir} 8`;
+  const path = ['M8 36H56', d !== 'opposite' ? head(56, 1) : '', d === 'opposite' || d === 'both' ? head(8, -1) : ''].join('');
+  return s('svg', { viewBox: '0 0 64 72', class: 'symbol', 'aria-hidden': 'true' },
+    s('path', { d: 'M6 52h52', class: 'base' }),
+    s('path', { d: path, class: d ? 'outline' : 'outline dashed' }));
+}
+
 const SYMBOLS: Record<string, (v: Term, labels: Record<string, string>) => Node> = {
-  'loading-gauge': loadingGauge, 'track-gauge': trackGauge, country, 'platform-height': platformHeight,
+  'loading-gauge': loadingGauge, 'track-gauge': trackGauge, country, 'platform-height': platformHeight, direction,
 };
 
 export const SymbolViewer: Widget = {
