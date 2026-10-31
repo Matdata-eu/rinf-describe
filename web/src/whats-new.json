@@ -1,5 +1,18 @@
 [
   {
+    "version": "1.3.0",
+    "date": "2026-10-31",
+    "improved": [
+      "When ERA's endpoint is busy or not answering, a page says so and asks you to try again shortly, instead of waiting for a time-out.",
+      "The Export menu says when a resource has more than 5,000 properties: the export then holds the first 5,000, always the same ones.",
+      "Links in ERA's data open only when they are web addresses, and links to other sites don't pass on the page you came from.",
+      "With reduced motion switched on in your system, transitions and animations end at once."
+    ],
+    "fixed": [
+      "The sitemaps no longer time out: they are built in the background once a day."
+    ]
+  },
+  {
     "version": "1.2.0",
     "date": "2026-10-30",
     "new": [
