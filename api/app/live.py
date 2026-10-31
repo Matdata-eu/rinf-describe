@@ -116,11 +116,11 @@ def triples(endpoint: str, iri: str, direction: str, limit: int, timeout: float 
 def _triples(endpoint: str, iri: str, direction: str, limit: int, timeout: float) -> tuple[list[dict], dict[str, str]]:
     if direction == "out":
         rows = [_row(iri, b["p"]["value"], b["o"])
-                for b in sparql(endpoint, f"SELECT ?p ?o WHERE {{ <{iri}> ?p ?o }} LIMIT {limit}", timeout)
+                for b in sparql(endpoint, f"SELECT ?p ?o WHERE {{ <{iri}> ?p ?o }} ORDER BY ?p ?o LIMIT {limit}", timeout)
                 if b["o"]["type"] in ("uri", "literal", "typed-literal")]
     else:
         rows = [_row(b["s"]["value"], b["p"]["value"], {"type": "uri", "value": iri})
-                for b in sparql(endpoint, f"SELECT ?s ?p WHERE {{ ?s ?p <{iri}> }} LIMIT {limit}", timeout)
+                for b in sparql(endpoint, f"SELECT ?s ?p WHERE {{ ?s ?p <{iri}> }} ORDER BY ?p ?s LIMIT {limit}", timeout)
                 if b["s"]["type"] == "uri"]
     rows.sort(key=lambda t: (t["p"], t["o"] if direction == "out" else t["s"]))
     iris = {iri} | {t["p"] for t in rows} | {t["s"] for t in rows} | {t["o"] for t in rows if t["o_iri"]}

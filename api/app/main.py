@@ -63,21 +63,23 @@ SITEMAP_SIZE = 40000  # URLs per sitemap file (the protocol allows 50,000)
 # The sitemaps are built in the background, once a day, and served from files here.
 SITEMAP_DIR = Path(os.environ.get("DESCRIBE_SITEMAP_DIR") or Path(tempfile.gettempdir()) / "describe-sitemaps")
 SITEMAP_TIMEOUT = 300.0  # one sitemap query: tens of seconds over the whole store
-TRIPLES_MAX = 5000
+TRIPLES_MAX = 5000  # triples in /api/triples and in an export
 GRAPH_MAX = 200
 
 dset: shapes.DescribeSet = shapes.DescribeSet([], {})
+shape_error: str | None = None  # why the shapes did not load, for /api/health
 _cache = TTLCache(int(os.environ.get("DESCRIBE_CACHE_ENTRIES", "2000")))
 ontologies = ontology.Cache()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global dset
+    global dset, shape_error
     try:
         dset = shapes.load()
     except shapes.ShapeError as e:  # pages then show the generic tabs only
         log.error("describe shapes are invalid, no class pages: %s", e)
+        shape_error = str(e)
     if PUBLIC_URL and dset.shapes:
         threading.Thread(target=_sitemap_loop, name="sitemaps", daemon=True).start()
     yield
@@ -161,7 +163,12 @@ def _triples(env: str, iri: str, direction: str, limit: int) -> tuple[list[dict]
 
 @app.get("/api/health")
 def health():
-    return {"ok": True}
+    """Up, and with its class pages: 503 when the shapes did not load (the pages would quietly
+    show the generic tabs only), so the container's health check and monitoring see it."""
+    body = {"ok": shape_error is None and bool(dset.shapes), "shapes": len(dset.shapes)}
+    if body["ok"]:
+        return body
+    return JSONResponse({**body, "error": shape_error or "no describe shapes found"}, status_code=503)
 
 
 @app.get("/api/config")
@@ -276,12 +283,15 @@ def rows(uri: str, key: str, env: str | None = None, offset: int = Query(0, ge=0
     """More of a table with rd:limit: its linked resources from `offset`, with their labels."""
     env, iri = _env(env), _iri(uri)
     p = _page(env, iri)
-    for ds, _doc in p["pages"]:
+    for ds, doc in p["pages"]:
         row = next((r for r in ds.rows if r.key == key and r.columns and r.limit), None)
         if row:
             break
     else:
         raise HTTPException(404, f"no paged table {key!r} on this page")
+    total = doc["rows"].get(key, {}).get("total")
+    if isinstance(total, int) and offset >= total:  # past the end: no query to ERA
+        return {"key": key, "offset": offset, "items": [], "total": total, "labels": {}}
     parts = livepage.branches(iri, ds, [row], status=False, offset=offset)
 
     def read():
@@ -290,7 +300,7 @@ def rows(uri: str, key: str, env: str | None = None, offset: int = Query(0, ge=0
         return doc["rows"].get(key, {})
     entry = _cached(("rows", env, iri, key, offset), PAGE_CACHE_SECONDS, read)
     found: set[str] = set()
-    livepage._collect(entry.get("items", []), found)
+    livepage.collect_iris(entry.get("items", []), found)
     return {"key": key, "offset": offset, "items": entry.get("items", []), "total": entry.get("total"),
             "labels": _labels(env, found)}
 
@@ -333,6 +343,9 @@ def export(uri: str, env: str | None = None, format: str = Query("ttl", pattern=
     rows, labels = _triples(env, iri, "out", TRIPLES_MAX)
     if not rows:
         raise HTTPException(404, "no triples for this resource")
+    # More than TRIPLES_MAX (an infrastructure manager, a long national line): the file holds
+    # the first ones in predicate and object order, and says so.
+    cut = len(rows) >= TRIPLES_MAX
     name = _SAFE.sub("-", iri.rstrip("/").rsplit("/", 1)[-1]).strip("-") or "resource"
     if format == "nt":
         body, media = R.ntriples(rows), "application/n-triples"
@@ -343,9 +356,12 @@ def export(uri: str, env: str | None = None, format: str = Query("ttl", pattern=
     elif format == "csv":
         body, media = R.table(rows, labels), "text/csv"
     else:
-        body, media = R.turtle(rows, f"{iri}\nenvironment {env}, from ERA's SPARQL endpoint"), "text/turtle"
-    return Response(body, media_type=f"{media}; charset=utf-8",
-                    headers={"Content-Disposition": f'attachment; filename="{name}.{format}"'})
+        note = f"\nthe first {TRIPLES_MAX} triples only: the resource has more" if cut else ""
+        body, media = R.turtle(rows, f"{iri}\nenvironment {env}, from ERA's SPARQL endpoint{note}"), "text/turtle"
+    headers = {"Content-Disposition": f'attachment; filename="{name}.{format}"'}
+    if cut:
+        headers["X-Describe-Truncated"] = str(TRIPLES_MAX)
+    return Response(body, media_type=f"{media}; charset=utf-8", headers=headers)
 
 
 def _classes(env: str | None = None) -> list[str]:

@@ -152,6 +152,7 @@ main:focus { outline: none; }
 }
 .menu-items a { padding: 6px 10px; border-radius: 4px; text-decoration: none; color: var(--text); }
 .menu-items a:hover { background: var(--accent-soft); }
+.menu-note { margin: 4px 10px 2px; max-width: 16rem; }
 
 /* tabs */
 /* The rule is a shadow, so the selected tab's underline covers it without overflowing the bar

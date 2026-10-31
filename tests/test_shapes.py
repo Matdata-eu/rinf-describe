@@ -212,3 +212,31 @@ def test_weighted_shares():
     assert a["weight"] == 13.5 and a["withoutValueWeight"] == 0.5 and a["withoutValue"] == 1
     # Without weights, as before: by count.
     assert [v["iri"] for v in livepage.aggregate("distinct-count", per_child)["values"]] == ["e:DC", "e:AC"]
+
+
+def test_rows_override_only_on_purpose(sparql):
+    """A class page's row replaces the row of the same key on a page it merges over (the base
+    page). Keys default to the slug of sh:name, so two unrelated rows that happen to share a
+    name would merge silently: a row that replaces one with another path names the key it
+    replaces with rd:key."""
+    from app import ontology
+    onto = ontology.read(sparql)
+    dset = shapes.load(ROOT / "shapes")
+    graph = ox.Store()
+    for f in sorted((ROOT / "shapes").glob("*.ttl")):
+        graph.load(path=str(f), format=ox.RdfFormat.TURTLE)
+    explicit = {(b["s"].value, b["k"].value) for b in graph.query(
+        "SELECT ?s ?k WHERE { ?s <http://www.w3.org/ns/shacl#property> ?ps . "
+        "?ps <https://rinf-describe.matdata.eu/ns#key> ?k }")}
+    by_class = {s.class_iri: s for s in dset.shapes}
+    accidental = []
+    for ds in dset.shapes:
+        for anc in set(onto.ancestors(ds.class_iri)) - {ds.class_iri}:
+            base = by_class.get(anc)
+            if not base:
+                continue
+            paths = {r.key: r.path for r in base.rows}
+            for r in ds.rows:
+                if r.key in paths and not r.deactivated and r.path != paths[r.key] and (ds.iri, r.key) not in explicit:
+                    accidental.append(f"{ds.iri} {r.key}: {r.path} over {paths[r.key]}")
+    assert accidental == []
