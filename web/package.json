@@ -9,7 +9,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "node --test --experimental-strip-types src/*.test.ts"
+    "test": "node --test --experimental-strip-types src/*.test.ts",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "maplibre-gl": "^6.14.0",
@@ -17,6 +18,7 @@
     "vis-network": "^10.1.2"
   },
   "devDependencies": {
+    "@playwright/test": "1.63.0",
     "@types/geojson": "^7946.0.16",
     "@types/node": "^26.6.5",
     "typescript": "~7.0.2",

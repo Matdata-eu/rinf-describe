@@ -155,7 +155,7 @@ export const TopologyViewer: Widget = {
       });
       network.on('hoverNode', () => { box.style.cursor = 'pointer'; });
       network.on('blurNode', () => { box.style.cursor = ''; });
-      fit.addEventListener('click', () => network.fit({ animation: true }));
+      fit.addEventListener('click', () => network.fit({ animation: !matchMedia('(prefers-reduced-motion: reduce)').matches }));
       const resize = () => setTimeout(() => network.fit({ animation: false }), 50);
       document.addEventListener('fullscreenchange', resize);
       const recolor = () => {

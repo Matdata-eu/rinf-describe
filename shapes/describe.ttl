@@ -100,7 +100,7 @@ rd:DataStatusViewer a dash:MultiViewer ;
 
 rd:GraphViewer a dash:MultiViewer ;
     rdfs:label "Graph" ;
-    rdfs:comment "Interactive neighbourhood graph from the indexed triples; nodes open their own page. Shown on every page; needs no property shape." .
+    rdfs:comment "Interactive neighbourhood graph of the resource's links in and out, read from ERA's endpoint; nodes open their own page. Shown on every page; needs no property shape." .
 
 rd:tab a owl:DatatypeProperty ;
     rdfs:label "tab" ;
