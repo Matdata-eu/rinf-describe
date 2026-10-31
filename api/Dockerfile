@@ -7,6 +7,10 @@ RUN pip install -r requirements.txt
 COPY api/app /app/app
 COPY shapes /app/shapes
 ENV DESCRIBE_SHAPES=/app/shapes
+# Not root: the API only reads its code and shapes and writes its cache folder.
+RUN useradd --system --uid 10001 --no-create-home describe \
+ && mkdir -p /var/cache/describe && chown describe /var/cache/describe
+USER describe
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \
   CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health', timeout=4).status == 200 else 1)"

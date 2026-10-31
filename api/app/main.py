@@ -100,8 +100,10 @@ def _env(env: str | None) -> str:
 
 
 def _iri(uri: str) -> str:
-    if not R.valid_iri(uri):
-        raise HTTPException(400, "not a valid IRI")
+    """An IRI from a request: http(s) only, which every IRI in ERA's data is. Pages link to it,
+    so javascript: or data: must not get through."""
+    if not (R.valid_iri(uri) and uri.lower().startswith(("http://", "https://"))):
+        raise HTTPException(400, "not a valid IRI: an http(s) address is expected")
     return uri
 
 

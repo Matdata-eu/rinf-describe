@@ -32,7 +32,7 @@ export const URIViewer: Widget = {
   render: ({ entry }) => {
     const iris = (entry.values ?? []).filter((v) => v.iri);
     if (!iris.length) return null;
-    return h('span', { class: 'values' }, joined(iris.map((v) => h('a', { class: 'mono iri', href: v.iri!, rel: 'noopener' }, v.iri!))));
+    return h('span', { class: 'values' }, joined(iris.map((v) => h('a', { class: 'mono iri', href: v.iri!, rel: 'noopener noreferrer' }, v.iri!))));
   },
 };
 

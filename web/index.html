@@ -25,10 +25,8 @@
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="theme-color" content="#10273F" />
     <title>RINF Describe</title>
-    <script>
-      // Apply a forced light/dark theme before first paint (see src/theme.ts).
-      try { var t = localStorage.getItem('describe-theme'); if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); } catch (e) {}
-    </script>
+    <!-- Forced light/dark theme before first paint (src/theme.ts). -->
+    <script src="/theme-init.js"></script>
   </head>
   <body>
     <noscript>

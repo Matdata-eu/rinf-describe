@@ -9,7 +9,7 @@ const REPO = ((import.meta.env.VITE_REPO_URL as string | undefined) ?? 'https://
 
 let dlg: HTMLDialogElement | null = null;
 
-const link = (href: string, text: string) => h('a', { href, target: '_blank', rel: 'noopener' }, text);
+const link = (href: string, text: string) => h('a', { href, target: '_blank', rel: 'noopener noreferrer' }, text);
 
 export function openAbout() {
   if (!dlg) {
