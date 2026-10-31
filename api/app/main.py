@@ -11,7 +11,6 @@ import logging
 import math
 import os
 import re
-import time
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
@@ -20,11 +19,13 @@ from urllib.parse import quote_plus
 from xml.sax.saxutils import escape
 
 import httpx
-from fastapi import FastAPI, HTTPException, Query, Response
+from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import JSONResponse
 
 from . import atlas, datamodel, live, livepage, ontology, shapes
 from . import rdf as R
+from .cache import TTLCache
 
 log = logging.getLogger("describe")
 
@@ -59,7 +60,7 @@ TRIPLES_MAX = 5000
 GRAPH_MAX = 200
 
 dset: shapes.DescribeSet = shapes.DescribeSet([], {})
-_cache: dict[tuple, tuple[float, Any]] = {}
+_cache = TTLCache(int(os.environ.get("DESCRIBE_CACHE_ENTRIES", "2000")))
 ontologies = ontology.Cache()
 
 
@@ -77,17 +78,32 @@ app = FastAPI(title="RINF Describe API", version="1.2.0", lifespan=lifespan,
               docs_url="/api/docs", openapi_url="/api/openapi.json")
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 
+# How long browsers and proxies may keep an answer, in step with what the API keeps itself.
+# Answers that set their own Cache-Control (exports, sitemaps) keep it; errors are not kept.
+_BROWSER_SECONDS = {"/api/examples": 3600, "/api/config": 300, "/api/health": 0}
+
+
+@app.middleware("http")
+async def cache_headers(request: Request, call_next):
+    response = await call_next(request)
+    path = request.url.path
+    if request.method == "GET" and path.startswith("/api/") and "cache-control" not in response.headers:
+        seconds = _BROWSER_SECONDS.get(path, PAGE_CACHE_SECONDS // 2) if response.status_code == 200 else 0
+        response.headers["Cache-Control"] = f"public, max-age={seconds}" if seconds else "no-store"
+    return response
+
+
+@app.exception_handler(live.Overloaded)
+async def overloaded(request: Request, e: live.Overloaded):
+    """Too many queries to ERA in flight, or ERA keeps failing: ask the client to come back."""
+    log.warning("%s: %s", request.url.path, e)
+    return JSONResponse({"detail": "ERA's SPARQL endpoint is busy or not answering; try again shortly."},
+                        status_code=503, headers={"Retry-After": str(e.retry_after), "Cache-Control": "no-store"})
+
 
 def _cached(key: tuple, seconds: float | Callable[[Any], float], fn: Callable[[], Any]) -> Any:
-    """fn(), kept for `seconds` under key (or for as long as `seconds(value)` says)."""
-    hit = _cache.get(key)
-    if hit and time.time() < hit[0]:
-        return hit[1]
-    value = fn()
-    if len(_cache) > 2000:
-        _cache.clear()
-    _cache[key] = (time.time() + (seconds(value) if callable(seconds) else seconds), value)
-    return value
+    """fn(), kept for `seconds` under key (or for as long as `seconds(value)` says); see cache.py."""
+    return _cache.get(key, seconds, fn)
 
 
 def _env(env: str | None) -> str:
@@ -120,7 +136,7 @@ def _labels(env: str, iris: set[str]) -> dict[str, str]:
     try:
         with ThreadPoolExecutor(4) as pool:
             return livepage.labels(lambda q: live.sparql(ENDPOINTS[env], q), iris, pool)
-    except httpx.HTTPError as e:
+    except (httpx.HTTPError, live.Overloaded) as e:
         log.warning("%s: no labels: %s", env, e)
         return {}
 

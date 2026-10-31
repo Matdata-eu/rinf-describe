@@ -56,6 +56,7 @@ if [ "$index" = yes ]; then
   cat > "$HTML/robots.txt" <<EOT
 User-agent: *
 Disallow: /api/
+Crawl-delay: 1
 
 Sitemap: $url/sitemap.xml
 EOT
@@ -73,8 +74,8 @@ EOT
     echo '</urlset>'
   } > "$HTML/sitemap-site.xml"
   noindex=
-  sitemaps='location = /sitemap.xml { set $u http://describe-api:8000; proxy_pass $u/api/sitemap.xml; }
-location ~ "^/sitemap-([0-9]{1,6})\.xml$" { set $u http://describe-api:8000; proxy_pass $u/api/sitemap-$1.xml; }'
+  sitemaps='location = /sitemap.xml { include /etc/nginx/describe/api-limit.conf; set $u http://describe-api:8000; proxy_pass $u/api/sitemap.xml; }
+location ~ "^/sitemap-([0-9]{1,6})\.xml$" { include /etc/nginx/describe/api-limit.conf; set $u http://describe-api:8000; proxy_pass $u/api/sitemap-$1.xml; }'
   echo "$ME: search engines may index $url/"
 else
   printf 'User-agent: *\nDisallow: /\n' > "$HTML/robots.txt"

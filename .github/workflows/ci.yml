@@ -61,3 +61,6 @@ jobs:
           ! curl -fsS localhost:8082/ | grep -q 'name="robots"'
           ! curl -fsSI localhost:8082/ | grep -qi '^x-robots-tag'
           curl -fsS localhost:8082/sitemap-site.xml | grep -q '<loc>https://describe.example.org/</loc>'
+          curl -fsS localhost:8082/robots.txt | grep -qx 'Crawl-delay: 1'
+          # /api/ is rate limited per client (docs/deploy.md); no API runs here, so only the 429s answer.
+          test "$( { for i in $(seq 60); do curl -s -m 2 -o /dev/null -w '%{http_code}\n' localhost:8081/api/health & done; wait; } | grep -c 429)" -gt 0
