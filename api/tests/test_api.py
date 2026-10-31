@@ -2,6 +2,7 @@
 with RINF Atlas's search and ERA's dataset explorer stood in for too."""
 import json
 import sys
+import time
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -206,4 +207,22 @@ def test_national_line_pages_are_kept_a_day(client):
     r = client.get("/api/describe", params={"uri": line}).json()
     assert r["pages"][0]["class"] == ERA + "LinearPositioningSystem"
     expires = main._cache[("page", "prod", line)][0]
-    assert expires - main.time.time() > 3600
+    assert expires - time.time() > 3600
+
+
+def test_cache_headers(client):
+    r = client.get("/api/describe", params={"uri": SOL, "env": "prod"})
+    assert r.headers["cache-control"] == "public, max-age=300"
+    assert client.get("/api/examples").headers["cache-control"] == "public, max-age=3600"
+    assert client.get("/api/health").headers["cache-control"] == "no-store"
+    assert client.get("/api/describe", params={"uri": "not an iri"}).headers["cache-control"] == "no-store"
+
+
+def test_busy_endpoint_answers_503(client, monkeypatch):
+    from app import live, main
+
+    def busy(*a, **k):
+        raise live.Busy("too many")
+    monkeypatch.setattr(main.livepage, "page", busy)
+    r = client.get("/api/describe", params={"uri": ERA + "nothing/busy", "env": "prod"})
+    assert r.status_code == 503 and r.headers["retry-after"] == "10" and r.headers["cache-control"] == "no-store"
