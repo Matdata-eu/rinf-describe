@@ -169,10 +169,18 @@ def test_atlas_search_maps_classes(monkeypatch):
     assert seen == {"env": "prod", "q": "Mich", "classes": ["sol"], "limit": 5}
 
 
-def test_sitemaps(client, monkeypatch):
+def test_sitemaps(client, monkeypatch, tmp_path):
     from app import main
     assert client.get("/api/sitemap.xml").status_code == 404  # no public address, no sitemap
     monkeypatch.setattr(main, "PUBLIC_URL", "https://describe.example.org")
+    monkeypatch.setattr(main, "SITEMAP_DIR", tmp_path)
+    monkeypatch.setattr(main, "_sitemaps", {"files": None, "built": None})
+    not_yet = client.get("/api/sitemap.xml")  # until the background build has run
+    assert not_yet.status_code == 503 and not_yet.headers["retry-after"] == "900"
+    assert client.get("/api/sitemap-1.xml").status_code == 503
+    (tmp_path / "sitemap-7.xml").write_text("stale")
+    assert main.build_sitemaps() == 1
+    assert not (tmp_path / "sitemap-7.xml").exists()
     idx = client.get("/api/sitemap.xml")
     assert idx.status_code == 200 and idx.headers["content-type"].startswith("application/xml")
     assert "<loc>https://describe.example.org/sitemap-site.xml</loc>" in idx.text

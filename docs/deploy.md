@@ -44,10 +44,11 @@ git tag v1.2.0 && git push origin v1.2.0
 | `DESCRIBE_TRUSTED_PROXIES` | empty | Reverse proxies in front of the web container (addresses or CIDR ranges, comma separated), whose `X-Forwarded-For` names the client. Web container |
 | `DESCRIBE_ATLAS_URL` | `https://rinf-atlas.matdata.eu` | RINF Atlas for the search box and the "Open in RINF Atlas" button; empty: IRIs only, no button |
 | `DESCRIBE_PUBLIC_URL` | empty | Public address: canonical links, sitemaps, search engines ([seo.md](seo.md)) |
+| `DESCRIBE_SITEMAP_DIR` | a temporary folder | Where the API writes the sitemaps it builds once a day (about 200 MB for PROD) |
 
-Pages are kept in the API for ten minutes, the start-page examples and the sitemaps for a
-day, the dataset explorer's answer for an hour. `scripts/bench_live.py` times pages
-against ERA's endpoint for a few batch settings.
+Pages are kept in the API for ten minutes, the start-page examples for a day, the dataset
+explorer's answer for an hour; the sitemaps are rebuilt in the background once a day.
+`scripts/bench_live.py` times pages against ERA's endpoint for a few batch settings.
 
 ## Load on ERA's endpoint
 
@@ -59,7 +60,7 @@ people use too. Measured against PROD in October 2026:
 | A page (section of line, track, operational point...) | 4 in the first round, then about 2 to 6, then labels | 0.4 to 1 s |
 | An infrastructure manager's page (`rd:scope "all"`) | the same, over every graph | about 5 s, kept a day |
 | The start-page examples | one per class page, about 25 | a few seconds, kept a day |
-| One sitemap file | 1, over the whole store | 15 to 30 s, kept a day |
+| One sitemap file | 1, over the whole store | 15 to 30 s, built in the background once a day |
 
 So the instance holds itself back:
 
