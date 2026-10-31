@@ -18,6 +18,9 @@ services:
       DESCRIBE_ENVS: ${DESCRIBE_ENVS:-prod=PROD,uat=UAT}
       DESCRIBE_LIVE_BATCH: ${DESCRIBE_LIVE_BATCH:-12}
       DESCRIBE_LIVE_WORKERS: ${DESCRIBE_LIVE_WORKERS:-8}
+      # Limits on what one instance asks of ERA's endpoint (docs/deploy.md).
+      DESCRIBE_MAX_QUERIES: ${DESCRIBE_MAX_QUERIES:-16}
+      DESCRIBE_CACHE_ENTRIES: ${DESCRIBE_CACHE_ENTRIES:-2000}
       DESCRIBE_ATLAS_URL: ${DESCRIBE_ATLAS_URL-https://rinf-atlas.matdata.eu}
       # With a public address the API serves the sitemaps of the describe pages (docs/seo.md).
       DESCRIBE_PUBLIC_URL: ${DESCRIBE_PUBLIC_URL:-}
@@ -31,6 +34,10 @@ services:
       # Search engines: empty asks them not to index; see docs/seo.md.
       DESCRIBE_PUBLIC_URL: ${DESCRIBE_PUBLIC_URL:-}
       DESCRIBE_INDEXING: ${DESCRIBE_INDEXING:-}
+      # Requests per second per client to /api/ ("off": no limit), and the reverse proxies
+      # in front of this one whose X-Forwarded-For names the client (docs/deploy.md).
+      DESCRIBE_RATE_LIMIT: ${DESCRIBE_RATE_LIMIT:-10}
+      DESCRIBE_TRUSTED_PROXIES: ${DESCRIBE_TRUSTED_PROXIES:-}
     ports:
       - "${DESCRIBE_PORT:-8090}:80"
     volumes:

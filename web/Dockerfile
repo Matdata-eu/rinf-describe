@@ -17,9 +17,12 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 # Search engine settings from DESCRIBE_PUBLIC_URL / DESCRIBE_INDEXING at start (docs/seo.md);
 # until then, and if the script cannot run, the instance asks not to be indexed.
-COPY docker-entrypoint.d/40-describe-seo.sh /docker-entrypoint.d/
-RUN chmod +x /docker-entrypoint.d/40-describe-seo.sh \
+# Rate limit on the API from DESCRIBE_RATE_LIMIT / DESCRIBE_TRUSTED_PROXIES (docs/deploy.md).
+COPY docker-entrypoint.d/30-describe-limits.sh docker-entrypoint.d/40-describe-seo.sh /docker-entrypoint.d/
+RUN chmod +x /docker-entrypoint.d/30-describe-limits.sh /docker-entrypoint.d/40-describe-seo.sh \
  && mkdir -p /etc/nginx/describe /usr/share/nginx/html/site \
  && echo 'add_header X-Robots-Tag "noindex, nofollow" always;' > /etc/nginx/describe/robots.conf \
- && : > /etc/nginx/describe/sitemaps.conf
+ && : > /etc/nginx/describe/sitemaps.conf \
+ && printf '%s\n' 'limit_req_zone $binary_remote_addr zone=describe_api:10m rate=10r/s;' 'limit_req_status 429;' > /etc/nginx/describe/http.conf \
+ && echo 'limit_req zone=describe_api burst=40 nodelay;' > /etc/nginx/describe/api-limit.conf
 EXPOSE 80
