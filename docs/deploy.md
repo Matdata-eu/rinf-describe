@@ -86,6 +86,12 @@ Set `DESCRIBE_PUBLIC_URL` to the instance's HTTPS address so search engines may 
 and get its sitemaps ([seo.md](seo.md)), and add a privacy statement in `site/`
 ([privacy.md](privacy.md)).
 
+The web container sends security headers with every answer (`web/security-headers.conf`):
+a Content-Security-Policy that allows scripts, styles and fonts from the instance only and
+map tiles from OpenStreetMap and OpenRailwayMap, `X-Content-Type-Options`, `Referrer-Policy`
+and `Permissions-Policy`. Add `Strict-Transport-Security` on the TLS proxy in front of it.
+The API container runs as an unprivileged user.
+
 ## Upgrading from 1.1 or earlier
 
 Up to 1.1, the API read a describe index from RINF Atlas's database. It no longer does:

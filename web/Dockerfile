@@ -14,6 +14,7 @@ RUN npm run build
 # --- runtime stage ---
 FROM nginx:1.31-alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY security-headers.conf /etc/nginx/describe/security.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 # Search engine settings from DESCRIBE_PUBLIC_URL / DESCRIBE_INDEXING at start (docs/seo.md);
 # until then, and if the script cannot run, the instance asks not to be indexed.

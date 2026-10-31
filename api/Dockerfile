@@ -7,6 +7,10 @@ RUN pip install -r requirements.txt
 COPY api/app /app/app
 COPY shapes /app/shapes
 ENV DESCRIBE_SHAPES=/app/shapes
+# Not root: the API only reads its code and shapes and writes its cache folder.
+RUN useradd --system --uid 10001 --no-create-home describe \
+ && mkdir -p /var/cache/describe && chown describe /var/cache/describe
+USER describe
 # One process: the work is waiting on ERA, which threads do well, and one process keeps one
 # cache and one limit on the queries in flight. uvicorn reads its worker count from here.
 ENV WEB_CONCURRENCY=1

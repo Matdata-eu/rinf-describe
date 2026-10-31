@@ -88,7 +88,7 @@ function header(r: DescribeResponse, cfg: Config, badges: string[]): HTMLElement
   if (env) meta.push(h('span', null, env.label));
   if (ds?.modified) meta.push(h('span', null, `published ${formatDate(ds.modified)}`));
   const atlas = cfg.atlasUrl && r.pages.length
-    ? h('a', { class: 'btn ghost small', href: `${cfg.atlasUrl}/#env=${encodeURIComponent(r.env)}&sel=${encodeURIComponent(r.iri).replace(/%3A/g, ':').replace(/%2F/g, '/')}`, target: '_blank', rel: 'noopener' }, 'Open in RINF Atlas')
+    ? h('a', { class: 'btn ghost small', href: `${cfg.atlasUrl}/#env=${encodeURIComponent(r.env)}&sel=${encodeURIComponent(r.iri).replace(/%3A/g, ':').replace(/%2F/g, '/')}`, target: '_blank', rel: 'noopener noreferrer' }, 'Open in RINF Atlas')
     : null;
   const exports = r.counts.out
     ? h('details', { class: 'menu' },
@@ -100,7 +100,7 @@ function header(r: DescribeResponse, cfg: Config, badges: string[]): HTMLElement
   return h('header', { class: 'page-head' },
     h('div', { class: 'classes' }, classes.map((c) => h('span', { class: `class-pill${r.pages.some((p) => p.class === c) ? '' : ' quiet'}`, title: c }, classLabel(c)))),
     h('h1', null, r.title ?? iriLabel(r.iri, r.labels)),
-    h('div', { class: 'iri-line' }, h('a', { class: 'mono iri', href: r.iri, rel: 'noopener', target: '_blank', title: 'Open the IRI' }, r.iri), copy, atlas, exports),
+    h('div', { class: 'iri-line' }, h('a', { class: 'mono iri', href: r.iri, rel: 'noopener noreferrer', target: '_blank', title: 'Open the IRI' }, r.iri), copy, atlas, exports),
     badges.length ? h('ul', { class: 'badges', 'aria-label': 'Key information' }, badges.map((b) => h('li', { class: 'badge' }, b))) : null,
     meta.length ? h('p', { class: 'meta muted small' }, joined(meta)) : null);
 }

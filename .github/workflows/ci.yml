@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.13"
+          python-version: "3.14"  # as in api/Dockerfile
       - run: pip install -r api/requirements.txt pytest ruff
       - run: ruff check api scripts tests
       # ERA's endpoint is stood in for by the Luxembourg sample (tests/sample.py).
@@ -61,6 +61,11 @@ jobs:
           ! curl -fsS localhost:8082/ | grep -q 'name="robots"'
           ! curl -fsSI localhost:8082/ | grep -qi '^x-robots-tag'
           curl -fsS localhost:8082/sitemap-site.xml | grep -q '<loc>https://describe.example.org/</loc>'
+          # security headers on the app and its files (web/security-headers.conf)
+          for path in / /index.html /favicon.svg /theme-init.js; do
+            curl -sSI -m 5 "localhost:8081$path" | grep -qi "^content-security-policy: default-src 'self'"
+            curl -sSI -m 5 "localhost:8081$path" | grep -qi '^x-content-type-options: nosniff'
+          done
           curl -fsS localhost:8082/robots.txt | grep -qx 'Crawl-delay: 1'
           # /api/ is rate limited per client (docs/deploy.md); no API runs here, so only the 429s answer.
           test "$( { for i in $(seq 60); do curl -s -m 2 -o /dev/null -w '%{http_code}\n' localhost:8081/api/health & done; wait; } | grep -c 429)" -gt 0

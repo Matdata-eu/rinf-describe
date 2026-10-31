@@ -9,7 +9,7 @@ const REPO = ((import.meta.env.VITE_REPO_URL as string | undefined) ?? 'https://
 let dlg: HTMLDialogElement | null = null;
 
 const b = (text: string) => h('strong', null, text);
-const link = (href: string, text: string) => h('a', { href, target: '_blank', rel: 'noopener' }, text);
+const link = (href: string, text: string) => h('a', { href, target: '_blank', rel: 'noopener noreferrer' }, text);
 
 type Part = string | Node;
 const section = (title: string, open: boolean, ...items: Part[][]) =>

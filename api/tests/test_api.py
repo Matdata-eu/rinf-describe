@@ -125,6 +125,9 @@ def test_unknown_resource(client):
 
 def test_bad_input(client):
     assert client.get("/api/describe", params={"uri": "not an iri", "env": "prod"}).status_code == 400
+    for uri in ("javascript:alert(1)", "data:text/html,hi", "urn:x:y", "JAVASCRIPT:alert(1)"):
+        assert client.get("/api/describe", params={"uri": uri, "env": "prod"}).status_code == 400, uri
+    assert client.get("/api/describe", params={"uri": "HTTP://data.europa.eu/949/x", "env": "prod"}).status_code == 200
     assert client.get("/api/describe", params={"uri": SOL, "env": "nope"}).status_code == 404
     assert client.get("/api/describe", params={"uri": SOL, "env": "prod", "source": "index"}).status_code == 200
 
