@@ -15,6 +15,9 @@ import { graphView } from './widgets/graph.ts';
 import { widgetFor, type Ctx } from './widgets/index.ts';
 import { indexRoots } from './widgets/parameters.ts';
 
+/** Most triples an export holds (TRIPLES_MAX in api/app/main.py). */
+const EXPORT_MAX = 5000;
+
 const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
 const STATUS_TEXT = { notApplicable: 'Not applicable', notYetAvailable: 'Not yet available' } as const;
 
@@ -95,7 +98,11 @@ function header(r: DescribeResponse, cfg: Config, badges: string[]): HTMLElement
       h('summary', { class: 'btn ghost small' }, 'Export'),
       h('div', { class: 'menu-items', role: 'menu' },
         RDF_FORMATS.concat([['csv', 'CSV', 'csv']]).map(([f, label]) =>
-          h('a', { role: 'menuitem', href: api.exportUrl(r.iri, r.env, f), download: '' }, label))))
+          h('a', { role: 'menuitem', href: api.exportUrl(r.iri, r.env, f), download: '' }, label)),
+        // The API exports at most EXPORT_MAX triples (TRIPLES_MAX in api/app/main.py).
+        r.counts.out > EXPORT_MAX
+          ? h('p', { class: 'menu-note muted small' }, `The first ${EXPORT_MAX.toLocaleString('en')} of ${r.counts.out.toLocaleString('en')} properties`)
+          : null))
     : null;
   return h('header', { class: 'page-head' },
     h('div', { class: 'classes' }, classes.map((c) => h('span', { class: `class-pill${r.pages.some((p) => p.class === c) ? '' : ' quiet'}`, title: c }, classLabel(c)))),

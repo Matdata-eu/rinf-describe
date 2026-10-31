@@ -190,6 +190,25 @@ def test_more_rows(client):
     r = client.get("/api/rows", params={"uri": op, "key": "track-table", "offset": 1}).json()
     assert r["total"] == 3 and len(r["items"]) == 2 and r["offset"] == 1
     assert client.get("/api/rows", params={"uri": op, "key": "nothing"}).status_code == 404
+    past = client.get("/api/rows", params={"uri": op, "key": "track-table", "offset": 999}).json()
+    assert past["items"] == [] and past["total"] == 3
+
+
+def test_health_reports_the_shapes(client, monkeypatch):
+    from app import main
+    ok = client.get("/api/health")
+    assert ok.status_code == 200 and ok.json()["ok"] and ok.json()["shapes"] > 10
+    monkeypatch.setattr(main, "shape_error", "operational-point.ttl: bad turtle")
+    bad = client.get("/api/health")
+    assert bad.status_code == 503 and bad.json()["error"] == "operational-point.ttl: bad turtle"
+
+
+def test_big_exports_say_they_are_cut(client, monkeypatch):
+    from app import main
+    monkeypatch.setattr(main, "TRIPLES_MAX", 5)
+    main.live._cache.clear()
+    r = client.get("/api/export", params={"uri": SOL, "env": "prod", "format": "ttl"})
+    assert r.headers["x-describe-truncated"] == "5" and "the first 5 triples only" in r.text
 
 
 def test_national_line_pages_are_kept_a_day(client):

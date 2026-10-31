@@ -113,7 +113,18 @@ def _linked(s: str, row, var: str = "?c", offset: int = 0) -> str:
     return pat
 
 
-def branches(iri: str, ds: DocShape, rows=None, status: bool = True, offset: int = 0) -> list[str]:
+class Branch(str):
+    """One UNION branch of a page query (its SPARQL text), with the kind of value it binds:
+    the letter before | in ?k (see branches())."""
+    kind: str
+
+    def __new__(cls, text: str, kind: str) -> Branch:
+        b = super().__new__(cls, text)
+        b.kind = kind
+        return b
+
+
+def branches(iri: str, ds: DocShape, rows=None, status: bool = True, offset: int = 0) -> list[Branch]:
     """One UNION branch per value set of the page. ?k says what a binding is for:
     v|row (values), o|row (children via rd:over, ?c), i|row (linked resources of a table),
     c|row|col (a column on each of them), a|row|col (a column with rd:over: ?x the linked
@@ -122,38 +133,41 @@ def branches(iri: str, ds: DocShape, rows=None, status: bool = True, offset: int
     ?c) and y|row|via (every property of a resource ?x it links to with `via` that is not an
     infrastructure element itself: its contact line system, ETCS...)."""
     s = f"<{iri}>"
-    out = []
+    out: list[Branch] = []
+
+    def add(kind: str, text: str) -> None:
+        out.append(Branch(text, kind))
     for row in ds.rows if rows is None else rows:
         cls = f" ?c a <{row.filter_class}> ." if row.filter_class else ""
         if row.viewer in WHOLE_VIEWERS:
-            out.append(f"{{ {s} ?c ?v BIND({_lit('x|' + row.key)} AS ?k) }}")
-            out.append(f"{{ {s} ?q ?x FILTER(isIRI(?x)) FILTER NOT EXISTS {{ ?x a <{INFRA}> }} ?x ?c ?v "
+            add("x", f"{{ {s} ?c ?v BIND({_lit('x|' + row.key)} AS ?k) }}")
+            add("y", f"{{ {s} ?q ?x FILTER(isIRI(?x)) FILTER NOT EXISTS {{ ?x a <{INFRA}> }} ?x ?c ?v "
                        f"BIND(CONCAT({_lit('y|' + row.key + '|')}, STR(?q)) AS ?k) }}")
         elif row.over:
-            out.append(f"{{ {s} {row.over} ?c .{cls} OPTIONAL {{ ?c {row.path} ?v }} BIND({_lit('o|' + row.key)} AS ?k) }}")
+            add("o", f"{{ {s} {row.over} ?c .{cls} OPTIONAL {{ ?c {row.path} ?v }} BIND({_lit('o|' + row.key)} AS ?k) }}")
             if row.weight:
-                out.append(f"{{ {s} {row.over} ?c .{cls} ?c {row.weight} ?v BIND({_lit('w|' + row.key)} AS ?k) }}")
+                add("w", f"{{ {s} {row.over} ?c .{cls} ?c {row.weight} ?v BIND({_lit('w|' + row.key)} AS ?k) }}")
         elif row.columns:
-            out.append(f"{{ {_linked(s, row, '?v', offset)} BIND({_lit('i|' + row.key)} AS ?k) }}")
+            add("i", f"{{ {_linked(s, row, '?v', offset)} BIND({_lit('i|' + row.key)} AS ?k) }}")
             for col in row.columns:
                 if col.over:
                     ccls = f" ?c a <{col.filter_class}> ." if col.filter_class else ""
-                    out.append(f"{{ {_linked(s, row, '?x', offset)} ?x {col.over} ?c .{ccls} OPTIONAL {{ ?c {col.path} ?v }} "
+                    add("a", f"{{ {_linked(s, row, '?x', offset)} ?x {col.over} ?c .{ccls} OPTIONAL {{ ?c {col.path} ?v }} "
                                f"BIND({_lit('a|' + row.key + '|' + col.key)} AS ?k) }}")
                     continue
-                out.append(f"{{ {_linked(s, row, '?c', offset)} OPTIONAL {{ ?c {col.path} ?v }} "
+                add("c", f"{{ {_linked(s, row, '?c', offset)} OPTIONAL {{ ?c {col.path} ?v }} "
                            f"BIND({_lit('c|' + row.key + '|' + col.key)} AS ?k) }}")
             if row.limit:
                 plain = f"{s} {row.path} ?n ." + (f" ?n a <{row.filter_class}> ." if row.filter_class else "")
-                out.append(f"{{ {{ SELECT (COUNT(DISTINCT ?n) AS ?v) WHERE {{ {plain} }} }} BIND({_lit('n|' + row.key)} AS ?k) }}")
+                add("n", f"{{ {{ SELECT (COUNT(DISTINCT ?n) AS ?v) WHERE {{ {plain} }} }} BIND({_lit('n|' + row.key)} AS ?k) }}")
         elif row.path:
             vcls = f" ?v a <{row.filter_class}> ." if row.filter_class else ""
-            out.append(f"{{ {s} {row.path} ?v .{vcls} BIND({_lit('v|' + row.key)} AS ?k) }}")
+            add("v", f"{{ {s} {row.path} ?v .{vcls} BIND({_lit('v|' + row.key)} AS ?k) }}")
         for name, path in row.params.items():
-            out.append(f"{{ {s} {path} ?v BIND({_lit('p|' + row.key + '|' + name)} AS ?k) }}")
+            add("p", f"{{ {s} {path} ?v BIND({_lit('p|' + row.key + '|' + name)} AS ?k) }}")
     if status:
         for name, pred in STATUS:
-            out.append(f"{{ {s} <{pred}> ?v BIND({_lit('s|' + name)} AS ?k) }}")
+            add("s", f"{{ {s} <{pred}> ?v BIND({_lit('s|' + name)} AS ?k) }}")
     return out
 
 
@@ -266,18 +280,19 @@ def labels(sparql: Sparql, iris: set[str], pool: ThreadPoolExecutor, chunk: int 
     return {k: v[1] for k, v in found.items()}
 
 
-def _collect(node, out: set[str]) -> None:
+def collect_iris(node, out: set[str]) -> None:
+    """Every IRI in a describe document (or part of one), for looking up their labels."""
     if isinstance(node, dict):
         if isinstance(node.get("iri"), str):
             out.add(node["iri"])
         for x in node.values():
-            _collect(x, out)
+            collect_iris(x, out)
     elif isinstance(node, list):
         for x in node:
             if isinstance(x, str) and x.startswith("http"):
                 out.add(x)
             else:
-                _collect(x, out)
+                collect_iris(x, out)
 
 
 def _indexed(ds: DocShape, doc: dict, onto: Ontology) -> dict:
@@ -329,7 +344,7 @@ def page(sparql: Sparql, iri: str, dset: DescribeSet, batch: int = 12, workers: 
                     jobs.append((ds, pool.submit(sparql, query(None, [p]))))
             parts = branches(iri, ds, [r for r in ds.rows if not r.scope_all])
             # The whole-resource branches (x|, y|) return many rows: a query of their own each.
-            alone = [p for p in parts if 'AS ?k' in p and ('"x|' in p or '"y|' in p)]
+            alone = [p for p in parts if p.kind in ("x", "y")]
             parts = [p for p in parts if p not in alone]
             for p in alone:
                 jobs.append((ds, pool.submit(sparql, query(graph, [p]))))
@@ -343,7 +358,7 @@ def page(sparql: Sparql, iri: str, dset: DescribeSet, batch: int = 12, workers: 
         iris: set[str] = {iri, *classes} | ({graph} if graph else set())
         for ds, doc in pages:
             iris.add(ds.class_iri)
-            _collect(doc, iris)
+            collect_iris(doc, iris)
         t1 = time.perf_counter()
         labs = labels(sparql, iris, pool)
         timing["labels"] = (time.perf_counter() - t1) * 1000
