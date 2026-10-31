@@ -43,8 +43,13 @@ index served by the API (`DESCRIBE_PUBLIC_URL` is passed to it too):
 the web container at start, then `/sitemap-1.xml`, `/sitemap-2.xml`, … with
 40,000 describe pages each and the publication date of their dataset as
 `lastmod`. The API reads them from ERA's SPARQL endpoint (every resource of a
-class with a shape) and keeps them for a day: a resource ERA adds shows up the
-next day.
+class with a shape): each file is one query over the whole store that takes 15
+to 30 seconds, so a background thread builds them one after the other when the
+API starts and then once a day, and the API serves the files it wrote
+(`DESCRIBE_SITEMAP_DIR`, a temporary folder by default). Until the first build
+is done, which takes about 20 minutes for PROD, the sitemaps answer `503` with
+`Retry-After`, which search engines take as "come back later". A resource ERA
+adds shows up the next day.
 
 The settings apply on every start: change `.env` and run
 `docker compose up -d`. Check the result with:

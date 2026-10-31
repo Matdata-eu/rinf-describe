@@ -21,6 +21,10 @@ services:
       DESCRIBE_ATLAS_URL: ${DESCRIBE_ATLAS_URL-https://rinf-atlas.matdata.eu}
       # With a public address the API serves the sitemaps of the describe pages (docs/seo.md).
       DESCRIBE_PUBLIC_URL: ${DESCRIBE_PUBLIC_URL:-}
+      # Built there once a day in the background; a volume keeps them across restarts.
+      DESCRIBE_SITEMAP_DIR: /var/cache/describe/sitemaps
+    volumes:
+      - sitemaps:/var/cache/describe/sitemaps
 
   describe-web:
     image: ${DESCRIBE_IMAGE:-ghcr.io/matdata-eu/rinf-describe}-web:${DESCRIBE_VERSION:-latest}
@@ -38,3 +42,6 @@ services:
       - ./site:/usr/share/nginx/html/site:ro
     depends_on:
       - describe-api
+
+volumes:
+  sitemaps:

@@ -40,10 +40,11 @@ git tag v1.2.0 && git push origin v1.2.0
 | `DESCRIBE_LIVE_WORKERS` | `8` | SPARQL queries in flight per page |
 | `DESCRIBE_ATLAS_URL` | `https://rinf-atlas.matdata.eu` | RINF Atlas for the search box and the "Open in RINF Atlas" button; empty: IRIs only, no button |
 | `DESCRIBE_PUBLIC_URL` | empty | Public address: canonical links, sitemaps, search engines ([seo.md](seo.md)) |
+| `DESCRIBE_SITEMAP_DIR` | a temporary folder | Where the API writes the sitemaps it builds once a day (about 200 MB for PROD) |
 
-Pages are kept in the API for ten minutes, the start-page examples and the sitemaps for a
-day, the dataset explorer's answer for an hour. `scripts/bench_live.py` times pages
-against ERA's endpoint for a few batch settings.
+Pages are kept in the API for ten minutes, the start-page examples for a day, the dataset
+explorer's answer for an hour; the sitemaps are rebuilt in the background once a day.
+`scripts/bench_live.py` times pages against ERA's endpoint for a few batch settings.
 
 ## A public instance
 
