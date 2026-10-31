@@ -1,4 +1,4 @@
-// rd:GraphViewer: the neighbourhood of a resource from the indexed triples, drawn in the
+// rd:GraphViewer: the neighbourhood of a resource, read from ERA's endpoint, drawn in the
 // design system's graph grammar: resources as rings, classes as solid pills, literals
 // as square plates, the resource itself highlighted. A click on a resource opens its page.
 import type { Edge, Node, Options } from 'vis-network/standalone';

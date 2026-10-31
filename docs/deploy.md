@@ -71,5 +71,8 @@ pip install -r api/requirements.txt
 ```
 
 Checks: `ruff check api scripts tests`, `pytest -q tests` (shapes), `cd api && pytest -q`
-(API), `cd web && npm test && npm run build`. The tests serve the Luxembourg sample in
+(API), `cd web && npm test && npm run build`, and `cd web && npm run e2e` (the built app in
+Chromium; `npx playwright install chromium` once). The tests serve the Luxembourg sample in
 `tests/fixtures/` as a SPARQL endpoint with pyoxigraph, so they need no network.
+`python scripts/sample_api.py` runs the API on that sample, for working on the web app
+offline.

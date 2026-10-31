@@ -44,8 +44,8 @@ export function openAbout() {
           h('li', null, 'Basemap: ', link('https://www.openstreetmap.org/copyright', '© OpenStreetMap contributors'),
             '; railway overlay: ', link('https://www.openrailwaymap.org/', 'OpenRailwayMap'), ' (CC-BY-SA)'),
           h('li', null, 'Built with ', link('https://maplibre.org/', 'MapLibre GL JS'), ', ', link('https://visjs.github.io/vis-network/', 'vis-network'),
-            ', ', link('https://www.w3.org/TR/shacl/', 'SHACL'), ' and ', link('https://datashapes.org/dash.html', 'DASH'),
-            ', ', link('https://www.postgresql.org/', 'PostgreSQL'), ' and ', link('https://fastapi.tiangolo.com/', 'FastAPI'),
+            ', ', link('https://www.w3.org/TR/shacl/', 'SHACL'), ', ', link('https://datashapes.org/dash.html', 'DASH'),
+            ', ', link('https://pyoxigraph.readthedocs.io/', 'pyoxigraph'), ' and ', link('https://fastapi.tiangolo.com/', 'FastAPI'),
             '; type: ', link('https://github.com/IBM/plex', 'IBM Plex'), ' (OFL)'),
           h('li', null, 'Made by ', link('https://matdata.eu', 'Matdata'), ' · MIT licence')),
         h('p', { class: 'muted small' }, `Version ${__APP_VERSION__}`)));
