@@ -11,9 +11,13 @@ import logging
 import math
 import os
 import re
+import tempfile
+import threading
+import time
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 from urllib.parse import quote_plus
 from xml.sax.saxutils import escape
@@ -56,6 +60,9 @@ ATLAS_URL = os.environ.get("DESCRIBE_ATLAS_URL", "https://rinf-atlas.matdata.eu"
 # (docs/seo.md). Without it there are none.
 PUBLIC_URL = os.environ.get("DESCRIBE_PUBLIC_URL", "").strip().rstrip("/")
 SITEMAP_SIZE = 40000  # URLs per sitemap file (the protocol allows 50,000)
+# The sitemaps are built in the background, once a day, and served from files here.
+SITEMAP_DIR = Path(os.environ.get("DESCRIBE_SITEMAP_DIR") or Path(tempfile.gettempdir()) / "describe-sitemaps")
+SITEMAP_TIMEOUT = 300.0  # one sitemap query: tens of seconds over the whole store
 TRIPLES_MAX = 5000  # triples in /api/triples and in an export
 GRAPH_MAX = 200
 
@@ -73,6 +80,8 @@ async def lifespan(app: FastAPI):
     except shapes.ShapeError as e:  # pages then show the generic tabs only
         log.error("describe shapes are invalid, no class pages: %s", e)
         shape_error = str(e)
+    if PUBLIC_URL and dset.shapes:
+        threading.Thread(target=_sitemap_loop, name="sitemaps", daemon=True).start()
     yield
 
 
@@ -400,8 +409,12 @@ def examples(env: str | None = None):
 
 
 # ---------- sitemaps: one URL per resource with a class page, default environment only ----------
+# Each file is one query over the whole store that takes 15 to 30 s and longer the further in
+# it starts, more than a crawler (or nginx) waits for. So a background thread builds them all,
+# one after the other, when the API starts and then once a day, and the API serves the files.
 _XML = "application/xml; charset=utf-8"
 _SITEMAP_HEADERS = {"Cache-Control": "public, max-age=3600"}
+_sitemaps: dict[str, Any] = {"files": None, "built": None}  # files: how many the index lists
 
 
 def _form(v: str) -> str:
@@ -419,19 +432,84 @@ def _sitemap_values() -> str:
     return " ".join(f"<{c}>" for c in _classes())
 
 
+def _sitemap_xml(env: str, n: int) -> str | None:
+    """The n-th file of describe pages (from 1), with the publication date of their dataset;
+    None past the last."""
+    rows = _sparql(env, f"""SELECT ?s (SAMPLE(?g) AS ?graph) WHERE {{ VALUES ?c {{ {_sitemap_values()} }}
+                            GRAPH ?g {{ ?s a ?c }} FILTER(isIRI(?s)) }}
+                            GROUP BY ?s ORDER BY ?s OFFSET {(n - 1) * SITEMAP_SIZE} LIMIT {SITEMAP_SIZE}""",
+                   timeout=SITEMAP_TIMEOUT)
+    if not rows:
+        return None
+    out = []
+    for r in rows:
+        iri = r["s"]["value"]
+        # The same address the pages give as canonical (web/src/seo.ts): uri, then env.
+        loc = f"{PUBLIC_URL}/describe?uri={_form(iri)}&env={_form(env)}"
+        modified = (_dataset(env, r["graph"]["value"]) or {}).get("modified") if "graph" in r else None
+        mod = f"<lastmod>{modified[:10]}</lastmod>" if modified else ""
+        out.append(f"  <url><loc>{escape(loc)}</loc>{mod}</url>\n")
+    return ('<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+            f"{''.join(out)}</urlset>\n")
+
+
+def build_sitemaps() -> int:
+    """Write every sitemap file to SITEMAP_DIR (each replaced whole, so the old one is served
+    until the new one is there) and drop files past the last. Returns how many there are."""
+    env = ENVS[0][0]
+    t0 = time.perf_counter()
+    res = _sparql(env, f"SELECT (COUNT(DISTINCT ?s) AS ?n) WHERE {{ VALUES ?c {{ {_sitemap_values()} }} "
+                       "?s a ?c FILTER(isIRI(?s)) }", timeout=SITEMAP_TIMEOUT) if _classes() else []
+    files = math.ceil((int(res[0]["n"]["value"]) if res else 0) / SITEMAP_SIZE)
+    SITEMAP_DIR.mkdir(parents=True, exist_ok=True)
+    if _sitemaps["files"] is None or files > _sitemaps["files"]:
+        _sitemaps["files"] = files  # the index may list the new files while they are built
+    n = 0
+    for n in range(1, files + 1):
+        xml = _sitemap_xml(env, n)
+        if xml is None:
+            n -= 1
+            break
+        tmp = SITEMAP_DIR / f".sitemap-{n}.xml.tmp"
+        tmp.write_text(xml, encoding="utf-8")
+        tmp.replace(SITEMAP_DIR / f"sitemap-{n}.xml")
+    for old in SITEMAP_DIR.glob("sitemap-*.xml"):
+        if int(old.stem.split("-")[1]) > n:
+            old.unlink(missing_ok=True)
+    _sitemaps.update(files=n, built=time.time())
+    log.info("sitemaps: %d files built in %.0f s", n, time.perf_counter() - t0)
+    return n
+
+
+def _sitemap_loop() -> None:
+    # Files kept from before a restart (a volume) are served while the new ones are built.
+    kept = [int(f.stem.split("-")[1]) for f in SITEMAP_DIR.glob("sitemap-*.xml")] if SITEMAP_DIR.is_dir() else []
+    if kept:
+        _sitemaps["files"] = max(kept)
+    while True:
+        try:
+            build_sitemaps()
+            wait = DAY
+        except Exception as e:  # noqa: BLE001 - ERA down or slow: keep the old files, try again soon
+            log.warning("sitemaps not built, retrying in 15 minutes: %s", e)
+            wait = 900
+        time.sleep(wait)
+
+
+def _not_yet() -> Response:
+    return Response("The sitemaps are being built; try again later.\n", status_code=503,
+                    media_type="text/plain", headers={"Retry-After": "900", "Cache-Control": "no-store"})
+
+
 @app.get("/api/sitemap.xml")
 def sitemap_index():
     """Sitemap index: the static pages (sitemap-site.xml, written by the web container) and
     one file per SITEMAP_SIZE describe pages. nginx serves it at /sitemap.xml."""
-    env = _sitemap_env()
-
-    def count():
-        if not _classes():
-            return 0
-        res = _sparql(env, f"SELECT (COUNT(DISTINCT ?s) AS ?n) WHERE {{ VALUES ?c {{ {_sitemap_values()} }} "
-                           "?s a ?c FILTER(isIRI(?s)) }", timeout=120)
-        return int(res[0]["n"]["value"]) if res else 0
-    files = math.ceil(_cached(("sitemap-count", env), DAY, count) / SITEMAP_SIZE)
+    _sitemap_env()
+    files = _sitemaps["files"]
+    if files is None:
+        return _not_yet()
     locs = [f"{PUBLIC_URL}/sitemap-site.xml"] + [f"{PUBLIC_URL}/sitemap-{i}.xml" for i in range(1, files + 1)]
     body = "".join(f"  <sitemap><loc>{escape(u)}</loc></sitemap>\n" for u in locs)
     return Response('<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -441,27 +519,11 @@ def sitemap_index():
 
 @app.get("/api/sitemap-{n:int}.xml")
 def sitemap_page(n: int):
-    """The n-th file of describe pages (from 1), with the publication date of their dataset."""
-    env = _sitemap_env()
-    if n < 1 or not _classes():
-        raise HTTPException(404, "no such sitemap")
-
-    def read():
-        return _sparql(env, f"""SELECT ?s (SAMPLE(?g) AS ?graph) WHERE {{ VALUES ?c {{ {_sitemap_values()} }}
-                                GRAPH ?g {{ ?s a ?c }} FILTER(isIRI(?s)) }}
-                                GROUP BY ?s ORDER BY ?s OFFSET {(n - 1) * SITEMAP_SIZE} LIMIT {SITEMAP_SIZE}""",
-                       timeout=120)
-    rows = _cached(("sitemap", env, n), DAY, read)
-    if not rows:
-        raise HTTPException(404, "no such sitemap")
-    out = []
-    for r in rows:
-        iri = r["s"]["value"]
-        # The same address the pages give as canonical (web/src/seo.ts): uri, then env.
-        loc = f"{PUBLIC_URL}/describe?uri={_form(iri)}&env={_form(env)}"
-        modified = (_dataset(env, r["graph"]["value"]) or {}).get("modified") if "graph" in r else None
-        mod = f"<lastmod>{modified[:10]}</lastmod>" if modified else ""
-        out.append(f"  <url><loc>{escape(loc)}</loc>{mod}</url>\n")
-    return Response('<?xml version="1.0" encoding="UTF-8"?>\n'
-                    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-                    f"{''.join(out)}</urlset>\n", media_type=_XML, headers=_SITEMAP_HEADERS)
+    """The n-th file of describe pages (from 1), as last built."""
+    _sitemap_env()
+    path = SITEMAP_DIR / f"sitemap-{n}.xml"
+    if n >= 1 and path.is_file():
+        return Response(path.read_bytes(), media_type=_XML, headers=_SITEMAP_HEADERS)
+    if n >= 1 and (_sitemaps["files"] is None or n <= _sitemaps["files"]):
+        return _not_yet()
+    raise HTTPException(404, "no such sitemap")
