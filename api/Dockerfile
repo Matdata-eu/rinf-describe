@@ -7,7 +7,10 @@ RUN pip install -r requirements.txt
 COPY api/app /app/app
 COPY shapes /app/shapes
 ENV DESCRIBE_SHAPES=/app/shapes
+# One process: the work is waiting on ERA, which threads do well, and one process keeps one
+# cache and one limit on the queries in flight. uvicorn reads its worker count from here.
+ENV WEB_CONCURRENCY=1
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \
   CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health', timeout=4).status == 200 else 1)"
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", "--proxy-headers"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers"]
