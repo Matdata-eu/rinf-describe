@@ -1,5 +1,6 @@
 // Start page: what RINF Describe is, a search box and one example page per class.
 import { api, type Config } from './api.ts';
+import { classIcon } from './class-icons.ts';
 import { h } from './dom.ts';
 import { describeHref } from './nav.ts';
 import { attachSearch } from './search.ts';
@@ -14,7 +15,7 @@ export function homePage(cfg: Config, env: string): HTMLElement {
   api.examples(env).then(({ results }) => {
     examples.replaceChildren(...(results.length ? results.map((x) => h('li', null,
       h('a', { class: 'example', href: describeHref(x.iri, env) },
-        h('span', { class: 'class-pill' }, x.classLabel ?? x.class),
+        h('span', { class: 'class-pill' }, classIcon(x.class, 14), x.classLabel ?? x.class),
         h('span', { class: 'example-label' }, x.label ?? x.iri))))
       : [h('li', { class: 'muted' }, 'No resource of a class with a page layout in this environment.')]));
   }).catch(() => examples.replaceChildren(h('li', { class: 'error' }, 'The API did not answer.')));

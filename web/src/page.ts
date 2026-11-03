@@ -4,6 +4,7 @@
 import { api, type ClassPage, type Config, type DescribeResponse, type RowDef, type Triple, type TriplesResponse } from './api.ts';
 import { h, joined } from './dom.ts';
 import { formatDate } from './format.ts';
+import { classIcon, iconElement, iconKeyOf } from './class-icons.ts';
 import { badgeText, isEmpty, layout, statusOf, type LaidGroup } from './layout.ts';
 import { describeHref } from './nav.ts';
 import { RDF_TYPE, helpPredicate, helpText, iriLabel, humanize, localName, prefixed } from './rdf.ts';
@@ -79,6 +80,8 @@ function hero(page: ClassPage, r: DescribeResponse, rows: ReturnType<typeof layo
 function header(r: DescribeResponse, cfg: Config, badges: string[]): HTMLElement {
   const classLabel = (c: string) => r.pages.find((p) => p.class === c)?.label ?? r.labels[c] ?? humanize(localName(c));
   const classes = [...r.classes].sort((a, b) => Number(!r.pages.some((p) => p.class === a)) - Number(!r.pages.some((p) => p.class === b)));
+  // The icon of the first class with one: classes with a page come first.
+  const icon = iconKeyOf(classes);
   const copy = h('button', { class: 'btn ghost small', type: 'button', title: 'Copy the IRI' }, 'Copy');
   copy.addEventListener('click', async () => {
     try { await navigator.clipboard.writeText(r.iri); copy.textContent = 'Copied'; } catch { copy.textContent = 'Copy failed'; }
@@ -105,8 +108,8 @@ function header(r: DescribeResponse, cfg: Config, badges: string[]): HTMLElement
           : null))
     : null;
   return h('header', { class: 'page-head' },
-    h('div', { class: 'classes' }, classes.map((c) => h('span', { class: `class-pill${r.pages.some((p) => p.class === c) ? '' : ' quiet'}`, title: c }, classLabel(c)))),
-    h('h1', null, r.title ?? iriLabel(r.iri, r.labels)),
+    h('div', { class: 'classes' }, classes.map((c) => h('span', { class: `class-pill${r.pages.some((p) => p.class === c) ? '' : ' quiet'}`, title: c }, classIcon(c, 14), classLabel(c)))),
+    h('div', { class: 'title-line' }, icon ? h('span', { class: 'title-icon' }, iconElement(icon, 24)) : null, h('h1', null, r.title ?? iriLabel(r.iri, r.labels))),
     h('div', { class: 'iri-line' }, h('a', { class: 'mono iri', href: r.iri, rel: 'noopener noreferrer', target: '_blank', title: 'Open the IRI' }, r.iri), copy, atlas, exports),
     badges.length ? h('ul', { class: 'badges', 'aria-label': 'Key information' }, badges.map((b) => h('li', { class: 'badge' }, b))) : null,
     meta.length ? h('p', { class: 'meta muted small' }, joined(meta)) : null);

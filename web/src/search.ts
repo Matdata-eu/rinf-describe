@@ -1,5 +1,6 @@
 // Search box with suggestions: a name finds resources that have a page, an IRI opens directly.
 import { api, type SearchHit } from './api.ts';
+import { classIcon } from './class-icons.ts';
 import { h } from './dom.ts';
 import { describeHref, navigate } from './nav.ts';
 import { humanize, localName } from './rdf.ts';
@@ -17,7 +18,7 @@ export function attachSearch(form: HTMLFormElement, input: HTMLInputElement, lis
   const paint = () => {
     list.replaceChildren(...hits.map((hit, i) => {
       const li = h('li', { role: 'option', id: `${list.id}-${i}`, 'aria-selected': String(i === active), class: i === active ? 'active' : null },
-        h('span', { class: 'hit-label' }, hit.label ?? hit.iri),
+        h('span', { class: 'hit-label' }, classIcon(hit.class, 16), hit.label ?? hit.iri),
         hit.class ? h('span', { class: 'hit-class' }, humanize(localName(hit.class))) : null);
       li.addEventListener('mousedown', (e) => { e.preventDefault(); open(hit); });
       return li;
